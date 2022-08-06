@@ -4,7 +4,7 @@
 
 Lint the file/folder structure of a project
 
-Checks that will be made:
+For example, checks that can be made:
 
 - Folder and filename patterns, ex:
 
@@ -14,12 +14,13 @@ Checks that will be made:
   - Nesting rules for complex structures combinations
 
 - Files content
+
   - Import/Export only the right function/variables
   - matches a Regex
 
 - File structure
 
-## Folder and filename pattners
+## Test structure
 
 Considering a TODO app with the following routes:
 
@@ -56,7 +57,7 @@ Checks:
 
 - Only files/folder included in `folders` field will be checked
 - Each file/folder will be checked againts all rules in its context. If some rule do not matches an error is throw
-- Empty folders will be warned
+- Empty folders will be warned and ignored
 
 # Error reporting
 
