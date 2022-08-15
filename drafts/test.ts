@@ -43,7 +43,7 @@ type Rule =
       error_msg?: string
       child_file_rules?: RuleWithBlocks[]
       must_match?: boolean
-      warning?: boolean // may be useful
+      is_warning?: boolean // may be useful
     }
   | { one_of: RuleWithBlocks[]; error_msg?: string }
   | { folder_and_subfolders: RuleWithBlocks[] }
@@ -76,8 +76,12 @@ const root: Root = {
     },
   ],
   folder: {
-    assets: {
-      icons: [
+    /assets: {
+      rules: [],
+      folder_and_all_subfolders: [],
+      folder_and_subfolders: [],
+      // TODO: what if i want to add a folder rule to a subfolder?
+      /icons: [
         // each rule will be applied to each file in the folder
         {
           expect: { extension_is: 'svg' },

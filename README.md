@@ -1,82 +1,72 @@
-# Architest
+# Palinter
 
-## Objective
+A powerfull linter for projects architecture written in rust.
 
-Lint the file/folder structure of a project
+# Lint strategy
 
-For example, checks that can be made:
+## Config
 
-- Folder and filename patterns, ex:
+Palinter config is defined as a `palinter.config.yaml` file in the root of the project, and sets all rules of a project.
 
-  - Folder and filename casing
-  - Check if folder only have files with a specific extension
-  - Check if files/folder name match a Regex pattern
-  - Nesting rules for complex structures combinations
+The rules are defined in:
 
-- Files content
+- `global_rules` that have rules that are applied to all files.
+- `blocks` that have blocks of reusable rules.
+- And in the `folders` section, that is the basepoint for the linting.
 
-  - Import/Export only the right function/variables
-  - matches a Regex
+Only folders that are defined in the `folders` section will be linted. If a folder is not in the `folders`, palinter will return an error, unless it is added to the `ignore_folders` section.
 
-- File structure
+## Setting folders
 
-## Test structure
+TODO: write setting folders
 
-Considering a TODO app with the following routes:
+TODO: write about ignoring folders
 
-- /: if logged then `app` else `login`
-- app: logged area
-  - /: pending todo itens
-  - list: all todo itens
-    - [id]: todo page
-      - update: todo update page
-- login: login page
-  - /: login
+TODO: what if i want to set the rules for a folder and a subfolder?
 
-```mermaid
-flowchart LR
-  /src --> /assets & /pages & /components & /stores
-    /assets --> /icons --> A>icon.svg] & B>circle.svg] & C>square.svg]
-    /components --> D>TextInput.tsx]
-    /pages --> 4>mainRoutes.tsx]
-      /pages --> /home --> E>home.tsx] & 1>Menu.tsx]
-      /pages --> /list --> 6>list.tsx] & 7>ListGrid.tsx] & 9>list.hooks.ts] & 14>list.utils.ts]
-        /list --> /Todo --> Todo.tsx & TodoHeader.tsx & TodoContent.tsx
-      /pages --> /login --> 12>login.tsx]
-    /stores
-      /stores --> userDoc.ts
-      /stores --> todosCollection.ts
-      /stores --> todoImages --> todoImagesCollection.ts & todoImagesActions.ts & todoImages.utils.ts & convertTodosImagesFromApi.ts
+## Setting rules
+
+All files in the configured folders will be checked against the rules. If a file not matches any rule, an error will be reported.
+
+A rule structure is:
+
+```yaml
+folders:
+  /icons:
+    - expect: # file assertions
+      if: # optional, rule conditionals
+      error_message: # optional, custom error message
+      is_warning: # optional, set rule to warning instead of error
 ```
 
-Checks:
+### Expect
 
-- /src/assets/icons only have svg icons
+See [docs/expect-rules](docs/expect.md) module for more information.
 
-# Logic
+### If - rule conditions
 
-- Only files/folder included in `folders` field will be checked
-- Each file/folder will be checked againts all rules in its context. If some rule do not matches an error is throw
-- Empty folders will be warned and ignored
+See [docs/rule-conditions](docs/rule-conditions.md) module for more information.
 
-# Error reporting
+## Rule logic groups
 
-Compact and tree mode
+TODO: write
 
-```
------------------------------------------------
-Error in file: src/icons/wrong.tsx
-  File name casing do not matches PascalCase
+## Folder loop groups
 
------------------------------------------------
-Error in file
+TODO: write
 
-src/
- └─ icons/
-     └─ wrong.tsx
-        ^^^^^^^^^
-File name casing do not matches PascalCase
+## Folder rules
 
------------------------------------------------
-✖ 9 Problems (5 errors, 4 warnings)
-```
+TODO: write
+
+## Context variables
+
+TODO: write
+
+## Global rules
+
+TODO: write
+
+## Rule blocks
+
+TODO: write
