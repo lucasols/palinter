@@ -11,7 +11,7 @@ Considering a TODO app with the following routes:
 - login: login page
   - /: login
 
-```mermaids
+```mermaid
 flowchart LR
   /src --> /assets & /pages & /components & /stores
     /assets --> /icons --> A>icon.svg] & B>circle.svg] & C>square.svg]

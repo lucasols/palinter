@@ -9,6 +9,7 @@ fn main() {
 
     // TODO: run lint with config
 
-    parse_config(true);
-}
+    let config = parse_config("./tests/fixtures/config1.json");
 
+    println!("{:#?}", config);
+}

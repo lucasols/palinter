@@ -1,15 +1,15 @@
-type Root = {
+export type Root = {
   blocks: {
-    [key: string]: Rule | Rule[] // reusable rules
+    [key: string]: Rule2 | Rule2[] // reusable rules
   }
-  global_rules: Rule[]
+  global_rules: Rule2[]
   folder: {
-    assets: { icons: RuleWithBlocks[] }
+    '/assets': { icons: RuleWithBlocks[] }
     pages: RuleWithBlocks[]
   }
 }
 
-type RuleWithBlocks = Rule | string
+type RuleWithBlocks = Rule2 | string
 
 type NameCases =
   | 'camelCase'
@@ -19,10 +19,10 @@ type NameCases =
   | 'snake_case'
   | 'kebab-case'
 
-type Rule =
+type Rule2 =
   | {
       folder_rule?: boolean
-      if?:
+      match?:
         | 'previous_matched'
         | 'not_previous_matched'
         | {
@@ -51,37 +51,37 @@ type Rule =
 const root: Root = {
   blocks: {
     react_file: {
-      if: { extension_is: 'tsx' },
+      match: { extension_is: 'tsx' },
       expect: { name_case_is: 'PascalCase' },
       error_msg: 'React files name must be PascalCase',
     },
     hooks_file: {
-      if: { path_is: '*.hooks.ts' },
+      match: { path_is: '*.hooks.ts' },
       expect: { name_case_is: 'camelCase' },
     },
     utils_file: {
-      if: { path_is: '*.utils.ts' },
+      match: { path_is: '*.utils.ts' },
       expect: { name_case_is: 'camelCase' },
     },
     style_file: {
-      if: { path_is: '*.style.ts' },
+      match: { path_is: '*.style.ts' },
       expect: { name_case_is: 'camelCase' },
     },
   },
   global_rules: [
     {
-      if: { extension_is: 'svg' },
+      match: { extension_is: 'svg' },
       expect: { name_case_is: 'kebab-case' },
       error_msg: 'Svg files should be named in kebab-case',
     },
   ],
   folder: {
-    /assets: {
+    '/assets': {
       rules: [],
       folder_and_all_subfolders: [],
       folder_and_subfolders: [],
       // TODO: what if i want to add a folder rule to a subfolder?
-      /icons: [
+      '/icons': [
         // each rule will be applied to each file in the folder
         {
           expect: { extension_is: 'svg' },
@@ -137,7 +137,7 @@ const root: Root = {
               },
               {
                 folder_rule: true,
-                if: { name_case_is: 'PascalCase' },
+                match: { name_case_is: 'PascalCase' },
                 expect: 'any',
                 error_msg: 'Pages folders should be named in kebab-case',
 
@@ -172,3 +172,5 @@ const root: Root = {
     ],
   },
 }
+
+
