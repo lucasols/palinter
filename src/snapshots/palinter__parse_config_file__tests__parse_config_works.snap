@@ -1,12 +1,12 @@
 ---
-source: src/config.rs
+source: src/parse_config_file.rs
 expression: config
 ---
 Config {
     blocks: Some(
         {
             "react_file_name": File {
-                conditions: Some(
+                conditions: Conditions(
                     FileConditions {
                         has_extension: Some(
                             Single(
@@ -14,6 +14,7 @@ Config {
                             ),
                         ),
                         has_name: None,
+                        does_not_have_name: None,
                     },
                 ),
                 expect: Multiple(
@@ -48,9 +49,11 @@ Config {
                         },
                     ],
                 ),
+                extension_is: None,
+                error_msg: None,
             },
             "react_sub_file": File {
-                conditions: Some(
+                conditions: Conditions(
                     FileConditions {
                         has_extension: None,
                         has_name: Some(
@@ -58,6 +61,7 @@ Config {
                                 "*:PascalCase.(hooks|utils|style|types).ts",
                             ),
                         ),
+                        does_not_have_name: None,
                     },
                 ),
                 expect: Single(
@@ -74,13 +78,15 @@ Config {
                         extension_is: None,
                     },
                 ),
+                extension_is: None,
+                error_msg: None,
             },
         },
     ),
     global_rules: Some(
         [
             File {
-                conditions: Some(
+                conditions: Conditions(
                     FileConditions {
                         has_extension: Some(
                             Single(
@@ -88,6 +94,7 @@ Config {
                             ),
                         ),
                         has_name: None,
+                        does_not_have_name: None,
                     },
                 ),
                 expect: Single(
@@ -104,6 +111,10 @@ Config {
                         extension_is: None,
                     },
                 ),
+                extension_is: None,
+                error_msg: Some(
+                    "Svg files should be named in kebab-case",
+                ),
             },
         ],
     ),
@@ -117,8 +128,10 @@ Config {
                     has_files: None,
                     rules: Some(
                         [
-                            Folder {
-                                conditions: None,
+                            File {
+                                conditions: Any(
+                                    "any",
+                                ),
                                 expect: Single(
                                     FileExpect {
                                         name_case_is: None,
@@ -133,12 +146,21 @@ Config {
                                         ),
                                     },
                                 ),
+                                extension_is: None,
+                                error_msg: Some(
+                                    "Only svg files are allowed in /assets/icons",
+                                ),
                             },
                             File {
-                                conditions: Some(
+                                conditions: Conditions(
                                     FileConditions {
                                         has_extension: None,
                                         has_name: None,
+                                        does_not_have_name: Some(
+                                            Single(
+                                                "static-*.ts",
+                                            ),
+                                        ),
                                     },
                                 ),
                                 expect: Multiple(
@@ -178,203 +200,8 @@ Config {
                                         },
                                     ],
                                 ),
-                            },
-                        ],
-                    ),
-                    folders: {},
-                },
-                "//stores": FolderConfig {
-                    has_files: Some(
-                        [
-                            "collectionStore.example.ts",
-                            "documentStore.example.ts",
-                            "listQueryStore.example.ts",
-                        ],
-                    ),
-                    rules: Some(
-                        [
-                            Folder {
-                                conditions: None,
-                                expect: Single(
-                                    FileExpect {
-                                        name_case_is: Some(
-                                            Single(
-                                                "camelCase",
-                                            ),
-                                        ),
-                                        has_sibling_file: None,
-                                        content_matches_any: None,
-                                        error_msg: None,
-                                        name_not_matches: None,
-                                        extension_is: None,
-                                    },
-                                ),
-                            },
-                            File {
-                                conditions: None,
-                                expect: Single(
-                                    FileExpect {
-                                        name_case_is: Some(
-                                            Single(
-                                                "camelCase",
-                                            ),
-                                        ),
-                                        has_sibling_file: None,
-                                        content_matches_any: None,
-                                        error_msg: None,
-                                        name_not_matches: None,
-                                        extension_is: None,
-                                    },
-                                ),
-                            },
-                            File {
-                                conditions: Some(
-                                    FileConditions {
-                                        has_extension: None,
-                                        has_name: Some(
-                                            Single(
-                                                "*Store.utils.ts",
-                                            ),
-                                        ),
-                                    },
-                                ),
-                                expect: Single(
-                                    FileExpect {
-                                        name_case_is: None,
-                                        has_sibling_file: Some(
-                                            Single(
-                                                "$1Store.ts",
-                                            ),
-                                        ),
-                                        content_matches_any: None,
-                                        error_msg: None,
-                                        name_not_matches: None,
-                                        extension_is: None,
-                                    },
-                                ),
-                            },
-                            File {
-                                conditions: Some(
-                                    FileConditions {
-                                        has_extension: None,
-                                        has_name: Some(
-                                            Single(
-                                                "*(Doc|List|Query).(utils|actions).ts",
-                                            ),
-                                        ),
-                                    },
-                                ),
-                                expect: Single(
-                                    FileExpect {
-                                        name_case_is: None,
-                                        has_sibling_file: Some(
-                                            Single(
-                                                "$1$2.ts",
-                                            ),
-                                        ),
-                                        content_matches_any: None,
-                                        error_msg: None,
-                                        name_not_matches: None,
-                                        extension_is: None,
-                                    },
-                                ),
-                            },
-                            File {
-                                conditions: Some(
-                                    FileConditions {
-                                        has_extension: None,
-                                        has_name: Some(
-                                            Single(
-                                                "*Doc.ts",
-                                            ),
-                                        ),
-                                    },
-                                ),
-                                expect: Single(
-                                    FileExpect {
-                                        name_case_is: None,
-                                        has_sibling_file: None,
-                                        content_matches_any: Some(
-                                            Multiple(
-                                                [
-                                                    "export const $1Doc = createDocumentStore<",
-                                                ],
-                                            ),
-                                        ),
-                                        error_msg: None,
-                                        name_not_matches: None,
-                                        extension_is: None,
-                                    },
-                                ),
-                            },
-                            File {
-                                conditions: Some(
-                                    FileConditions {
-                                        has_extension: None,
-                                        has_name: Some(
-                                            Single(
-                                                "*List.ts",
-                                            ),
-                                        ),
-                                    },
-                                ),
-                                expect: Single(
-                                    FileExpect {
-                                        name_case_is: None,
-                                        has_sibling_file: None,
-                                        content_matches_any: Some(
-                                            Multiple(
-                                                [
-                                                    "export const {{1}}List = createListQueryStore<",
-                                                ],
-                                            ),
-                                        ),
-                                        error_msg: None,
-                                        name_not_matches: None,
-                                        extension_is: None,
-                                    },
-                                ),
-                            },
-                            File {
-                                conditions: Some(
-                                    FileConditions {
-                                        has_extension: None,
-                                        has_name: Some(
-                                            Single(
-                                                "*Doc.ts",
-                                            ),
-                                        ),
-                                    },
-                                ),
-                                expect: Single(
-                                    FileExpect {
-                                        name_case_is: None,
-                                        has_sibling_file: None,
-                                        content_matches_any: Some(
-                                            Multiple(
-                                                [
-                                                    "export const $1Doc = createDocumentStore<",
-                                                ],
-                                            ),
-                                        ),
-                                        error_msg: None,
-                                        name_not_matches: None,
-                                        extension_is: None,
-                                    },
-                                ),
-                            },
-                            File {
-                                conditions: None,
-                                expect: Single(
-                                    FileExpect {
-                                        name_case_is: None,
-                                        has_sibling_file: None,
-                                        content_matches_any: None,
-                                        error_msg: None,
-                                        name_not_matches: None,
-                                        extension_is: None,
-                                    },
-                                ),
+                                extension_is: None,
+                                error_msg: None,
                             },
                         ],
                     ),
@@ -386,9 +213,11 @@ Config {
                         [
                             OneOf {
                                 rules: [
-                                    Error,
+                                    Block(
+                                        "react_component",
+                                    ),
                                     File {
-                                        conditions: Some(
+                                        conditions: Conditions(
                                             FileConditions {
                                                 has_extension: Some(
                                                     Single(
@@ -396,6 +225,7 @@ Config {
                                                     ),
                                                 ),
                                                 has_name: None,
+                                                does_not_have_name: None,
                                             },
                                         ),
                                         expect: Multiple(
@@ -430,11 +260,13 @@ Config {
                                                 },
                                             ],
                                         ),
+                                        extension_is: None,
+                                        error_msg: None,
                                     },
                                 ],
                             },
                             File {
-                                conditions: Some(
+                                conditions: Conditions(
                                     FileConditions {
                                         has_extension: None,
                                         has_name: Some(
@@ -442,6 +274,7 @@ Config {
                                                 "*:kebab-case.(hooks|utils|style|types).ts",
                                             ),
                                         ),
+                                        does_not_have_name: None,
                                     },
                                 ),
                                 expect: Single(
@@ -458,9 +291,17 @@ Config {
                                         extension_is: None,
                                     },
                                 ),
+                                extension_is: None,
+                                error_msg: None,
                             },
-                            File {
-                                conditions: None,
+                            Folder {
+                                conditions: Conditions(
+                                    FileConditions {
+                                        has_extension: None,
+                                        has_name: None,
+                                        does_not_have_name: None,
+                                    },
+                                ),
                                 expect: Single(
                                     FileExpect {
                                         name_case_is: None,
@@ -471,9 +312,16 @@ Config {
                                         extension_is: None,
                                     },
                                 ),
+                                error_msg: None,
                             },
-                            File {
-                                conditions: None,
+                            Folder {
+                                conditions: Conditions(
+                                    FileConditions {
+                                        has_extension: None,
+                                        has_name: None,
+                                        does_not_have_name: None,
+                                    },
+                                ),
                                 expect: Single(
                                     FileExpect {
                                         name_case_is: None,
@@ -484,6 +332,7 @@ Config {
                                         extension_is: None,
                                     },
                                 ),
+                                error_msg: None,
                             },
                         ],
                     ),
@@ -498,6 +347,232 @@ Config {
                             folders: {},
                         },
                     },
+                },
+                "//stores": FolderConfig {
+                    has_files: Some(
+                        [
+                            "collectionStore.example.ts",
+                            "documentStore.example.ts",
+                            "listQueryStore.example.ts",
+                        ],
+                    ),
+                    rules: Some(
+                        [
+                            File {
+                                conditions: Any(
+                                    "any",
+                                ),
+                                expect: Single(
+                                    FileExpect {
+                                        name_case_is: Some(
+                                            Single(
+                                                "camelCase",
+                                            ),
+                                        ),
+                                        has_sibling_file: None,
+                                        content_matches_any: None,
+                                        error_msg: None,
+                                        name_not_matches: None,
+                                        extension_is: None,
+                                    },
+                                ),
+                                extension_is: None,
+                                error_msg: None,
+                            },
+                            Folder {
+                                conditions: Any(
+                                    "any",
+                                ),
+                                expect: Single(
+                                    FileExpect {
+                                        name_case_is: Some(
+                                            Single(
+                                                "camelCase",
+                                            ),
+                                        ),
+                                        has_sibling_file: None,
+                                        content_matches_any: None,
+                                        error_msg: None,
+                                        name_not_matches: None,
+                                        extension_is: None,
+                                    },
+                                ),
+                                error_msg: None,
+                            },
+                            File {
+                                conditions: Conditions(
+                                    FileConditions {
+                                        has_extension: None,
+                                        has_name: Some(
+                                            Single(
+                                                "*Store.utils.ts",
+                                            ),
+                                        ),
+                                        does_not_have_name: None,
+                                    },
+                                ),
+                                expect: Single(
+                                    FileExpect {
+                                        name_case_is: None,
+                                        has_sibling_file: Some(
+                                            Single(
+                                                "$1Store.ts",
+                                            ),
+                                        ),
+                                        content_matches_any: None,
+                                        error_msg: None,
+                                        name_not_matches: None,
+                                        extension_is: None,
+                                    },
+                                ),
+                                extension_is: None,
+                                error_msg: None,
+                            },
+                            File {
+                                conditions: Conditions(
+                                    FileConditions {
+                                        has_extension: None,
+                                        has_name: Some(
+                                            Single(
+                                                "*(Doc|List|Query).(utils|actions).ts",
+                                            ),
+                                        ),
+                                        does_not_have_name: None,
+                                    },
+                                ),
+                                expect: Single(
+                                    FileExpect {
+                                        name_case_is: None,
+                                        has_sibling_file: Some(
+                                            Single(
+                                                "$1$2.ts",
+                                            ),
+                                        ),
+                                        content_matches_any: None,
+                                        error_msg: None,
+                                        name_not_matches: None,
+                                        extension_is: None,
+                                    },
+                                ),
+                                extension_is: None,
+                                error_msg: None,
+                            },
+                            File {
+                                conditions: Conditions(
+                                    FileConditions {
+                                        has_extension: None,
+                                        has_name: Some(
+                                            Single(
+                                                "*Doc.ts",
+                                            ),
+                                        ),
+                                        does_not_have_name: None,
+                                    },
+                                ),
+                                expect: Single(
+                                    FileExpect {
+                                        name_case_is: None,
+                                        has_sibling_file: None,
+                                        content_matches_any: Some(
+                                            Multiple(
+                                                [
+                                                    "export const $1Doc = createDocumentStore<",
+                                                ],
+                                            ),
+                                        ),
+                                        error_msg: None,
+                                        name_not_matches: None,
+                                        extension_is: None,
+                                    },
+                                ),
+                                extension_is: None,
+                                error_msg: None,
+                            },
+                            File {
+                                conditions: Conditions(
+                                    FileConditions {
+                                        has_extension: None,
+                                        has_name: Some(
+                                            Single(
+                                                "*List.ts",
+                                            ),
+                                        ),
+                                        does_not_have_name: None,
+                                    },
+                                ),
+                                expect: Single(
+                                    FileExpect {
+                                        name_case_is: None,
+                                        has_sibling_file: None,
+                                        content_matches_any: Some(
+                                            Multiple(
+                                                [
+                                                    "export const {{1}}List = createListQueryStore<",
+                                                ],
+                                            ),
+                                        ),
+                                        error_msg: None,
+                                        name_not_matches: None,
+                                        extension_is: None,
+                                    },
+                                ),
+                                extension_is: None,
+                                error_msg: None,
+                            },
+                            File {
+                                conditions: Conditions(
+                                    FileConditions {
+                                        has_extension: None,
+                                        has_name: Some(
+                                            Single(
+                                                "*Doc.ts",
+                                            ),
+                                        ),
+                                        does_not_have_name: None,
+                                    },
+                                ),
+                                expect: Single(
+                                    FileExpect {
+                                        name_case_is: None,
+                                        has_sibling_file: None,
+                                        content_matches_any: Some(
+                                            Multiple(
+                                                [
+                                                    "export const $1Doc = createDocumentStore<",
+                                                ],
+                                            ),
+                                        ),
+                                        error_msg: None,
+                                        name_not_matches: None,
+                                        extension_is: None,
+                                    },
+                                ),
+                                extension_is: None,
+                                error_msg: None,
+                            },
+                            Folder {
+                                conditions: Conditions(
+                                    FileConditions {
+                                        has_extension: None,
+                                        has_name: None,
+                                        does_not_have_name: None,
+                                    },
+                                ),
+                                expect: Single(
+                                    FileExpect {
+                                        name_case_is: None,
+                                        has_sibling_file: None,
+                                        content_matches_any: None,
+                                        error_msg: None,
+                                        name_not_matches: None,
+                                        extension_is: None,
+                                    },
+                                ),
+                                error_msg: None,
+                            },
+                        ],
+                    ),
+                    folders: {},
                 },
             },
         },

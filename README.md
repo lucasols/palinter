@@ -4,6 +4,11 @@ A powerfull linter for projects architecture written in rust.
 
 # Lint strategy
 
+Palinter allows you to define rules for check your project architecture. In order to define the rules of the project, some concepts need to be in mind:
+
+- Each file must pass at a least one specified rule. No unknown files are allowed.
+- Unknown subfolders of folders specified in the config are not allowed too. They must be defined in the config or pass at least one folder rule to be valid.
+
 ## Config
 
 Palinter config is defined as a `palinter.config.yaml` file in the root of the project, and sets all rules of a project.
@@ -12,7 +17,7 @@ The rules are defined in:
 
 - `global_rules` that have rules that are applied to all files.
 - `blocks` that have blocks of reusable rules.
-- And in the `folders` section, that is the basepoint for the linting.
+- Rules for specific folders are defined by the properties starting with `\\` followed by the folder path.
 
 Only folders that are defined in the `folders` section will be linted. If a folder is not in the `folders`, palinter will return an error, unless it is added to the `ignore_folders` section.
 

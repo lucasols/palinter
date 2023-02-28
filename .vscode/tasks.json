@@ -14,6 +14,19 @@
       "type": "cargo",
       "label": "Cargo Test",
       "command": "test",
+      "args": ["--", "--nocapture"],
+      "env": {
+        "RUSTFLAGS": "-A unused_variables -A dead_code -A unused_assignments"
+      },
+      "problemMatcher": ["$rustc"],
+      "presentation": {
+        "clear": true
+      }
+    },
+    {
+      "label": "Cargo Review Snapshot",
+      "type": "shell",
+      "command": "cargo insta review",
       "problemMatcher": ["$rustc"],
       "presentation": {
         "clear": true

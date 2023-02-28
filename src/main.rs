@@ -1,6 +1,7 @@
-mod config;
+mod parse_config_file;
+mod check_files;
 
-use config::parse_config;
+use parse_config_file::parse_config;
 
 fn main() {
     // TODO: read config file
