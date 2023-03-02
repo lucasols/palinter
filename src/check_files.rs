@@ -1,12 +1,18 @@
-use crate::parse_config_file::{AnyOr, Config, Rule, SingleOrMultiple};
+use crate::{
+    expect_checks::*,
+    internal_config::{AnyOr, Config, FileConditions, FileExpect},
+};
+
+#[derive(Debug)]
+struct File {
+    name: String,
+    content: String,
+    extension: String,
+}
 
 #[derive(Debug)]
 enum Child {
-    File {
-        name: String,
-        content: String,
-        extension: String,
-    },
+    FileChild(File),
     Folder(Folder),
 }
 
@@ -16,57 +22,50 @@ pub struct Folder {
     childs: Vec<Child>,
 }
 
-pub fn check_files(config: &Config, folder: Folder) -> Result<(), String> {
+fn file_matches_condition(file: &File, conditions: &AnyOr<FileConditions>) -> bool {
+    match conditions {
+        AnyOr::Any => true,
+        AnyOr::Or(conditions) => {
+            if let Some(extensions) = &conditions.has_extension {
+                if !extensions.contains(&file.extension) {
+                    return false;
+                }
+            }
+
+            true
+        }
+    }
+}
+
+fn file_pass_expected(file: &File, expected: &AnyOr<Vec<FileExpect>>) -> Result<(), String> {
+    match expected {
+        AnyOr::Any => Ok(()),
+        AnyOr::Or(expected) => {
+            for expect in expected {
+                if let Some(file_name_case_is) = &expect.name_case_is {
+                    name_case_is(&file.name, file_name_case_is)?;
+                }
+            }
+
+            Ok(())
+        }
+    }
+}
+
+pub fn check_folder_childs(config: &Config, folder: Folder) -> Result<(), String> {
     for child in folder.childs {
         match child {
-            Child::File {
-                name,
-                content,
-                extension,
-            } => match &config.global_rules {
-                Some(rules) => {
-                    for rule in rules {
-                        match rule {
-                            Rule::File { conditions, .. } => {
-                                let mut file_matches = false;
+            Child::FileChild(file) => {
+                for rule in &config.global_files_rules {
+                    let file_matches = file_matches_condition(&file, &rule.conditions);
 
-                                match conditions {
-                                    AnyOr::Conditions(conditions) => {
-                                        match &conditions.has_extension {
-                                            Some(rule_extensions) => {
-                                                let extensions: Vec<String> = match rule_extensions {
-                                                    SingleOrMultiple::Single(extension) => {
-                                                        vec![extension.clone()]
-                                                    }
-                                                    SingleOrMultiple::Multiple(extensions) => {
-                                                        extensions.to_vec()
-                                                    }
-                                                };
-
-                                                if extensions.contains(&extension) {
-                                                    file_matches = true;
-                                                }
-
-                                                if file_matches {
-
-                                                }
-                                            }
-                                            None => {}
-                                        }
-                                    }
-                                    AnyOr::Any(any) => {
-                                        println!("Any {}", any);
-                                    }
-                                }
-                            }
-                            _ => {}
-                        }
+                    if file_matches {
+                        return file_pass_expected(&file, &rule.expect);
                     }
                 }
-                None => {}
-            },
+            }
             Child::Folder(sub_folder) => {
-                check_files(&config, sub_folder)?;
+                check_folder_childs(&config, sub_folder)?;
             }
         }
     }
@@ -78,15 +77,18 @@ pub fn check_files(config: &Config, folder: Folder) -> Result<(), String> {
 mod tests {
     use super::*;
 
-    mod global_rules {
-        use crate::parse_config_file::parse_config_string;
+    use crate::{internal_config::get_config, parse_config_file::parse_config_string};
 
-        use super::*;
+    fn config_from_string(config_string: String) -> Config {
+        let parsed_config = parse_config_string(config_string);
 
-        #[test]
-        fn file_name_case_rule_kebab_case() {
-            let config = parse_config_string(
-                r#"
+        get_config(&parsed_config)
+    }
+
+    #[test]
+    fn global_config_file_name_case_rule_kebab_case() {
+        let config = config_from_string(
+            r#"
             {
                 "global_rules": [
                     {
@@ -99,21 +101,135 @@ mod tests {
                 ]
             }
             "#
-                .to_string(),
-            );
+            .to_string(),
+        );
 
-            let root_structure = Folder {
+        let result = check_folder_childs(
+            &config,
+            Folder {
                 name: String::from("."),
-                childs: vec![Child::File {
+                childs: vec![Child::FileChild(File {
                     name: String::from("icon-1"),
                     content: String::from("test"),
                     extension: String::from("svg"),
-                }],
-            };
+                })],
+            },
+        );
 
-            let result = check_files(&config, root_structure);
-
-            assert!(result.is_ok());
+        if let Err(error) = result {
+            panic!("{}", error);
         }
+
+        let error_result = check_folder_childs(
+            &config,
+            Folder {
+                name: String::from("."),
+                childs: vec![Child::FileChild(File {
+                    name: String::from("icon_1"),
+                    content: String::from("test"),
+                    extension: String::from("svg"),
+                })],
+            },
+        );
+
+        assert_eq!(
+            error_result,
+            Err(String::from("File 'icon_1' should be named in kebab-case"))
+        );
+    }
+
+    #[test]
+    fn file_name_case_rules() {
+        let config = config_from_string(
+            r#"
+            {
+                "//camelCase": {
+                    "rules": [
+                        {
+                            "if_file": "any",
+                            "expect": {
+                                "name_case_is": "kebab-case"
+                            }
+                        }
+                    ]
+                },
+                "//snake_case": {
+                    "rules": [
+                        {
+                            "if_file": "any",
+                            "expect": {
+                                "name_case_is": "snake_case"
+                            }
+                        }
+                    ]
+                },
+                "//PascalCase": {
+                    "rules": [
+                        {
+                            "if_file": "any",
+                            "expect": {
+                                "name_case_is": "PascalCase"
+                            }
+                        }
+                    ]
+                },
+            }
+            "#
+            .to_string(),
+        );
+
+        let result = check_folder_childs(
+            &config,
+            Folder {
+                name: String::from("."),
+                childs: vec![
+                    Child::Folder(Folder {
+                        name: String::from("camelCase"),
+                        childs: vec![Child::FileChild(File {
+                            name: String::from("camelCase"),
+                            content: String::from("test"),
+                            extension: String::from("svg"),
+                        })],
+                    }),
+                    Child::Folder(Folder {
+                        name: String::from("snake_case"),
+                        childs: vec![Child::FileChild(File {
+                            name: String::from("snake_case"),
+                            content: String::from("test"),
+                            extension: String::from("svg"),
+                        })],
+                    }),
+                    Child::Folder(Folder {
+                        name: String::from("PascalCase"),
+                        childs: vec![Child::FileChild(File {
+                            name: String::from("PascalCase"),
+                            content: String::from("test"),
+                            extension: String::from("svg"),
+                        })],
+                    }),
+                ],
+            },
+        );
+
+        if let Err(error) = result {
+            panic!("{}", error);
+        }
+
+        let error_result = check_folder_childs(
+            &config,
+            Folder {
+                name: String::from("."),
+                childs: vec![Child::FileChild(File {
+                    name: String::from("icon_1"),
+                    content: String::from("test"),
+                    extension: String::from("svg"),
+                })],
+            },
+        );
+
+        assert_eq!(
+            error_result,
+            Err(String::from("File 'icon_1' should be named in kebab-case"))
+        );
     }
 }

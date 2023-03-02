@@ -1,5 +1,7 @@
 mod parse_config_file;
 mod check_files;
+mod internal_config;
+mod expect_checks;
 
 use parse_config_file::parse_config;
 

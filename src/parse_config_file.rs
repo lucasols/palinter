@@ -1,7 +1,7 @@
 use serde::{Deserialize, Deserializer};
 use std::collections::BTreeMap;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 #[serde(untagged)]
 pub enum SingleOrMultiple<T> {
     Single(T),
@@ -9,7 +9,7 @@ pub enum SingleOrMultiple<T> {
 }
 
 #[derive(Deserialize, Debug)]
-pub struct FileConditions {
+pub struct ParsedFileConditions {
     pub has_extension: Option<SingleOrMultiple<String>>,
     pub has_name: Option<SingleOrMultiple<String>>,
     pub does_not_have_name: Option<SingleOrMultiple<String>>,
@@ -20,9 +20,9 @@ struct FolderConditions {
     has_name: Option<SingleOrMultiple<String>>,
 }
 
-#[derive(Deserialize, Debug)]
-struct FileExpect {
-    name_case_is: Option<SingleOrMultiple<String>>,
+#[derive(Deserialize, Debug, Clone)]
+pub struct ParsedFileExpect {
+    pub name_case_is: Option<String>,
     has_sibling_file: Option<SingleOrMultiple<String>>,
     content_matches_any: Option<SingleOrMultiple<String>>,
     error_msg: Option<String>,
@@ -32,30 +32,29 @@ struct FileExpect {
 
 #[derive(Deserialize, Debug)]
 #[serde(untagged)]
-pub enum AnyOr<T> {
+pub enum ParsedAnyOr<T> {
     Conditions(T),
     Any(String),
 }
 
 #[derive(Deserialize, Debug)]
 #[serde(untagged)]
-pub enum Rule {
+pub enum ParsedRule {
     File {
         #[serde(rename = "if_file")]
-        conditions: AnyOr<FileConditions>,
-        expect: SingleOrMultiple<FileExpect>,
-        extension_is: Option<SingleOrMultiple<String>>,
+        conditions: ParsedAnyOr<ParsedFileConditions>,
+        expect: ParsedAnyOr<SingleOrMultiple<ParsedFileExpect>>,
         error_msg: Option<String>,
     },
     Folder {
         #[serde(rename = "if_folder")]
-        conditions: AnyOr<FileConditions>,
-        expect: SingleOrMultiple<FileExpect>,
+        conditions: ParsedAnyOr<ParsedFileConditions>,
+        expect: ParsedAnyOr<SingleOrMultiple<ParsedFileExpect>>,
         error_msg: Option<String>,
     },
     OneOf {
         #[serde(rename = "one_of")]
-        rules: Vec<Rule>,
+        rules: Vec<ParsedRule>,
     },
     Block(String),
 
@@ -66,16 +65,16 @@ pub enum Rule {
 #[derive(Deserialize, Debug)]
 struct FolderConfig {
     has_files: Option<Vec<String>>,
-    rules: Option<Vec<Rule>>,
+    rules: Option<Vec<ParsedRule>>,
 
     #[serde(flatten)]
     folders: BTreeMap<String, FolderConfig>,
 }
 
 #[derive(Deserialize, Debug)]
-pub struct Config {
-    pub blocks: Option<BTreeMap<String, Rule>>,
-    pub global_rules: Option<Vec<Rule>>,
+pub struct ParsedConfig {
+    pub blocks: Option<BTreeMap<String, ParsedRule>>,
+    pub global_rules: Option<Vec<ParsedRule>>,
     pub to_have_files: Option<Vec<String>>,
 
     #[serde(flatten)]
@@ -96,17 +95,11 @@ where
     Ok(())
 }
 
-// fn validate_parsed_config(config: &Config) -> bool {
-//     todo!("validate config");
-
-//     true
-// }
-
-pub fn parse_config_string(config: String) -> Config {
+pub fn parse_config_string(config: String) -> ParsedConfig {
     serde_json::from_str(&config).expect("Failed to parse config file")
 }
 
-pub fn parse_config(config_path: &str) -> Config {
+pub fn parse_config(config_path: &str) -> ParsedConfig {
     let config = std::fs::read_to_string(config_path).unwrap();
 
     // TODO: return error instead of unwrap
