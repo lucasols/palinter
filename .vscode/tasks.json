@@ -14,9 +14,10 @@
       "type": "cargo",
       "label": "Cargo Test",
       "command": "test",
-      "args": ["--", "--nocapture"],
+      "args": ["--color=always", "--", "--nocapture", "--color=always"],
       "env": {
-        "RUSTFLAGS": "-A unused_variables -A dead_code -A unused_assignments"
+        "RUSTFLAGS": "-A unused_variables -A dead_code -A unused_assignments",
+        "DEVTEST": "true"
       },
       "problemMatcher": ["$rustc"],
       "presentation": {

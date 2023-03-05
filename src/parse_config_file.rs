@@ -63,12 +63,21 @@ pub enum ParsedRule {
 }
 
 #[derive(Deserialize, Debug)]
-struct FolderConfig {
-    has_files: Option<Vec<String>>,
-    rules: Option<Vec<ParsedRule>>,
+pub struct CorrectParsedFolderConfig {
+    pub has_files: Option<Vec<String>>,
+    pub rules: Option<Vec<ParsedRule>>,
 
     #[serde(flatten)]
-    folders: BTreeMap<String, FolderConfig>,
+    pub folders: BTreeMap<String, ParsedFolderConfig>,
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(untagged)]
+pub enum ParsedFolderConfig {
+    Ok(CorrectParsedFolderConfig),
+
+    #[serde(deserialize_with = "ignore_contents")]
+    Error,
 }
 
 #[derive(Deserialize, Debug)]
@@ -77,8 +86,8 @@ pub struct ParsedConfig {
     pub global_rules: Option<Vec<ParsedRule>>,
     pub to_have_files: Option<Vec<String>>,
 
-    #[serde(flatten)]
-    folders: BTreeMap<String, FolderConfig>,
+    #[serde(rename = "./")]
+    pub root_folder: ParsedFolderConfig,
 }
 
 fn ignore_contents<'de, D>(deserializer: D) -> Result<(), D::Error>
@@ -95,19 +104,40 @@ where
     Ok(())
 }
 
-pub fn parse_config_string(config: String) -> ParsedConfig {
-    serde_json::from_str(&config).expect("Failed to parse config file")
+pub enum ParseFrom {
+    Yaml,
+    Json,
 }
 
-pub fn parse_config(config_path: &str) -> ParsedConfig {
+pub fn parse_config_string(config: String, from: ParseFrom) -> Result<ParsedConfig, String> {
+    match from {
+        ParseFrom::Yaml => match serde_yaml::from_str(&config) {
+            Ok(config) => Ok(config),
+            Err(err) => Err(format!(
+                "Error parsing config: {}\n---\n{}\n---\n",
+                err, config
+            )),
+        },
+        ParseFrom::Json => match serde_json::from_str(&config) {
+            Ok(config) => Ok(config),
+            Err(err) => Err(format!("Error parsing config: {}", err)),
+        },
+    }
+}
+
+pub fn parse_config(config_path: &str) -> Result<ParsedConfig, String> {
     let config = std::fs::read_to_string(config_path).unwrap();
 
-    // TODO: return error instead of unwrap
-    let parsed = parse_config_string(config);
+    let is_json = config_path.ends_with(".json");
 
-    // TODO: validate_parsed_config(&parsed);
-
-    parsed
+    parse_config_string(
+        config,
+        if is_json {
+            ParseFrom::Json
+        } else {
+            ParseFrom::Yaml
+        },
+    )
 }
 
 #[cfg(test)]
