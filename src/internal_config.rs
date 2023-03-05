@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::error::Error;
 
 use crate::parse_config_file::{
     ParsedAnyOr, ParsedConfig, ParsedFolderConfig, ParsedRule, SingleOrMultiple,
@@ -88,7 +87,7 @@ fn normalize_name_case(name_case: &String, config_path: &String) -> NameCase {
     }
 }
 
-fn normalize_rules(rules: &Vec<ParsedRule>, config_path: &String) -> (Vec<FileRule>) {
+fn normalize_rules(rules: &Vec<ParsedRule>, config_path: &String) -> Vec<FileRule> {
     let mut file_rules: Vec<FileRule> = vec![];
 
     for rule in rules {
@@ -140,7 +139,7 @@ fn normalize_rules(rules: &Vec<ParsedRule>, config_path: &String) -> (Vec<FileRu
         }
     }
 
-    (file_rules)
+    file_rules
 }
 
 fn normalize_folder_config(

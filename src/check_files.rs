@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use crate::{
     expect_checks::*,
-    internal_config::{AnyOr, Config, FileConditions, FileExpect, FileRule, FolderConfig},
+    internal_config::{AnyOr, Config, FileConditions, FileExpect, FolderConfig},
 };
 
 #[derive(Debug)]

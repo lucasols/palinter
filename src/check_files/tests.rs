@@ -1,12 +1,12 @@
 use regex::Regex;
-use serde::{Deserialize, Deserializer};
+use serde::{Deserialize};
 use std::collections::BTreeMap;
 
 use super::*;
 
 use crate::{
     internal_config::get_config,
-    parse_config_file::{parse_config, parse_config_string, ParseFrom},
+    parse_config_file::{parse_config_string, ParseFrom},
 };
 
 fn config_from_string(config_string: String, parse_from: ParseFrom) -> Result<Config, String> {
