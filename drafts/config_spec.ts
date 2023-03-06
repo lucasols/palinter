@@ -55,7 +55,6 @@ type Expect<T> = T | T[]
 
 type Rule = {
   non_recursive?: boolean
-  description?: string
   error_msg?: string
 } & (
   | {
@@ -120,7 +119,7 @@ type Config = {
   '/.': Folder
 }
 
-// all files in the project should pass in at least one rule
+// example config
 const configFile: Config = {
   blocks: {
     react_file_name: {

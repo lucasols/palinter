@@ -1,5 +1,6 @@
 use serde::{Deserialize, Deserializer};
-use std::collections::BTreeMap;
+use serde_yaml::Value;
+use std::collections::{BTreeMap, HashMap};
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(untagged)]
@@ -8,11 +9,20 @@ pub enum SingleOrMultiple<T> {
     Multiple(Vec<T>),
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct ParsedFileConditions {
     pub has_extension: Option<SingleOrMultiple<String>>,
     pub has_name: Option<SingleOrMultiple<String>>,
     pub does_not_have_name: Option<SingleOrMultiple<String>>,
+
+    #[serde(flatten)]
+    pub wrong: HashMap<String, Value>,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct ParsedFolderConditions {
+    #[serde(flatten)]
+    pub wrong: HashMap<String, Value>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -28,29 +38,42 @@ pub struct ParsedFileExpect {
     error_msg: Option<String>,
     name_not_matches: Option<SingleOrMultiple<String>>,
     extension_is: Option<SingleOrMultiple<String>>,
+
+    #[serde(flatten)]
+    pub wrong: HashMap<String, Value>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
+pub struct ParsedFolderExpect {
+    pub name_case_is: Option<String>,
+
+    #[serde(flatten)]
+    pub wrong: HashMap<String, Value>,
+}
+
+#[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum ParsedAnyOr<T> {
     Conditions(T),
     Any(String),
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum ParsedRule {
     File {
         #[serde(rename = "if_file")]
         conditions: ParsedAnyOr<ParsedFileConditions>,
-        expect: ParsedAnyOr<SingleOrMultiple<ParsedFileExpect>>,
+        expect: Box<ParsedAnyOr<SingleOrMultiple<ParsedFileExpect>>>,
         error_msg: Option<String>,
+        non_recursive: Option<bool>,
     },
     Folder {
         #[serde(rename = "if_folder")]
-        conditions: ParsedAnyOr<ParsedFileConditions>,
-        expect: ParsedAnyOr<SingleOrMultiple<ParsedFileExpect>>,
+        conditions: ParsedAnyOr<ParsedFolderConditions>,
+        expect: ParsedAnyOr<SingleOrMultiple<ParsedFolderExpect>>,
         error_msg: Option<String>,
+        non_recursive: Option<bool>,
     },
     OneOf {
         #[serde(rename = "one_of")]
@@ -62,7 +85,7 @@ pub enum ParsedRule {
     Error,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct CorrectParsedFolderConfig {
     pub has_files: Option<Vec<String>>,
     pub rules: Option<Vec<ParsedRule>>,
@@ -71,7 +94,7 @@ pub struct CorrectParsedFolderConfig {
     pub folders: BTreeMap<String, ParsedFolderConfig>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum ParsedFolderConfig {
     Ok(CorrectParsedFolderConfig),
@@ -109,16 +132,16 @@ pub enum ParseFrom {
     Json,
 }
 
-pub fn parse_config_string(config: String, from: ParseFrom) -> Result<ParsedConfig, String> {
+pub fn parse_config_string(config: &String, from: ParseFrom) -> Result<ParsedConfig, String> {
     match from {
-        ParseFrom::Yaml => match serde_yaml::from_str(&config) {
+        ParseFrom::Yaml => match serde_yaml::from_str(config) {
             Ok(config) => Ok(config),
             Err(err) => Err(format!(
                 "Error parsing config: {}\n---\n{}\n---\n",
                 err, config
             )),
         },
-        ParseFrom::Json => match serde_json::from_str(&config) {
+        ParseFrom::Json => match serde_json::from_str(config) {
             Ok(config) => Ok(config),
             Err(err) => Err(format!("Error parsing config: {}", err)),
         },
@@ -131,7 +154,7 @@ pub fn parse_config(config_path: &str) -> Result<ParsedConfig, String> {
     let is_json = config_path.ends_with(".json");
 
     parse_config_string(
-        config,
+        &config,
         if is_json {
             ParseFrom::Json
         } else {

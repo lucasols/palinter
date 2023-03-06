@@ -16,7 +16,6 @@
       "command": "test",
       "args": ["--color=always", "--", "--nocapture", "--color=always"],
       "env": {
-        "RUSTFLAGS": "-A unused_variables -A dead_code -A unused_assignments",
         "DEVTEST": "true"
       },
       "problemMatcher": ["$rustc"],
