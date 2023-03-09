@@ -2,6 +2,7 @@ mod parse_config_file;
 mod check_folders;
 mod internal_config;
 mod expect_checks;
+mod utils;
 
 use parse_config_file::parse_config;
 

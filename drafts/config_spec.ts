@@ -69,6 +69,7 @@ type Rule = {
           }
       expect: Expect<{
         name_case_is?: NameCases
+        // DONE
         name_is?: string
         root_files?: {
           has?: string[]
@@ -88,8 +89,9 @@ type Rule = {
           }
       expect: Expect<{
         name_case_is?: NameCases
-        has_sibling_file?: string
         extension_is?: string | string[]
+        // DONE
+        has_sibling_file?: string
         content_matches_any?: string[]
         content_matches?: {
           text?: string

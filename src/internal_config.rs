@@ -3,8 +3,8 @@ use std::collections::{BTreeMap, HashMap};
 use serde_yaml::Value;
 
 use crate::parse_config_file::{
-    CorrectParsedFolderConfig, ParsedAnyOr, ParsedConfig, ParsedFolderConfig, ParsedRule,
-    SingleOrMultiple,
+    CorrectParsedFolderConfig, ParsedAnyOr, ParsedBlocks, ParsedConfig, ParsedFolderConfig,
+    ParsedRule, SingleOrMultiple,
 };
 
 #[derive(Debug, Clone)]
@@ -25,11 +25,15 @@ pub enum NameCase {
 #[derive(Debug, Clone)]
 pub struct FileExpect {
     pub name_case_is: Option<NameCase>,
+    pub extension_is: Option<Vec<String>>,
+
+    pub error_msg: Option<String>,
 }
 
 #[derive(Debug, Clone)]
 pub struct FolderExpect {
     pub name_case_is: Option<NameCase>,
+    pub error_msg: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -45,6 +49,7 @@ pub struct FileRule {
     pub conditions: AnyOr<FileConditions>,
     pub expect: AnyOr<Vec<FileExpect>>,
     pub non_recursive: bool,
+    pub error_msg: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -52,6 +57,7 @@ pub struct FolderRule {
     pub conditions: AnyOr<FolderConditions>,
     pub expect: AnyOr<Vec<FolderExpect>>,
     pub non_recursive: bool,
+    pub error_msg: Option<String>,
 }
 
 pub struct Folder {
@@ -126,9 +132,12 @@ fn check_invalid_conditions(
     Ok(())
 }
 
+type NormalizedBlocks = BTreeMap<String, Vec<ParsedRule>>;
+
 fn normalize_rules(
     rules: &Vec<ParsedRule>,
     config_path: &String,
+    normalized_blocks: &NormalizedBlocks,
 ) -> Result<(Vec<FileRule>, Vec<FolderRule>), String> {
     let mut file_rules: Vec<FileRule> = vec![];
     let mut folder_rules: Vec<FolderRule> = vec![];
@@ -177,6 +186,10 @@ fn normalize_rules(
                             )?;
 
                             expects.push(FileExpect {
+                                error_msg: parsed_expected.error_msg.clone(),
+                                extension_is: normalize_single_or_multiple_some(
+                                    &parsed_expected.extension_is,
+                                ),
                                 name_case_is: parsed_expected
                                     .name_case_is
                                     .as_ref()
@@ -191,6 +204,7 @@ fn normalize_rules(
                 file_rules.push(FileRule {
                     conditions,
                     expect: new_expect,
+                    error_msg: error_msg.clone(),
                     non_recursive: non_recursive.unwrap_or(false),
                 });
             }
@@ -232,6 +246,7 @@ fn normalize_rules(
                             )?;
 
                             expects.push(FolderExpect {
+                                error_msg: parsed_expected.error_msg.clone(),
                                 name_case_is: parsed_expected
                                     .name_case_is
                                     .as_ref()
@@ -245,18 +260,31 @@ fn normalize_rules(
 
                 folder_rules.push(FolderRule {
                     conditions,
+                    error_msg: error_msg.clone(),
                     expect: new_expect,
                     non_recursive: non_recursive.unwrap_or(false),
                 });
             }
             ParsedRule::Block(block) => {
-                todo!("Block rules are not implemented yet.")
+                let rules = normalized_blocks.get(block).ok_or(format!(
+                    "Config error: Block '{}' in '{}' rules not found",
+                    block, config_path
+                ))?;
+
+                let (block_file_rules, block_folder_rules) =
+                    normalize_rules(rules, &"blocks".to_string(), normalized_blocks)?;
+
+                file_rules.extend(block_file_rules);
+                folder_rules.extend(block_folder_rules);
             }
             ParsedRule::OneOf { rules } => {
                 todo!("OneOf rules are not implemented yet.")
             }
-            ParsedRule::Error => {
-                return Err(format!("Error: Invalid rule in '{}'", config_path));
+            ParsedRule::Error(error) => {
+                return Err(format!(
+                    "Config error: Invalid rule in '{}', received: {:#?}",
+                    config_path, error
+                ));
             }
         }
     }
@@ -267,14 +295,16 @@ fn normalize_rules(
 fn normalize_folder_config(
     folder_config: &ParsedFolderConfig,
     folder_path: String,
+    normalize_blocks: &NormalizedBlocks,
 ) -> Result<FolderConfig, String> {
     match folder_config {
-        ParsedFolderConfig::Error => {
-            Err(format!("Error: Invalid folder config in '{}'", folder_path))
-        }
+        ParsedFolderConfig::Error(wrong_value) => Err(format!(
+            "Config error: Invalid folder config in '{}', received: {:#?}",
+            folder_path, wrong_value
+        )),
         ParsedFolderConfig::Ok(config) => {
             let (file_rules, folder_rules) = match &config.rules {
-                Some(files) => normalize_rules(files, &folder_path)?,
+                Some(files) => normalize_rules(files, &folder_path, normalize_blocks)?,
                 None => (vec![], vec![]),
             };
 
@@ -283,7 +313,7 @@ fn normalize_folder_config(
             for (sub_folder_name, sub_folder_config) in &config.folders {
                 if !sub_folder_name.starts_with('/') {
                     return Err(format!(
-                        "Invalid sub folder name: '{}' in '{}', folders name should start with '/'",
+                        "Config error: Invalid sub folder name: '{}' in '{}', folders name should start with '/'",
                         sub_folder_name, folder_path
                     ));
                 }
@@ -295,7 +325,7 @@ fn normalize_folder_config(
 
                     if config.folders.contains_key(&fisrt_part) {
                         return Err(format!(
-                            "Duplicate compound folder path: '{}' in '{}', compound folder paths should not conflict with existing ones",
+                            "Config error: Duplicate compound folder path: '{}' in '{}', compound folder paths should not conflict with existing ones",
                             sub_folder_name, folder_path
                         ));
                     }
@@ -314,6 +344,7 @@ fn normalize_folder_config(
                                 )]),
                             }),
                             folder_path.clone(),
+                            normalize_blocks,
                         )?,
                     );
                 } else {
@@ -321,7 +352,7 @@ fn normalize_folder_config(
 
                     sub_folders_config.insert(
                         sub_folder_name.clone(),
-                        normalize_folder_config(sub_folder_config, folder_path)?,
+                        normalize_folder_config(sub_folder_config, folder_path, normalize_blocks)?,
                     );
                 }
             }
@@ -335,15 +366,39 @@ fn normalize_folder_config(
     }
 }
 
+fn normalize_blocks(parsed_blocks: &ParsedBlocks) -> NormalizedBlocks {
+    let mut normalized_blocks: NormalizedBlocks = BTreeMap::new();
+
+    if let Some(blocks) = parsed_blocks {
+        for (block_name, block) in blocks {
+            let rules = normalize_single_or_multiple(block);
+
+            normalized_blocks.insert(block_name.clone(), rules);
+        }
+    }
+
+    normalized_blocks
+}
+
 pub fn get_config(parsed_config: &ParsedConfig) -> Result<Config, String> {
+    let normalized_block = &normalize_blocks(&parsed_config.blocks);
+
     let (global_files_rules, global_folders_rules) = match &parsed_config.global_rules {
-        Some(global_rules) => normalize_rules(global_rules, &String::from("global_config"))?,
+        Some(global_rules) => normalize_rules(
+            global_rules,
+            &String::from("global_config"),
+            normalized_block,
+        )?,
         None => (vec![], vec![]),
     };
 
     Ok(Config {
         global_files_rules,
         global_folders_rules,
-        root_folder: normalize_folder_config(&parsed_config.root_folder, String::from("."))?,
+        root_folder: normalize_folder_config(
+            &parsed_config.root_folder,
+            String::from("."),
+            normalized_block,
+        )?,
     })
 }

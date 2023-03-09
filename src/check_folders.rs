@@ -42,18 +42,53 @@ fn file_matches_condition(file: &File, conditions: &AnyOr<FileConditions>) -> bo
     }
 }
 
-fn file_pass_expected(file: &File, expected: &AnyOr<Vec<FileExpect>>) -> Result<(), String> {
-    match expected {
-        AnyOr::Any => Ok(()),
-        AnyOr::Or(expected) => {
-            for expect in expected {
-                if let Some(file_name_case_is) = &expect.name_case_is {
-                    name_case_is(&file.name, file_name_case_is)?;
-                }
+fn append_expect_error(
+    result: Result<(), String>,
+    expect_error_msg: &Option<String>,
+) -> Result<(), String> {
+    match result {
+        Ok(_) => Ok(()),
+        Err(error) => {
+            if let Some(expect_error_msg) = expect_error_msg {
+                Err(format!("{} | {}", expect_error_msg, error))
+            } else {
+                Err(error)
+            }
+        }
+    }
+}
+
+fn file_pass_expected(file: &File, expected: &AnyOr<Vec<FileExpect>>) -> Result<(), Vec<String>> {
+    let mut errors = Vec::new();
+
+    let mut check_result = |result: Result<(), String>, expect_error_msg: &Option<String>| {
+        if let Err(error) = append_expect_error(result, expect_error_msg) {
+            errors.push(error);
+        }
+    };
+
+    if let AnyOr::Or(expected) = expected {
+        for expect in expected {
+            if let Some(file_name_case_is) = &expect.name_case_is {
+                check_result(
+                    name_case_is(&file.name, file_name_case_is),
+                    &expect.error_msg,
+                );
             }
 
-            Ok(())
+            if let Some(file_extension_is) = &expect.extension_is {
+                check_result(
+                    extension_is(&file.extension, file_extension_is),
+                    &expect.error_msg,
+                );
+            }
         }
+    }
+
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors)
     }
 }
 
@@ -73,7 +108,10 @@ fn folder_pass_expected(
         AnyOr::Or(expected) => {
             for expect in expected {
                 if let Some(file_name_case_is) = &expect.name_case_is {
-                    name_case_is(&folder.name, file_name_case_is)?;
+                    append_expect_error(
+                        name_case_is(&folder.name, file_name_case_is),
+                        &expect.error_msg,
+                    )?;
                 }
             }
 
@@ -146,8 +184,18 @@ fn check_folder_childs(
                     if file_matches {
                         file_matched_at_least_once = true;
 
-                        if let Err(error) = file_pass_expected(file, &rule.expect) {
-                            errors.push(format!("{}{}", file_error_prefix, error));
+                        if let Err(expect_errors) = file_pass_expected(file, &rule.expect) {
+                            for error in expect_errors {
+                                errors.push(format!(
+                                    "{}{}",
+                                    file_error_prefix,
+                                    if let Some(custom_error) = &rule.error_msg {
+                                        format!("{} | {}", custom_error, error)
+                                    } else {
+                                        error
+                                    }
+                                ));
+                            }
                         }
                     }
                 };
@@ -188,7 +236,15 @@ fn check_folder_childs(
                         folder_matched_at_least_once = true;
 
                         if let Err(error) = folder_pass_expected(sub_folder, &rule.expect) {
-                            errors.push(format!("{}{}", folder_error_prefix, error));
+                            errors.push(format!(
+                                "{}{}",
+                                folder_error_prefix,
+                                if let Some(custom_error) = &rule.error_msg {
+                                    format!("{} | {}", custom_error, error)
+                                } else {
+                                    error
+                                }
+                            ));
                         }
                     }
                 };

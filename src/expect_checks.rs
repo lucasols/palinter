@@ -1,4 +1,4 @@
-use crate::internal_config::NameCase;
+use crate::{internal_config::NameCase, utils::wrap_vec_string_itens_in};
 use regex::Regex;
 
 pub fn name_case_is(name: &str, name_case_is: &NameCase) -> Result<(), String> {
@@ -38,6 +38,17 @@ pub fn name_case_is(name: &str, name_case_is: &NameCase) -> Result<(), String> {
                 return Err("should be named in CONSTANT_CASE".to_string());
             }
         }
+    }
+
+    Ok(())
+}
+
+pub fn extension_is(file_extension: &String, extension_is: &[String]) -> Result<(), String> {
+    if !extension_is.contains(file_extension) {
+        return Err(format!(
+            "should have extension {}",
+            wrap_vec_string_itens_in(extension_is, "'").join(" or ")
+        ));
     }
 
     Ok(())

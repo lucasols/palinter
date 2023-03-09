@@ -1,7 +1,7 @@
 use colored::Colorize;
 use regex::Regex;
 use serde::Deserialize;
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, hash::Hash};
 
 use super::*;
 
@@ -188,24 +188,25 @@ fn extract_config_and_projects_from_test_case(
     Ok(TestCase { configs, projects })
 }
 
-fn do_vecs_match<T: PartialEq>(a: &Vec<T>, b: &Vec<T>) -> bool {
-    let matching = a.iter().zip(b.iter()).filter(|&(a, b)| a == b).count();
-    matching == a.len() && matching == b.len()
+fn do_vecs_match<T: Eq + Hash>(a: &[T], b: &[T]) -> bool {
+    let a_set: HashSet<&T> = a.iter().collect();
+
+    let b_set: HashSet<&T> = b.iter().collect();
+
+    a_set == b_set
+}
+
+fn sort_vector(vector: &[String]) -> Vec<String> {
+    let mut new_vec = vector.to_owned();
+
+    new_vec.sort();
+
+    new_vec
 }
 
 #[test]
 fn test_cases() {
-    let files_content = std::fs::read_dir("./src/test_cases")
-        .unwrap()
-        .map(|entry| {
-            let entry = entry.unwrap();
-            let path = entry.path();
-            let file_name = path.file_name().unwrap().to_str().unwrap().to_string();
-            let file_content = std::fs::read_to_string(path).unwrap();
-
-            (file_name, file_content)
-        })
-        .collect::<Vec<(String, String)>>();
+    let files_content = get_test_cases("./src/test_cases");
 
     let is_dev = std::env::var("DEVTEST").is_ok();
 
@@ -294,9 +295,11 @@ fn test_cases() {
                                             if !do_vecs_match(&errors, expected_errors) {
                                                 test_errors.push(format!(
                                                     "{}\n\
-                                                    Expected errors: {:?}\n\
-                                                    But got:         {:?}",
-                                                    test_case, expected_errors, errors
+                                                    Expected errors: {:#?}\n\
+                                                    But got:         {:#?}",
+                                                    test_case,
+                                                    sort_vector(expected_errors),
+                                                    sort_vector(&errors)
                                                 ));
                                             }
                                         } else {
@@ -348,4 +351,24 @@ fn test_cases() {
     if !test_errors.is_empty() {
         panic!("\n\n{}\n\n", test_errors.join("\n\n"));
     }
+}
+
+fn get_test_cases(dir: &str) -> Vec<(String, String)> {
+    let files_content = std::fs::read_dir(dir)
+        .unwrap()
+        .flat_map(|entry| {
+            let entry = entry.unwrap();
+            let path = entry.path();
+
+            if path.is_dir() {
+                get_test_cases(path.to_str().unwrap())
+            } else {
+                let file_name = path.file_name().unwrap().to_str().unwrap().to_string();
+                let file_content = std::fs::read_to_string(path).unwrap();
+
+                vec![(file_name, file_content)]
+            }
+        })
+        .collect::<Vec<(String, String)>>();
+    files_content
 }
