@@ -15,11 +15,11 @@ pub enum AnyOr<T> {
 
 #[derive(Debug, Clone)]
 pub enum NameCase {
-    CamelCase,
-    SnakeCase,
-    KebabCase,
-    PascalCase,
-    ConstantCase,
+    Camel,
+    Snake,
+    Kebab,
+    Pascal,
+    Constant,
 }
 
 #[derive(Debug, Clone)]
@@ -42,7 +42,9 @@ pub struct FileConditions {
 }
 
 #[derive(Debug, Clone)]
-pub struct FolderConditions {}
+pub struct FolderConditions {
+    pub has_name_case: Option<NameCase>,
+}
 
 #[derive(Debug, Clone)]
 pub struct FileRule {
@@ -65,11 +67,18 @@ pub struct Folder {
     pub rules: Vec<FileRule>,
 }
 
+#[derive(Debug, Default)]
+pub struct OneOfBlocks {
+    pub file_blocks: Vec<Vec<FileRule>>,
+    pub folder_blocks: Vec<Vec<FolderRule>>,
+}
+
 #[derive(Debug)]
 pub struct FolderConfig {
     pub sub_folders_config: HashMap<String, FolderConfig>,
     pub file_rules: Vec<FileRule>,
     pub folder_rules: Vec<FolderRule>,
+    pub one_of_blocks: OneOfBlocks,
 }
 
 #[derive(Debug)]
@@ -94,20 +103,28 @@ pub fn normalize_single_or_multiple_some<T: Clone>(
         .map(|single_or_multiple| normalize_single_or_multiple(single_or_multiple))
 }
 
-fn check_any(any: &String, config_path: &String) {
+fn check_any(any: &String, config_path: &String) -> Result<(), String> {
     if any != "any" {
-        panic!("Invalid any: '{}' in '{}'", any, config_path);
+        Err(format!(
+            "Config error: Invalid any '{}' in '{}' rules, should be 'any'",
+            any, config_path
+        ))
+    } else {
+        Ok(())
     }
 }
 
-fn normalize_name_case(name_case: &String, config_path: &String) -> NameCase {
+fn normalize_name_case(name_case: &String, config_path: &String) -> Result<NameCase, String> {
     match name_case.as_str() {
-        "camelCase" => NameCase::CamelCase,
-        "snake_case" => NameCase::SnakeCase,
-        "kebab-case" => NameCase::KebabCase,
-        "PascalCase" => NameCase::PascalCase,
-        "CONSTANT_CASE" => NameCase::ConstantCase,
-        _ => panic!("Invalid name case: '{}' in '{}'", name_case, config_path),
+        "camelCase" => Ok(NameCase::Camel),
+        "snake_case" => Ok(NameCase::Snake),
+        "kebab-case" => Ok(NameCase::Kebab),
+        "PascalCase" => Ok(NameCase::Pascal),
+        "CONSTANT_CASE" => Ok(NameCase::Constant),
+        _ => Err(format!(
+            "Config error: Invalid name_case_is '{}' in '{}' rules",
+            name_case, config_path
+        )),
     }
 }
 
@@ -138,9 +155,11 @@ fn normalize_rules(
     rules: &Vec<ParsedRule>,
     config_path: &String,
     normalized_blocks: &NormalizedBlocks,
-) -> Result<(Vec<FileRule>, Vec<FolderRule>), String> {
+) -> Result<(Vec<FileRule>, Vec<FolderRule>, OneOfBlocks), String> {
     let mut file_rules: Vec<FileRule> = vec![];
     let mut folder_rules: Vec<FolderRule> = vec![];
+    let mut one_of_file_blocks: Vec<Vec<FileRule>> = vec![];
+    let mut one_of_folder_blocks: Vec<Vec<FolderRule>> = vec![];
 
     for rule in rules {
         match rule {
@@ -152,7 +171,7 @@ fn normalize_rules(
             } => {
                 let conditions = match conditions {
                     ParsedAnyOr::Any(any) => {
-                        check_any(any, config_path);
+                        check_any(any, config_path)?;
                         AnyOr::Any
                     }
                     ParsedAnyOr::Conditions(conditions) => {
@@ -172,7 +191,7 @@ fn normalize_rules(
 
                 let new_expect = match &**expect {
                     ParsedAnyOr::Any(any) => {
-                        check_any(any, config_path);
+                        check_any(any, config_path)?;
                         AnyOr::Any
                     }
                     ParsedAnyOr::Conditions(expect_conditions) => {
@@ -193,7 +212,8 @@ fn normalize_rules(
                                 name_case_is: parsed_expected
                                     .name_case_is
                                     .as_ref()
-                                    .map(|name_case| normalize_name_case(name_case, config_path)),
+                                    .map(|name_case| normalize_name_case(name_case, config_path))
+                                    .transpose()?,
                             });
                         }
 
@@ -216,7 +236,7 @@ fn normalize_rules(
             } => {
                 let conditions = match conditions {
                     ParsedAnyOr::Any(any) => {
-                        check_any(any, config_path);
+                        check_any(any, config_path)?;
                         AnyOr::Any
                     }
                     ParsedAnyOr::Conditions(conditions) => {
@@ -226,13 +246,19 @@ fn normalize_rules(
                             config_path,
                         )?;
 
-                        AnyOr::Or(FolderConditions {})
+                        AnyOr::Or(FolderConditions {
+                            has_name_case: conditions
+                                .has_name_case
+                                .as_ref()
+                                .map(|name_case| normalize_name_case(name_case, config_path))
+                                .transpose()?,
+                        })
                     }
                 };
 
                 let new_expect = match expect {
                     ParsedAnyOr::Any(any) => {
-                        check_any(any, config_path);
+                        check_any(any, config_path)?;
                         AnyOr::Any
                     }
                     ParsedAnyOr::Conditions(expect_conditions) => {
@@ -250,7 +276,8 @@ fn normalize_rules(
                                 name_case_is: parsed_expected
                                     .name_case_is
                                     .as_ref()
-                                    .map(|name_case| normalize_name_case(name_case, config_path)),
+                                    .map(|name_case| normalize_name_case(name_case, config_path))
+                                    .transpose()?,
                             });
                         }
 
@@ -265,20 +292,102 @@ fn normalize_rules(
                     non_recursive: non_recursive.unwrap_or(false),
                 });
             }
-            ParsedRule::Block(block) => {
-                let rules = normalized_blocks.get(block).ok_or(format!(
+            ParsedRule::Block(block_id) => {
+                let rules = normalized_blocks.get(block_id).ok_or(format!(
                     "Config error: Block '{}' in '{}' rules not found",
-                    block, config_path
+                    block_id, config_path
                 ))?;
 
-                let (block_file_rules, block_folder_rules) =
-                    normalize_rules(rules, &"blocks".to_string(), normalized_blocks)?;
+                let (block_file_rules, block_folder_rules, block_one_of_blocks) =
+                    normalize_rules(rules, config_path, normalized_blocks)?;
 
                 file_rules.extend(block_file_rules);
                 folder_rules.extend(block_folder_rules);
+                one_of_file_blocks.extend(block_one_of_blocks.file_blocks);
+                one_of_folder_blocks.extend(block_one_of_blocks.folder_blocks);
             }
             ParsedRule::OneOf { rules } => {
-                todo!("OneOf rules are not implemented yet.")
+                if config_path.starts_with("global_rules") {
+                    return Err(
+                        "Config error: 'one_of' blocks are not allowed in global rules".to_string(),
+                    );
+                }
+
+                let mut one_of_file: Vec<FileRule> = vec![];
+                let mut one_of_folder: Vec<FolderRule> = vec![];
+
+                let config_path = &format!("{}.{}", config_path, "one_of");
+
+                for rule in rules {
+                    if let ParsedRule::OneOf { .. } = rule {
+                        return Err(format!(
+                            "Config error in '{}': Nested 'one_of' is not allowed",
+                            config_path
+                        ));
+                    }
+
+                    let (and_file_rules, and_folder_rules, _) =
+                        normalize_rules(&vec![rule.clone()], config_path, normalized_blocks)?;
+
+                    if !and_file_rules.is_empty() && !and_folder_rules.is_empty() {
+                        return Err(format!(
+                            "Config error in '{}': Blocks used in 'one_of' cannot contain both file and folder rules",
+                            config_path
+                        ));
+                    }
+
+                    if and_file_rules.len() > 1 || and_folder_rules.len() > 1 {
+                        return Err(format!(
+                            "Config error in '{}': Blocks used in 'one_of' must not have more than one rule",
+                            config_path
+                        ));
+                    }
+
+                    for and_file_rule in &and_file_rules {
+                        if let AnyOr::Any = and_file_rule.conditions {
+                            return Err(format!(
+                                "Config error in '{}': 'one_of' cannot contain rules with 'any' condition",
+                                config_path
+                            ));
+                        }
+                    }
+
+                    for and_folder_rule in &and_folder_rules {
+                        if let AnyOr::Any = and_folder_rule.conditions {
+                            return Err(format!(
+                                "Config error in '{}': 'one_of' cannot contain rules with 'any' condition",
+                                config_path
+                            ));
+                        }
+                    }
+
+                    if (!and_file_rules.is_empty() && !one_of_folder.is_empty())
+                        || (!and_folder_rules.is_empty() && !one_of_file.is_empty())
+                    {
+                        return Err(format!(
+                            "Config error in '{}': 'one_of' block cannot contain both file and folder rules",
+                            config_path
+                        ));
+                    }
+
+                    one_of_file.extend(and_file_rules);
+                    one_of_folder.extend(and_folder_rules);
+                }
+
+                if (!one_of_file.is_empty() && one_of_file.len() < 2)
+                    || (!one_of_folder.is_empty() && one_of_folder.len() < 2)
+                {
+                    return Err(format!(
+                        "Config error in '{}': 'one_of' must contain at least 2 rules",
+                        config_path
+                    ));
+                }
+
+                if !one_of_file.is_empty() {
+                    one_of_file_blocks.push(one_of_file);
+                } else {
+                    one_of_folder_blocks.push(one_of_folder);
+                }
             }
             ParsedRule::Error(error) => {
                 return Err(format!(
@@ -289,7 +398,14 @@ fn normalize_rules(
         }
     }
 
-    Ok((file_rules, folder_rules))
+    Ok((
+        file_rules,
+        folder_rules,
+        OneOfBlocks {
+            file_blocks: one_of_file_blocks,
+            folder_blocks: one_of_folder_blocks,
+        },
+    ))
 }
 
 fn normalize_folder_config(
@@ -303,9 +419,9 @@ fn normalize_folder_config(
             folder_path, wrong_value
         )),
         ParsedFolderConfig::Ok(config) => {
-            let (file_rules, folder_rules) = match &config.rules {
+            let (file_rules, folder_rules, one_of_blocks) = match &config.rules {
                 Some(files) => normalize_rules(files, &folder_path, normalize_blocks)?,
-                None => (vec![], vec![]),
+                None => (vec![], vec![], OneOfBlocks::default()),
             };
 
             let mut sub_folders_config: HashMap<String, FolderConfig> = HashMap::new();
@@ -361,36 +477,47 @@ fn normalize_folder_config(
                 file_rules,
                 sub_folders_config,
                 folder_rules,
+                one_of_blocks,
             })
         }
     }
 }
 
-fn normalize_blocks(parsed_blocks: &ParsedBlocks) -> NormalizedBlocks {
+fn normalize_blocks(parsed_blocks: &ParsedBlocks) -> Result<NormalizedBlocks, String> {
     let mut normalized_blocks: NormalizedBlocks = BTreeMap::new();
 
     if let Some(blocks) = parsed_blocks {
         for (block_name, block) in blocks {
             let rules = normalize_single_or_multiple(block);
 
+            for rule in &rules {
+                if let ParsedRule::Block(block_id) = rule {
+                    return Err(format!(
+                        "Config error: Block '{}' cannot be used inside another block",
+                        block_id
+                    ));
+                }
+            }
+
             normalized_blocks.insert(block_name.clone(), rules);
         }
     }
 
-    normalized_blocks
+    Ok(normalized_blocks)
 }
 
 pub fn get_config(parsed_config: &ParsedConfig) -> Result<Config, String> {
-    let normalized_block = &normalize_blocks(&parsed_config.blocks);
+    let normalized_block = &normalize_blocks(&parsed_config.blocks)?;
 
-    let (global_files_rules, global_folders_rules) = match &parsed_config.global_rules {
-        Some(global_rules) => normalize_rules(
-            global_rules,
-            &String::from("global_config"),
-            normalized_block,
-        )?,
-        None => (vec![], vec![]),
-    };
+    let (global_files_rules, global_folders_rules, one_of_blocks) =
+        match &parsed_config.global_rules {
+            Some(global_rules) => normalize_rules(
+                global_rules,
+                &String::from("global_rules"),
+                normalized_block,
+            )?,
+            None => (vec![], vec![], OneOfBlocks::default()),
+        };
 
     Ok(Config {
         global_files_rules,

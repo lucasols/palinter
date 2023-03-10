@@ -1,3 +1,5 @@
+only
+
 # Config
 
 ```yaml
@@ -41,4 +43,43 @@ blocks:
   /level1:
     rules:
       - 'not_found'
+```
+
+```yaml
+# expect_error: Config error: Invalid any 'anyw' in './level1' rules, should be 'any'
+./:
+  /level1:
+    rules:
+      - if_file: anyw
+        expect:
+          name_case_is: camelCase
+```
+
+```yaml
+# expect_error: Config error: Invalid name_case_is 'camelcase' in './level1' rules
+./:
+  /level1:
+    rules:
+      - if_file: any
+        expect:
+          name_case_is: camelcase
+```
+
+```yaml
+# expect_error: Config error: Block 'camel_case_file' cannot be used inside another block
+
+blocks:
+  camel_case_file:
+    if_file: { has_extension: tsx }
+    expect:
+      name_case_is: camelCase
+
+  camel_case_file_2:
+    - camel_case_file
+./:
+  /level2:
+    rules:
+      - if_file: any
+        expect:
+          name_case_is: camelCase
 ```

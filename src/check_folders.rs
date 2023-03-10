@@ -208,6 +208,10 @@ fn check_folder_childs(
                     for rule in &folder_config.file_rules {
                         check_file_rule(rule)
                     }
+
+                    // for one_of in &folder_config.one_of_blocks {
+
+                    // }
                 }
 
                 for inherited_rule in &inherited_files_rules {

@@ -61,15 +61,16 @@ type Rule = {
       if_folder:
         | 'any'
         | {
-            has_name?: string
             has_name_case?: NameCases
+            // TODO 👇
+            has_name?: string
             root_files?: {
               does_not_have_duplicate_name?: string
             }
           }
       expect: Expect<{
         name_case_is?: NameCases
-        // DONE
+        // TODO 👇
         name_is?: string
         root_files?: {
           has?: string[]
@@ -82,6 +83,7 @@ type Rule = {
       if_file:
         | 'any'
         | {
+            // TODO 👇
             has_extension?: string
             has_name?: string | string[]
             does_not_have_name?: string | string[]
@@ -90,7 +92,7 @@ type Rule = {
       expect: Expect<{
         name_case_is?: NameCases
         extension_is?: string | string[]
-        // DONE
+        // TODO 👇
         has_sibling_file?: string
         content_matches_any?: string[]
         content_matches?: {
@@ -105,6 +107,9 @@ type Rule = {
     }
   | {
       one_of?: (Rule | string)[]
+    }
+  | {
+      and_group?: (Rule | string)[]
     }
 )
 

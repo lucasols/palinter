@@ -1,4 +1,4 @@
-use serde::{Deserialize, Deserializer};
+use serde::Deserialize;
 use serde_yaml::Value;
 use std::collections::{BTreeMap, HashMap};
 
@@ -21,13 +21,10 @@ pub struct ParsedFileConditions {
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct ParsedFolderConditions {
+    pub has_name_case: Option<String>,
+
     #[serde(flatten)]
     pub wrong: HashMap<String, Value>,
-}
-
-#[derive(Deserialize, Debug)]
-struct FolderConditions {
-    has_name: Option<SingleOrMultiple<String>>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -108,20 +105,6 @@ pub struct ParsedConfig {
 
     #[serde(rename = "./")]
     pub root_folder: ParsedFolderConfig,
-}
-
-fn ignore_contents<'de, D>(deserializer: D) -> Result<(), D::Error>
-where
-    D: Deserializer<'de>,
-{
-    #[allow(unused_must_use)]
-    {
-        // Ignore any content at this part of the json structure
-        deserializer.deserialize_ignored_any(serde::de::IgnoredAny);
-    }
-
-    // Return unit as our 'Unknown' variant has no args
-    Ok(())
 }
 
 pub enum ParseFrom {

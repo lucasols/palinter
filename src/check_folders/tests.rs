@@ -210,6 +210,8 @@ fn test_cases() {
 
     let is_dev = std::env::var("DEVTEST").is_ok();
 
+    let mut test_sumary: String;
+
     let mut ignored_test_cases = 0;
 
     let only_files_content_to_test: Vec<(String, String)> = files_content
@@ -233,7 +235,7 @@ fn test_cases() {
             .cloned()
             .collect();
 
-        println!("\n🟩 Running {} test cases\n", to_test.len());
+        test_sumary = format!("\n🟩 Running {} test cases\n", to_test.len());
 
         to_test
     } else {
@@ -241,7 +243,7 @@ fn test_cases() {
             panic!("Only test cases are not allowed in production, use 'DEVTEST=1' to run them")
         }
 
-        println!(
+        test_sumary = format!(
             "\n🟧 Running only test cases with 'only' prefix ({} test cases)\n",
             only_files_content_to_test.len()
         );
@@ -250,7 +252,10 @@ fn test_cases() {
     };
 
     if ignored_test_cases > 0 {
-        println!("\n🟧 Ignored {} test cases\n", ignored_test_cases);
+        test_sumary = format!(
+            "{}\n🟧 Ignored {} test cases\n",
+            test_sumary, ignored_test_cases
+        );
     }
 
     let mut test_errors: Vec<String> = vec![];
@@ -349,12 +354,14 @@ fn test_cases() {
     }
 
     if !test_errors.is_empty() {
-        panic!("\n\n{}\n\n", test_errors.join("\n\n"));
+        panic!("\n\n{}\n\n{}\n", test_errors.join("\n\n"), test_sumary);
+    } else {
+        println!("{}\n", test_sumary);
     }
 }
 
 fn get_test_cases(dir: &str) -> Vec<(String, String)> {
-    let files_content = std::fs::read_dir(dir)
+    std::fs::read_dir(dir)
         .unwrap()
         .flat_map(|entry| {
             let entry = entry.unwrap();
@@ -369,6 +376,5 @@ fn get_test_cases(dir: &str) -> Vec<(String, String)> {
                 vec![(file_name, file_content)]
             }
         })
-        .collect::<Vec<(String, String)>>();
-    files_content
+        .collect::<Vec<(String, String)>>()
 }
