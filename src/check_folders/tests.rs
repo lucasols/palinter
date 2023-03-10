@@ -244,8 +244,13 @@ fn test_cases() {
         }
 
         test_sumary = format!(
-            "\n🟧 Running only test cases with 'only' prefix ({} test cases)\n",
-            only_files_content_to_test.len()
+            "\n🟧 Running only test cases with 'only' prefix -> {}\n",
+            only_files_content_to_test
+                .clone()
+                .into_iter()
+                .map(|(name, _)| name)
+                .collect::<Vec<String>>()
+                .join(", ")
         );
 
         only_files_content_to_test

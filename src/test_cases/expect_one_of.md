@@ -4,15 +4,11 @@
 ./:
   /src:
     rules:
-      - one_of:
-          - if_file:
-              has_extension: tsx
-            expect:
-              name_case_is: camelCase
-          - if_file:
-              has_extension: tsx
-            expect:
-              name_case_is: kebab-case
+      - if_file:
+          has_extension: tsx
+        expect_one_of:
+          - name_case_is: camelCase
+          - name_case_is: kebab-case
         error_msg: 'File name should be in camelCase or kebab-case'
 ```
 

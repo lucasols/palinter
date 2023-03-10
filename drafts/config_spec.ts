@@ -55,9 +55,9 @@ type Expect<T> = T | T[]
 
 type Rule = {
   non_recursive?: boolean
-  error_msg?: string
 } & (
   | {
+      error_msg?: string
       if_folder:
         | 'any'
         | {
@@ -68,7 +68,7 @@ type Rule = {
               does_not_have_duplicate_name?: string
             }
           }
-      expect: Expect<{
+      expect?: Expect<{
         name_case_is?: NameCases
         // TODO 👇
         name_is?: string
@@ -78,8 +78,10 @@ type Rule = {
         }
         error_msg?: string
       }>
+      expect_one_of?: any[] // the same as expect rules
     }
   | {
+      error_msg?: string
       if_file:
         | 'any'
         | {
@@ -89,7 +91,7 @@ type Rule = {
             does_not_have_name?: string | string[]
             has_name_case?: NameCases
           }
-      expect: Expect<{
+      expect?: Expect<{
         name_case_is?: NameCases
         extension_is?: string | string[]
         // TODO 👇
@@ -104,12 +106,11 @@ type Rule = {
         error_msg?: string
         name_not_includes_any?: string[]
       }>
+      expect_one_of?: any[] // the same as expect rules
     }
   | {
       one_of?: (Rule | string)[]
-    }
-  | {
-      and_group?: (Rule | string)[]
+      error_msg: string
     }
 )
 
@@ -311,6 +312,7 @@ const configFile: Config = {
                 ],
               },
             ],
+            error_msg: 'Invalid file name',
           },
           {
             if_file: {

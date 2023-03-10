@@ -179,9 +179,7 @@ fn check_folder_childs(
                 );
 
                 let mut check_file_rule = |rule: &FileRule| {
-                    let file_matches = file_matches_condition(file, &rule.conditions);
-
-                    if file_matches {
+                    if file_matches_condition(file, &rule.conditions) {
                         file_matched_at_least_once = true;
 
                         if let Err(expect_errors) = file_pass_expected(file, &rule.expect) {
@@ -208,14 +206,33 @@ fn check_folder_childs(
                     for rule in &folder_config.file_rules {
                         check_file_rule(rule)
                     }
-
-                    // for one_of in &folder_config.one_of_blocks {
-
-                    // }
                 }
 
                 for inherited_rule in &inherited_files_rules {
                     check_file_rule(&inherited_rule.rule)
+                }
+
+                if let Some(folder_config) = folder_config {
+                    for one_of in &folder_config.one_of_blocks.file_blocks {
+                        let mut one_of_matched_at_least_one_condition = false;
+                        let mut one_of_matched = false;
+
+                        for rule in &one_of.rules {
+                            if file_matches_condition(file, &rule.conditions) {
+                                one_of_matched_at_least_one_condition = true;
+                                file_matched_at_least_once = true;
+
+                                if file_pass_expected(file, &rule.expect).is_ok() {
+                                    one_of_matched = true;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if one_of_matched_at_least_one_condition && !one_of_matched {
+                            errors.push(format!("{}{}", file_error_prefix, one_of.error_msg));
+                        }
+                    }
                 }
 
                 if !file_matched_at_least_once {

@@ -3,8 +3,8 @@ use std::collections::{BTreeMap, HashMap};
 use serde_yaml::Value;
 
 use crate::parse_config_file::{
-    CorrectParsedFolderConfig, ParsedAnyOr, ParsedBlocks, ParsedConfig, ParsedFolderConfig,
-    ParsedRule, SingleOrMultiple,
+    CorrectParsedFolderConfig, ParsedAnyOr, ParsedBlocks, ParsedConfig, ParsedFileExpect,
+    ParsedFolderConfig, ParsedFolderExpect, ParsedRule, SingleOrMultiple,
 };
 
 #[derive(Debug, Clone)]
@@ -62,15 +62,22 @@ pub struct FolderRule {
     pub error_msg: Option<String>,
 }
 
-pub struct Folder {
-    pub name: String,
+#[derive(Debug, Default)]
+pub struct OneOfFile {
     pub rules: Vec<FileRule>,
+    pub error_msg: String,
+}
+
+#[derive(Debug, Default)]
+pub struct OneOfFolder {
+    pub rules: Vec<FolderRule>,
+    pub error_msg: String,
 }
 
 #[derive(Debug, Default)]
 pub struct OneOfBlocks {
-    pub file_blocks: Vec<Vec<FileRule>>,
-    pub folder_blocks: Vec<Vec<FolderRule>>,
+    pub file_blocks: Vec<OneOfFile>,
+    pub folder_blocks: Vec<OneOfFolder>,
 }
 
 #[derive(Debug)]
@@ -158,18 +165,19 @@ fn normalize_rules(
 ) -> Result<(Vec<FileRule>, Vec<FolderRule>, OneOfBlocks), String> {
     let mut file_rules: Vec<FileRule> = vec![];
     let mut folder_rules: Vec<FolderRule> = vec![];
-    let mut one_of_file_blocks: Vec<Vec<FileRule>> = vec![];
-    let mut one_of_folder_blocks: Vec<Vec<FolderRule>> = vec![];
+    let mut one_of_file_blocks: Vec<OneOfFile> = vec![];
+    let mut one_of_folder_blocks: Vec<OneOfFolder> = vec![];
 
     for rule in rules {
         match rule {
             ParsedRule::File {
-                conditions,
+                conditions: parsed_conditions,
                 expect,
                 non_recursive,
                 error_msg,
+                expect_one_of,
             } => {
-                let conditions = match conditions {
+                let conditions = match parsed_conditions {
                     ParsedAnyOr::Any(any) => {
                         check_any(any, config_path)?;
                         AnyOr::Any
@@ -189,52 +197,79 @@ fn normalize_rules(
                     }
                 };
 
-                let new_expect = match &**expect {
-                    ParsedAnyOr::Any(any) => {
-                        check_any(any, config_path)?;
-                        AnyOr::Any
-                    }
-                    ParsedAnyOr::Conditions(expect_conditions) => {
-                        let mut expects: Vec<FileExpect> = Vec::new();
+                check_rules_expects(expect, expect_one_of, config_path)?;
 
-                        for parsed_expected in normalize_single_or_multiple(expect_conditions) {
-                            check_invalid_conditions(
-                                &parsed_expected.wrong,
-                                "file expect condition",
-                                config_path,
-                            )?;
+                if let Some(expect) = expect {
+                    let new_expect: AnyOr<Vec<FileExpect>> = match &**expect {
+                        ParsedAnyOr::Any(any) => {
+                            check_any(any, config_path)?;
+                            AnyOr::Any
+                        }
+                        ParsedAnyOr::Conditions(expect_conditions) => {
+                            let mut expects: Vec<FileExpect> = Vec::new();
 
-                            expects.push(FileExpect {
-                                error_msg: parsed_expected.error_msg.clone(),
-                                extension_is: normalize_single_or_multiple_some(
-                                    &parsed_expected.extension_is,
-                                ),
-                                name_case_is: parsed_expected
-                                    .name_case_is
-                                    .as_ref()
-                                    .map(|name_case| normalize_name_case(name_case, config_path))
-                                    .transpose()?,
+                            for parsed_expected in normalize_single_or_multiple(expect_conditions) {
+                                check_invalid_conditions(
+                                    &parsed_expected.wrong,
+                                    "file expect condition",
+                                    config_path,
+                                )?;
+
+                                expects.push(get_file_expect(parsed_expected, config_path)?);
+                            }
+
+                            AnyOr::Or(expects)
+                        }
+                    };
+
+                    file_rules.push(FileRule {
+                        conditions: conditions.clone(),
+                        expect: new_expect,
+                        error_msg: error_msg.clone(),
+                        non_recursive: non_recursive.unwrap_or(false),
+                    });
+                };
+
+                if let Some(expect_one_of) = expect_one_of {
+                    check_expect_one_of(config_path, expect_one_of.len(), &conditions)?;
+
+                    if let Some(error_msg) = error_msg {
+                        let mut rules: Vec<FileRule> = Vec::new();
+
+                        for rule in expect_one_of {
+                            rules.push(FileRule {
+                                conditions: conditions.clone(),
+                                expect: AnyOr::Or(vec![get_file_expect(
+                                    rule.clone(),
+                                    config_path,
+                                )?]),
+                                error_msg: None,
+                                non_recursive: non_recursive.unwrap_or(false),
                             });
                         }
 
-                        AnyOr::Or(expects)
-                    }
-                };
+                        let one_of = OneOfFile {
+                            error_msg: error_msg.clone(),
+                            rules,
+                        };
 
-                file_rules.push(FileRule {
-                    conditions,
-                    expect: new_expect,
-                    error_msg: error_msg.clone(),
-                    non_recursive: non_recursive.unwrap_or(false),
-                });
+                        one_of_file_blocks.push(one_of);
+                    } else {
+                        return Err(format!(
+                            "Config error in '{}': rules with 'expect_one_of' property should have an error message, add one with the 'error_msg' property",
+                            config_path
+                        ));
+                    }
+                }
             }
             ParsedRule::Folder {
-                conditions,
+                conditions: parsed_conditions,
                 error_msg,
                 expect,
                 non_recursive,
+                expect_one_of,
             } => {
-                let conditions = match conditions {
+                let conditions = match parsed_conditions {
                     ParsedAnyOr::Any(any) => {
                         check_any(any, config_path)?;
                         AnyOr::Any
@@ -256,41 +291,65 @@ fn normalize_rules(
                     }
                 };
 
-                let new_expect = match expect {
-                    ParsedAnyOr::Any(any) => {
-                        check_any(any, config_path)?;
-                        AnyOr::Any
-                    }
-                    ParsedAnyOr::Conditions(expect_conditions) => {
-                        let mut expects: Vec<FolderExpect> = Vec::new();
+                check_rules_expects(expect, expect_one_of, config_path)?;
 
-                        for parsed_expected in normalize_single_or_multiple(expect_conditions) {
-                            check_invalid_conditions(
-                                &parsed_expected.wrong,
-                                "file expect condition",
-                                config_path,
-                            )?;
+                if let Some(expect) = expect {
+                    let new_expect = match expect {
+                        ParsedAnyOr::Any(any) => {
+                            check_any(any, config_path)?;
+                            AnyOr::Any
+                        }
+                        ParsedAnyOr::Conditions(expect_conditions) => {
+                            let mut expects: Vec<FolderExpect> = Vec::new();
 
-                            expects.push(FolderExpect {
-                                error_msg: parsed_expected.error_msg.clone(),
-                                name_case_is: parsed_expected
-                                    .name_case_is
-                                    .as_ref()
-                                    .map(|name_case| normalize_name_case(name_case, config_path))
-                                    .transpose()?,
+                            for parsed_expected in normalize_single_or_multiple(expect_conditions) {
+                                check_invalid_conditions(
+                                    &parsed_expected.wrong,
+                                    "file expect condition",
+                                    config_path,
+                                )?;
+
+                                expects.push(get_function_expect(parsed_expected, config_path)?);
+                            }
+
+                            AnyOr::Or(expects)
+                        }
+                    };
+
+                    folder_rules.push(FolderRule {
+                        conditions: conditions.clone(),
+                        error_msg: error_msg.clone(),
+                        expect: new_expect,
+                        non_recursive: non_recursive.unwrap_or(false),
+                    });
+                }
+
+                if let Some(expect_one_of) = expect_one_of {
+                    check_expect_one_of(config_path, expect_one_of.len(), &conditions)?;
+
+                    if let Some(error_msg) = error_msg {
+                        let mut rules: Vec<FolderRule> = Vec::new();
+
+                        for rule_expect in expect_one_of {
+                            rules.push(FolderRule {
+                                conditions: conditions.clone(),
+                                expect: AnyOr::Or(vec![get_function_expect(
+                                    rule_expect.clone(),
+                                    config_path,
+                                )?]),
+                                error_msg: None,
+                                non_recursive: non_recursive.unwrap_or(false),
                             });
                         }
 
-                        AnyOr::Or(expects)
-                    }
-                };
+                        let one_of = OneOfFolder {
+                            error_msg: error_msg.clone(),
+                            rules,
+                        };
 
-                folder_rules.push(FolderRule {
-                    conditions,
-                    error_msg: error_msg.clone(),
-                    expect: new_expect,
-                    non_recursive: non_recursive.unwrap_or(false),
-                });
+                        one_of_folder_blocks.push(one_of);
+                    }
+                }
             }
             ParsedRule::Block(block_id) => {
                 let rules = normalized_blocks.get(block_id).ok_or(format!(
@@ -306,87 +365,101 @@ fn normalize_rules(
                 one_of_file_blocks.extend(block_one_of_blocks.file_blocks);
                 one_of_folder_blocks.extend(block_one_of_blocks.folder_blocks);
             }
-            ParsedRule::OneOf { rules } => {
+            ParsedRule::OneOf { rules, error_msg } => {
                 if config_path.starts_with("global_rules") {
                     return Err(
-                        "Config error: 'one_of' blocks are not allowed in global rules".to_string(),
+                        "Config error: 'one_of' are not allowed in global rules".to_string()
                     );
                 }
 
-                let mut one_of_file: Vec<FileRule> = vec![];
-                let mut one_of_folder: Vec<FolderRule> = vec![];
-
                 let config_path = &format!("{}.{}", config_path, "one_of");
 
-                for rule in rules {
-                    if let ParsedRule::OneOf { .. } = rule {
-                        return Err(format!(
-                            "Config error in '{}': Nested 'one_of' is not allowed",
-                            config_path
-                        ));
-                    }
+                if let Some(error_msg) = error_msg {
+                    let mut one_of_file: Vec<FileRule> = vec![];
+                    let mut one_of_folder: Vec<FolderRule> = vec![];
 
-                    let (and_file_rules, and_folder_rules, _) =
-                        normalize_rules(&vec![rule.clone()], config_path, normalized_blocks)?;
+                    for rule in rules {
+                        if let ParsedRule::OneOf { .. } = rule {
+                            return Err(format!(
+                                "Config error in '{}': Nested 'one_of' is not allowed",
+                                config_path
+                            ));
+                        }
 
-                    if !and_file_rules.is_empty() && !and_folder_rules.is_empty() {
-                        return Err(format!(
+                        let (and_file_rules, and_folder_rules, _) =
+                            normalize_rules(&vec![rule.clone()], config_path, normalized_blocks)?;
+
+                        if !and_file_rules.is_empty() && !and_folder_rules.is_empty() {
+                            return Err(format!(
                             "Config error in '{}': Blocks used in 'one_of' cannot contain both file and folder rules",
                             config_path
                         ));
-                    }
+                        }
 
-                    if and_file_rules.len() > 1 || and_folder_rules.len() > 1 {
-                        return Err(format!(
+                        if and_file_rules.len() > 1 || and_folder_rules.len() > 1 {
+                            return Err(format!(
                             "Config error in '{}': Blocks used in 'one_of' must not have more than one rule",
                             config_path
                         ));
-                    }
+                        }
 
-                    for and_file_rule in &and_file_rules {
-                        if let AnyOr::Any = and_file_rule.conditions {
-                            return Err(format!(
+                        for and_file_rule in &and_file_rules {
+                            if let AnyOr::Any = and_file_rule.conditions {
+                                return Err(format!(
                                 "Config error in '{}': 'one_of' cannot contain rules with 'any' condition",
                                 config_path
                             ));
+                            }
                         }
-                    }
 
-                    for and_folder_rule in &and_folder_rules {
-                        if let AnyOr::Any = and_folder_rule.conditions {
-                            return Err(format!(
+                        for and_folder_rule in &and_folder_rules {
+                            if let AnyOr::Any = and_folder_rule.conditions {
+                                return Err(format!(
                                 "Config error in '{}': 'one_of' cannot contain rules with 'any' condition",
                                 config_path
                             ));
+                            }
                         }
+
+                        if (!and_file_rules.is_empty() && !one_of_folder.is_empty())
+                            || (!and_folder_rules.is_empty() && !one_of_file.is_empty())
+                        {
+                            return Err(format!(
+                            "Config error in '{}': 'one_of' block cannot contain both file and folder rules",
+                            config_path
+                        ));
+                        }
+
+                        one_of_file.extend(and_file_rules);
+                        one_of_folder.extend(and_folder_rules);
                     }
 
-                    if (!and_file_rules.is_empty() && !one_of_folder.is_empty())
-                        || (!and_folder_rules.is_empty() && !one_of_file.is_empty())
+                    if (!one_of_file.is_empty() && one_of_file.len() < 2)
+                        || (!one_of_folder.is_empty() && one_of_folder.len() < 2)
                     {
                         return Err(format!(
-                            "Config error in '{}': 'one_of' block cannot contain both file and folder rules",
+                            "Config error in '{}': 'one_of' must contain at least 2 rules",
                             config_path
                         ));
                     }
 
-                    one_of_file.extend(and_file_rules);
-                    one_of_folder.extend(and_folder_rules);
-                }
-
-                if (!one_of_file.is_empty() && one_of_file.len() < 2)
-                    || (!one_of_folder.is_empty() && one_of_folder.len() < 2)
-                {
-                    return Err(format!(
-                        "Config error in '{}': 'one_of' must contain at least 2 rules",
-                        config_path
-                    ));
-                }
-
-                if !one_of_file.is_empty() {
-                    one_of_file_blocks.push(one_of_file);
+                    if !one_of_file.is_empty() {
+                        one_of_file_blocks.push(OneOfFile {
+                            rules: one_of_file,
+                            error_msg: error_msg.clone(),
+                        });
+                    } else {
+                        one_of_folder_blocks.push(OneOfFolder {
+                            rules: one_of_folder,
+                            error_msg: error_msg.clone(),
+                        });
+                    }
                 } else {
-                    one_of_folder_blocks.push(one_of_folder);
+                    return Err(
+                        format!("Config error in '{}': 'one_of' must have an error message, add one with the 'error_msg' property",
+                        config_path
+                        )
+                    );
                 }
             }
             ParsedRule::Error(error) => {
@@ -406,6 +479,86 @@ fn normalize_rules(
             folder_blocks: one_of_folder_blocks,
         },
     ))
+}
+
+fn check_expect_one_of<T>(
+    config_path: &String,
+    expect_one_of_len: usize,
+    conditions: &AnyOr<T>,
+) -> Result<(), String> {
+    if config_path.starts_with("global_rules") {
+        return Err(format!(
+                "Config error in '{}': rules with 'expect_one_of' property are not allowed in global_rules",
+                config_path
+            ));
+    }
+
+    if expect_one_of_len < 2 {
+        return Err(format!(
+            "Config error in '{}': rules with 'expect_one_of' property should have at least 2 expect rules",
+            config_path
+        ));
+    }
+
+    if let AnyOr::Any = conditions {
+        return Err(format!(
+            "Config error in '{}': rules with 'expect_one_of' property cannot have 'any' condition",
+            config_path
+        ));
+    }
+
+    Ok(())
+}
+
+fn get_function_expect(
+    parsed_expected: ParsedFolderExpect,
+    config_path: &String,
+) -> Result<FolderExpect, String> {
+    Ok(FolderExpect {
+        error_msg: parsed_expected.error_msg.clone(),
+        name_case_is: parsed_expected
+            .name_case_is
+            .as_ref()
+            .map(|name_case| normalize_name_case(name_case, config_path))
+            .transpose()?,
+    })
+}
+
+fn get_file_expect(
+    parsed_expected: ParsedFileExpect,
+    config_path: &String,
+) -> Result<FileExpect, String> {
+    Ok(FileExpect {
+        error_msg: parsed_expected.error_msg.clone(),
+        extension_is: normalize_single_or_multiple_some(&parsed_expected.extension_is),
+        name_case_is: parsed_expected
+            .name_case_is
+            .as_ref()
+            .map(|name_case| normalize_name_case(name_case, config_path))
+            .transpose()?,
+    })
+}
+
+fn check_rules_expects<T, B>(
+    expect: &Option<T>,
+    expect_one_of: &Option<B>,
+    config_path: &String,
+) -> Result<(), String> {
+    if expect.is_none() && expect_one_of.is_none() {
+        return Err(format!(
+            "Config error in '{}': missing 'expect' or 'expect_one_of'",
+            config_path
+        ));
+    }
+
+    if expect.is_some() && expect_one_of.is_some() {
+        return Err(format!(
+            "Config error in '{}': cannot have both 'expect' and 'expect_one_of'",
+            config_path
+        ));
+    }
+
+    Ok(())
 }
 
 fn normalize_folder_config(
@@ -509,15 +662,14 @@ fn normalize_blocks(parsed_blocks: &ParsedBlocks) -> Result<NormalizedBlocks, St
 pub fn get_config(parsed_config: &ParsedConfig) -> Result<Config, String> {
     let normalized_block = &normalize_blocks(&parsed_config.blocks)?;
 
-    let (global_files_rules, global_folders_rules, one_of_blocks) =
-        match &parsed_config.global_rules {
-            Some(global_rules) => normalize_rules(
-                global_rules,
-                &String::from("global_rules"),
-                normalized_block,
-            )?,
-            None => (vec![], vec![], OneOfBlocks::default()),
-        };
+    let (global_files_rules, global_folders_rules, _) = match &parsed_config.global_rules {
+        Some(global_rules) => normalize_rules(
+            global_rules,
+            &String::from("global_rules"),
+            normalized_block,
+        )?,
+        None => (vec![], vec![], OneOfBlocks::default()),
+    };
 
     Ok(Config {
         global_files_rules,

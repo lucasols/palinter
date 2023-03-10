@@ -59,20 +59,23 @@ pub enum ParsedRule {
     File {
         #[serde(rename = "if_file")]
         conditions: ParsedAnyOr<ParsedFileConditions>,
-        expect: Box<ParsedAnyOr<SingleOrMultiple<ParsedFileExpect>>>,
+        expect: Option<Box<ParsedAnyOr<SingleOrMultiple<ParsedFileExpect>>>>,
+        expect_one_of: Option<Vec<ParsedFileExpect>>,
         error_msg: Option<String>,
         non_recursive: Option<bool>,
     },
     Folder {
         #[serde(rename = "if_folder")]
         conditions: ParsedAnyOr<ParsedFolderConditions>,
-        expect: ParsedAnyOr<SingleOrMultiple<ParsedFolderExpect>>,
+        expect: Option<ParsedAnyOr<SingleOrMultiple<ParsedFolderExpect>>>,
+        expect_one_of: Option<Vec<ParsedFolderExpect>>,
         error_msg: Option<String>,
         non_recursive: Option<bool>,
     },
     OneOf {
         #[serde(rename = "one_of")]
         rules: Vec<ParsedRule>,
+        error_msg: Option<String>,
     },
     Block(String),
 

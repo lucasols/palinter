@@ -1,5 +1,3 @@
-only
-
 # Config
 
 ```yaml
@@ -80,6 +78,28 @@ blocks:
   /level2:
     rules:
       - if_file: any
+        expect:
+          name_case_is: camelCase
+```
+
+```yaml
+# expect_error: Config error in './level2': missing 'expect' or 'expect_one_of'
+
+./:
+  /level2:
+    rules:
+      - if_file: any
+```
+
+```yaml
+# expect_error: Config error in './level2': cannot have both 'expect' and 'expect_one_of'
+
+./:
+  /level2:
+    rules:
+      - if_file: any
+        expect_one_of:
+          - name_case_is: camelCase
         expect:
           name_case_is: camelCase
 ```

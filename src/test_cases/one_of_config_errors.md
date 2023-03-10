@@ -1,9 +1,7 @@
-only
-
 # Config
 
 ```yaml
-# expect_error: Config error: 'one_of' blocks are not allowed in global rules
+# expect_error: Config error: 'one_of' are not allowed in global rules
 global_rules:
   - one_of:
       - if_file: { has_extension: tsx }
@@ -12,6 +10,7 @@ global_rules:
       - if_file: { has_extension: tsx }
         expect:
           name_case_is: kebab-case
+    error_msg: err
 ./:
   /level1:
     rules:
@@ -26,7 +25,8 @@ global_rules:
 ./:
   /level1:
     rules:
-      - one_of:
+      - error_msg: err
+        one_of:
           - if_file: { has_extension: tsx }
             expect:
               name_case_is: camelCase
@@ -49,7 +49,8 @@ global_rules:
 ./:
   /level1:
     rules:
-      - one_of:
+      - error_msg: err
+        one_of:
           - if_file: { has_extension: tsx }
             expect:
               name_case_is: camelCase
@@ -61,7 +62,8 @@ global_rules:
 ./:
   /level1:
     rules:
-      - one_of:
+      - error_msg: err
+        one_of:
           - if_file: { has_extension: tsx }
             expect:
               name_case_is: camelCase
@@ -84,7 +86,8 @@ blocks:
 ./:
   /level1:
     rules:
-      - one_of:
+      - error_msg: err
+        one_of:
           - camel_case_file
           - if_file: { has_extension: tsx }
             expect:
@@ -105,7 +108,8 @@ blocks:
 ./:
   /level1:
     rules:
-      - one_of:
+      - error_msg: err
+        one_of:
           - camel_case_file
           - if_folder: { has_name_case: camelCase }
             expect:
@@ -118,7 +122,8 @@ blocks:
 ./:
   /level1:
     rules:
-      - one_of:
+      - error_msg: err
+        one_of:
           - if_folder: any
             expect:
               name_case_is: kebab-case
@@ -133,11 +138,27 @@ blocks:
 ./:
   /level2:
     rules:
+      - error_msg: err
+        one_of:
+          - if_file: any
+            expect:
+              name_case_is: kebab-case
+          - if_file: any
+            expect:
+              name_case_is: kebab-case
+```
+
+```yaml
+# expect_error: Config error in './level2.one_of': 'one_of' must have an error message, add one with the 'error_msg' property
+
+./:
+  /level2:
+    rules:
       - one_of:
-          - if_file: any
+          - if_file: { has_extension: tsx }
             expect:
               name_case_is: kebab-case
-          - if_file: any
+          - if_file: { has_extension: tsx }
             expect:
-              name_case_is: kebab-case
+              name_case_is: camelCase
 ```
