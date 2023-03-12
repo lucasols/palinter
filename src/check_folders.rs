@@ -1,43 +1,66 @@
 use std::collections::HashSet;
 
-use crate::{
-    expect_checks::*,
-    internal_config::{
-        AnyOr, Config, FileConditions, FileExpect, FileRule, FolderConditions, FolderConfig,
-        FolderExpect, FolderRule,
-    },
+use crate::internal_config::{
+    AnyOr, Config, FileConditions, FileExpect, FileRule, FolderConditions, FolderConfig,
+    FolderExpect, FolderRule,
+};
+
+use self::checks::{
+    check_content, extension_is, has_sibling_file, name_case_is, str_pattern_match, Capture,
 };
 
 #[derive(Debug)]
-struct File {
-    name: String,
-    content: String,
-    extension: String,
+pub struct File {
+    pub basename: String,
+    pub name_with_ext: String,
+    pub sub_ext: Option<String>,
+    pub content: String,
+    pub extension: String,
 }
 
 #[derive(Debug)]
-enum Child {
+pub enum Child {
     FileChild(File),
     Folder(Folder),
 }
 
 #[derive(Debug)]
 pub struct Folder {
-    name: String,
-    childs: Vec<Child>,
+    pub name: String,
+    pub childs: Vec<Child>,
 }
 
-fn file_matches_condition(file: &File, conditions: &AnyOr<FileConditions>) -> bool {
+#[derive(Debug, Default)]
+pub struct FileConditionsResult {
+    pub captures: Option<Vec<Capture>>,
+}
+
+fn file_matches_condition(
+    file: &File,
+    conditions: &AnyOr<FileConditions>,
+) -> Option<FileConditionsResult> {
     match conditions {
-        AnyOr::Any => true,
+        AnyOr::Any => Some(FileConditionsResult::default()),
         AnyOr::Or(conditions) => {
+            let mut has_name_captures: Option<Vec<Capture>> = None;
+
             if let Some(extensions) = &conditions.has_extension {
                 if !extensions.contains(&file.extension) {
-                    return false;
+                    return None;
                 }
             }
 
-            true
+            if let Some(pattern) = &conditions.has_name {
+                if let Ok(captures) = str_pattern_match(&file.name_with_ext, pattern) {
+                    has_name_captures = Some(captures);
+                } else {
+                    return None;
+                }
+            }
+
+            Some(FileConditionsResult {
+                captures: has_name_captures,
+            })
         }
     }
 }
@@ -58,7 +81,12 @@ fn append_expect_error(
     }
 }
 
-fn file_pass_expected(file: &File, expected: &AnyOr<Vec<FileExpect>>) -> Result<(), Vec<String>> {
+fn file_pass_expected(
+    file: &File,
+    expected: &AnyOr<Vec<FileExpect>>,
+    folder: &Folder,
+    conditions_result: &FileConditionsResult,
+) -> Result<(), Vec<String>> {
     let mut errors = Vec::new();
 
     let mut check_result = |result: Result<(), String>, expect_error_msg: &Option<String>| {
@@ -69,18 +97,60 @@ fn file_pass_expected(file: &File, expected: &AnyOr<Vec<FileExpect>>) -> Result<
 
     if let AnyOr::Or(expected) = expected {
         for expect in expected {
+            let mut pass_some_expect = false;
+
             if let Some(file_name_case_is) = &expect.name_case_is {
+                pass_some_expect = true;
                 check_result(
-                    name_case_is(&file.name, file_name_case_is),
+                    name_case_is(&file.basename, file_name_case_is),
                     &expect.error_msg,
                 );
             }
 
             if let Some(file_extension_is) = &expect.extension_is {
+                pass_some_expect = true;
                 check_result(
                     extension_is(&file.extension, file_extension_is),
                     &expect.error_msg,
                 );
+            }
+
+            if let Some(sibling_file_pattern) = &expect.has_sibling_file {
+                pass_some_expect = true;
+                check_result(
+                    has_sibling_file(sibling_file_pattern, folder, &conditions_result.captures),
+                    &expect.error_msg,
+                );
+            }
+
+            if let Some(content_matches) = &expect.content_matches {
+                pass_some_expect = true;
+                check_result(
+                    check_content(
+                        &file.content,
+                        content_matches,
+                        &conditions_result.captures,
+                        false,
+                    ),
+                    &expect.error_msg,
+                );
+            }
+
+            if let Some(content_matches_some) = &expect.content_matches_some {
+                pass_some_expect = true;
+                check_result(
+                    check_content(
+                        &file.content,
+                        content_matches_some,
+                        &conditions_result.captures,
+                        true,
+                    ),
+                    &expect.error_msg,
+                );
+            }
+
+            if cfg!(debug_assertions) && !pass_some_expect {
+                panic!("Unexpect expect {:#?}", expect);
             }
         }
     }
@@ -122,13 +192,11 @@ fn folder_pass_expected(
 
 #[derive(Debug, Clone)]
 struct InheritedFileRule {
-    from_path: String,
     rule: FileRule,
 }
 
 #[derive(Debug, Clone)]
 struct InheritedFolderRule {
-    from_path: String,
     rule: FolderRule,
 }
 
@@ -162,7 +230,16 @@ fn check_folder_childs(
         .map(|folder_config| {
             folder_config
                 .sub_folders_config
-                .keys()
+                .iter()
+                .filter_map(
+                    |(name, config)| {
+                        if config.optional {
+                            None
+                        } else {
+                            Some(name)
+                        }
+                    },
+                )
                 .map(normalize_folder_config_name)
                 .collect::<HashSet<String>>()
         })
@@ -171,18 +248,23 @@ fn check_folder_childs(
     for child in &folder.childs {
         match child {
             Child::FileChild(file) => {
-                let mut file_matched_at_least_once = false;
+                let mut file_touched = false;
 
                 let file_error_prefix = format!(
                     "File '{}/{}.{}' error: ",
-                    folder_path, file.name, file.extension
+                    folder_path, file.basename, file.extension
                 );
 
                 let mut check_file_rule = |rule: &FileRule| {
-                    if file_matches_condition(file, &rule.conditions) {
-                        file_matched_at_least_once = true;
+                    if let Some(conditions_result) = file_matches_condition(file, &rule.conditions)
+                    {
+                        if !rule.not_touch {
+                            file_touched = true;
+                        }
 
-                        if let Err(expect_errors) = file_pass_expected(file, &rule.expect) {
+                        if let Err(expect_errors) =
+                            file_pass_expected(file, &rule.expect, folder, &conditions_result)
+                        {
                             for error in expect_errors {
                                 errors.push(format!(
                                     "{}{}",
@@ -218,11 +300,23 @@ fn check_folder_childs(
                         let mut one_of_matched = false;
 
                         for rule in &one_of.rules {
-                            if file_matches_condition(file, &rule.conditions) {
+                            if let Some(conditions_result) =
+                                file_matches_condition(file, &rule.conditions)
+                            {
                                 one_of_matched_at_least_one_condition = true;
-                                file_matched_at_least_once = true;
 
-                                if file_pass_expected(file, &rule.expect).is_ok() {
+                                if !rule.not_touch {
+                                    file_touched = true;
+                                }
+
+                                if file_pass_expected(
+                                    file,
+                                    &rule.expect,
+                                    folder,
+                                    &conditions_result,
+                                )
+                                .is_ok()
+                                {
                                     one_of_matched = true;
                                     break;
                                 }
@@ -235,10 +329,10 @@ fn check_folder_childs(
                     }
                 }
 
-                if !file_matched_at_least_once {
+                if !file_touched {
                     errors.push(format!(
                         "File '{}.{}' is not expected in folder '{}'",
-                        file.name, file.extension, folder_path
+                        file.basename, file.extension, folder_path
                     ));
                 }
             }
@@ -246,7 +340,7 @@ fn check_folder_childs(
                 let folder_error_prefix =
                     format!("Folder '{}/{}' error: ", folder_path, sub_folder.name);
 
-                let mut folder_matched_at_least_once = false;
+                let mut folder_touched = false;
 
                 let mut check_folder_rule = |rule: &FolderRule| {
                     let folder_matches = folder_matches_condition(sub_folder, &rule.conditions);
@@ -254,7 +348,9 @@ fn check_folder_childs(
                     if folder_matches {
                         folders_missing_check.remove(&sub_folder.name);
 
-                        folder_matched_at_least_once = true;
+                        if !rule.not_touch {
+                            folder_touched = true;
+                        }
 
                         if let Err(error) = folder_pass_expected(sub_folder, &rule.expect) {
                             errors.push(format!(
@@ -299,7 +395,7 @@ fn check_folder_childs(
 
                 if sub_folder_cfg.is_some() {
                     folders_missing_check.remove(&sub_folder.name);
-                } else if !folder_matched_at_least_once {
+                } else if !folder_touched {
                     errors.push(format!(
                         "Folder '/{}' is not expected in folder '{}'",
                         sub_folder.name, folder_path
@@ -313,10 +409,7 @@ fn check_folder_childs(
                             .iter()
                             .filter_map(|rule| match rule.non_recursive {
                                 true => None,
-                                false => Some(InheritedFileRule {
-                                    from_path: folder_path.clone(),
-                                    rule: rule.clone(),
-                                }),
+                                false => Some(InheritedFileRule { rule: rule.clone() }),
                             })
                             .collect()
                     });
@@ -331,10 +424,7 @@ fn check_folder_childs(
                             .iter()
                             .filter_map(|rule| match rule.non_recursive {
                                 true => None,
-                                false => Some(InheritedFolderRule {
-                                    from_path: folder_path.clone(),
-                                    rule: rule.clone(),
-                                }),
+                                false => Some(InheritedFolderRule { rule: rule.clone() }),
                             })
                             .collect()
                     });
@@ -381,5 +471,6 @@ pub fn check_root_folder(config: &Config, folder: &Folder) -> Result<(), Vec<Str
     )
 }
 
+mod checks;
 #[cfg(test)]
 mod tests;

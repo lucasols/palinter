@@ -18,6 +18,7 @@ fn config_from_string(config_string: &String, parse_from: ParseFrom) -> Result<C
 
 #[derive(Debug)]
 struct Project {
+    only: bool,
     structure: Folder,
     expected_errors: Option<Vec<String>>,
 }
@@ -56,6 +57,7 @@ enum ExpectedErrors {
 
 #[derive(Deserialize, Debug)]
 struct ParsedProjectYaml {
+    only: Option<bool>,
     structure: ParsedFolder,
     expected_errors: ExpectedErrors,
 }
@@ -68,14 +70,26 @@ fn convert_from_parsed_folder_to_project(parsed: &ParsedFolder, folder_name: Str
             ParsedStructureChild::File(file_content) => {
                 let child_string = child_name.to_string();
 
-                let dot_parts = child_string.split('.');
+                let (basename, extension, sub_ext) = {
+                    let parts = child_string.split('.').collect::<Vec<&str>>();
 
-                let extension = dot_parts.clone().last().unwrap().to_string();
+                    let basename = parts[0..parts.len() - 1].join(".");
 
-                let file_name = dot_parts.clone().next().unwrap().to_string();
+                    let sub_extension = if parts.len() <= 2 {
+                        None
+                    } else {
+                        parts.get(parts.len() - 2).map(|s| s.to_string())
+                    };
+
+                    let extension = parts.last().unwrap().to_string();
+
+                    (basename, extension, sub_extension)
+                };
 
                 Child::FileChild(File {
-                    name: file_name,
+                    basename,
+                    name_with_ext: child_string,
+                    sub_ext,
                     content: file_content.to_owned(),
                     extension,
                 })
@@ -99,6 +113,7 @@ fn parse_project_yaml(project_yaml: String) -> Result<Project, serde_yaml::Error
         convert_from_parsed_folder_to_project(&parsed_project_yaml.structure, ".".to_string());
 
     Ok(Project {
+        only: parsed_project_yaml.only.unwrap_or(false),
         structure,
         expected_errors: match parsed_project_yaml.expected_errors {
             ExpectedErrors::Single(true) => None,
@@ -290,7 +305,32 @@ fn test_cases() {
                                 ));
                             }
 
-                            for (i, project) in test_case.projects.iter().enumerate() {
+                            let some_project_has_only =
+                                test_case.projects.iter().any(|project| project.only);
+
+                            if some_project_has_only {
+                                if !is_dev {
+                                    panic!("Only test cases are not allowed in production, use 'DEVTEST=1' to run them");
+                                } else {
+                                    test_sumary = format!(
+                                        "{}\n🟧 Running projects with only flag!\n",
+                                        test_sumary
+                                    );
+                                }
+                            }
+
+                            for (i, project) in test_case
+                                .projects
+                                .iter()
+                                .filter(|project| {
+                                    if some_project_has_only {
+                                        project.only
+                                    } else {
+                                        true
+                                    }
+                                })
+                                .enumerate()
+                            {
                                 let result = check_root_folder(config, &project.structure);
 
                                 let test_case = format!(
@@ -322,7 +362,7 @@ fn test_cases() {
                                     None => {
                                         if let Err(error) = result {
                                             test_errors.push(format!(
-                                                "{} Expected Ok but got errors: {:?}",
+                                                "{} Expected Ok but got errors: {:#?}",
                                                 test_case, error
                                             ));
                                         }

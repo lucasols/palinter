@@ -9,11 +9,42 @@ pub enum SingleOrMultiple<T> {
     Single(T),
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone, Default)]
 pub struct ParsedFileConditions {
     pub has_extension: Option<SingleOrMultiple<String>>,
-    pub has_name: Option<SingleOrMultiple<String>>,
+    pub has_name: Option<String>,
     pub does_not_have_name: Option<SingleOrMultiple<String>>,
+
+    #[serde(flatten)]
+    pub wrong: HashMap<String, Value>,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct ParsedFileContentMatchesItem {
+    pub all: Option<Vec<String>>,
+    pub any: Option<Vec<String>>,
+    pub at_least: Option<usize>,
+    pub at_most: Option<usize>,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(untagged)]
+pub enum ParsedFileContentMatches {
+    Single(String),
+    Multiple(Vec<String>),
+    MultipleAdvanced(Vec<ParsedFileContentMatchesItem>),
+
+    Error(Value),
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct ParsedFileExpect {
+    pub name_case_is: Option<String>,
+    pub error_msg: Option<String>,
+    pub extension_is: Option<SingleOrMultiple<String>>,
+    pub has_sibling_file: Option<String>,
+    pub content_matches: Option<ParsedFileContentMatches>,
+    pub content_matches_any: Option<ParsedFileContentMatches>,
 
     #[serde(flatten)]
     pub wrong: HashMap<String, Value>,
@@ -22,16 +53,6 @@ pub struct ParsedFileConditions {
 #[derive(Deserialize, Debug, Clone)]
 pub struct ParsedFolderConditions {
     pub has_name_case: Option<String>,
-
-    #[serde(flatten)]
-    pub wrong: HashMap<String, Value>,
-}
-
-#[derive(Deserialize, Debug, Clone)]
-pub struct ParsedFileExpect {
-    pub name_case_is: Option<String>,
-    pub error_msg: Option<String>,
-    pub extension_is: Option<SingleOrMultiple<String>>,
 
     #[serde(flatten)]
     pub wrong: HashMap<String, Value>,
@@ -63,6 +84,7 @@ pub enum ParsedRule {
         expect_one_of: Option<Vec<ParsedFileExpect>>,
         error_msg: Option<String>,
         non_recursive: Option<bool>,
+        not_touch: Option<bool>,
     },
     Folder {
         #[serde(rename = "if_folder")]
@@ -71,6 +93,7 @@ pub enum ParsedRule {
         expect_one_of: Option<Vec<ParsedFolderExpect>>,
         error_msg: Option<String>,
         non_recursive: Option<bool>,
+        not_touch: Option<bool>,
     },
     OneOf {
         #[serde(rename = "one_of")]
@@ -84,8 +107,9 @@ pub enum ParsedRule {
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct CorrectParsedFolderConfig {
-    pub has_files: Option<Vec<String>>,
+    pub has_files_in_root: Option<Vec<String>>,
     pub rules: Option<Vec<ParsedRule>>,
+    pub optional: Option<bool>,
 
     #[serde(flatten)]
     pub folders: BTreeMap<String, ParsedFolderConfig>,

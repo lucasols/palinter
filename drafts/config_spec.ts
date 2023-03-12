@@ -53,8 +53,18 @@ type NameCases =
 
 type Expect<T> = T | T[]
 
+type ContentMatches =
+  | string
+  | {
+      every?: string
+      some?: string[]
+      at_most?: number
+      at_least?: number
+    }
+
 type Rule = {
   non_recursive?: boolean
+  touch?: boolean
 } & (
   | {
       error_msg?: string
@@ -64,6 +74,7 @@ type Rule = {
             has_name_case?: NameCases
             // TODO 👇
             has_name?: string
+            has_subname?: string
             root_files?: {
               does_not_have_duplicate_name?: string
             }
@@ -92,19 +103,14 @@ type Rule = {
             has_name_case?: NameCases
           }
       expect?: Expect<{
+        error_msg?: string
         name_case_is?: NameCases
         extension_is?: string | string[]
-        // TODO 👇
         has_sibling_file?: string
-        content_matches_any?: string[]
-        content_matches?: {
-          text?: string
-          any?: string[]
-          maxMatches?: number
-          minMatches?: number
-        }[]
-        error_msg?: string
-        name_not_includes_any?: string[]
+        content_matches_some?: ContentMatches[]
+        content_matches?: string | ContentMatches[]
+        // TODO 👇
+        name_not_includes_some?: string[]
       }>
       expect_one_of?: any[] // the same as expect rules
     }
@@ -115,7 +121,7 @@ type Rule = {
 )
 
 type Folder = {
-  has_files?: string[]
+  has_files_in_root?: string[]
   rules?: (Rule | string)[]
   [k: `/${string}`]: Folder
 }
@@ -135,11 +141,10 @@ const configFile: Config = {
       expect: [
         {
           name_case_is: 'PascalCase',
-          name_not_includes_any: ['.'],
           error_msg: 'React files name must be PascalCase',
         },
         {
-          content_matches_any: ['regex:export const {{fileName}}:? '],
+          content_matches: 'regex:export const {{fileName}}:? ',
         },
       ],
     },
@@ -178,14 +183,17 @@ const configFile: Config = {
             },
             expect: [
               {
-                content_matches_any: ['currentColor'],
+                content_matches: 'regex:export const {{fileName}}:? ',
                 error_msg:
                   "Svg should have at least one color set as `currentColor`, if the icon is static and don't have any dynamic color prefix the name with `static-`",
               },
               {
-                content_matches_any: [
+                content_matches_some: [
                   'viewBox="0 0 24 24"',
                   'viewBox="0 0 48 48"',
+                ],
+                content_matches: [
+                  { some: ['regex:export const {{fileName}}:? '] },
                 ],
                 error_msg:
                   'Svg should have a viewBox attribute with 24x24 or 48x48, check if you are exporting the correct svg from figma',
@@ -196,7 +204,7 @@ const configFile: Config = {
       },
       '/stores': {
         // these rules will be applied to all files in the folder
-        has_files: [
+        has_files_in_root: [
           'collectionStore.example.ts',
           'documentStore.example.ts',
           'listQueryStore.example.ts',
@@ -236,19 +244,19 @@ const configFile: Config = {
             },
             expect: [
               {
-                content_matches_any: [
+                content_matches_some: [
                   'export const $1Doc = createDocumentStore<',
                 ],
               },
               {
                 content_matches: [
                   {
-                    any: [
+                    some: [
                       '= createDocumentStore',
                       '= createCollectionStore',
                       '= createListQueryStore',
                     ],
-                    maxMatches: 1,
+                    at_most: 1,
                   },
                 ],
                 error_msg: 'Only one store should be exported from a file',
@@ -260,7 +268,7 @@ const configFile: Config = {
               has_name: '*List.ts',
             },
             expect: {
-              content_matches_any: [
+              content_matches_some: [
                 'export const {{1}}List = createListQueryStore<',
               ],
             },
@@ -270,7 +278,7 @@ const configFile: Config = {
               has_name: '*Doc.ts',
             },
             expect: {
-              content_matches_any: [
+              content_matches_some: [
                 'export const $1Doc = createDocumentStore<',
               ],
             },
@@ -290,7 +298,7 @@ const configFile: Config = {
       },
       '/pages': {
         '/_shell': {
-          has_files: ['Shell.tsx'],
+          has_files_in_root: ['Shell.tsx'],
         },
         rules: [
           {
@@ -301,11 +309,10 @@ const configFile: Config = {
                 expect: [
                   {
                     name_case_is: 'kebab-case',
-                    name_not_includes_any: ['.'],
                     error_msg: 'React files name must be PascalCase',
                   },
                   {
-                    content_matches_any: [
+                    content_matches_some: [
                       'line_regex:^export const {{fileName:PascalCase}}Page:? ',
                     ],
                   },
