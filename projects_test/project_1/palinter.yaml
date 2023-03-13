@@ -1,0 +1,6 @@
+./:
+  /files:
+    rules:
+      - if_file: any
+        expect:
+          name_case_is: camelCase

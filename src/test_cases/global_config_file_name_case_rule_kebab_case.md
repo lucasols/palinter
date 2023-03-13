@@ -1,13 +1,12 @@
 # Config
 
 ```yaml
-global_rules:
-  - if_file:
-      has_extension: svg
-    expect:
-      name_case_is: kebab-case
 ./:
   rules:
+    - if_file:
+        has_extension: svg
+      expect:
+        name_case_is: kebab-case
 ```
 
 # Projects

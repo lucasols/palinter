@@ -1,3 +1,4 @@
 target
 dist
 jestor_*.md
+.DS_Store

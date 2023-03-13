@@ -1,25 +1,6 @@
 # Config
 
 ```yaml
-# expect_error: Config error: 'one_of' are not allowed in global rules
-global_rules:
-  - one_of:
-      - if_file: { has_extension: tsx }
-        expect:
-          name_case_is: camelCase
-      - if_file: { has_extension: tsx }
-        expect:
-          name_case_is: kebab-case
-    error_msg: err
-./:
-  /level1:
-    rules:
-      - if_file: any
-        expect:
-          name_case_is: camelCase
-```
-
-```yaml
 # expect_error: Config error in './level1.one_of': Nested 'one_of' is not allowed
 
 ./:

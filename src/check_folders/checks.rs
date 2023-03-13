@@ -1,5 +1,5 @@
 use crate::{
-    check_folders::{Child, Folder},
+    check_folders::{Folder, FolderChild},
     internal_config::{ContentMatches, NameCase, RootFilesFindPattern},
     utils::wrap_vec_string_itens_in,
 };
@@ -48,8 +48,13 @@ pub fn name_case_is(name: &str, name_case_is: &NameCase) -> Result<(), String> {
     Ok(())
 }
 
-pub fn extension_is(file_extension: &String, extension_is: &[String]) -> Result<(), String> {
-    if !extension_is.contains(file_extension) {
+pub fn extension_is(
+    file_extension: &Option<String>,
+    extension_is: &[String],
+) -> Result<(), String> {
+    let file_extension = file_extension.clone().unwrap_or_default();
+
+    if !extension_is.contains(&file_extension) {
         return Err(format!(
             "should have extension {}",
             wrap_vec_string_itens_in(extension_is, "'").join(" or ")
@@ -151,12 +156,12 @@ fn replace_with_captures(
 pub fn has_sibling_file(
     sibling_file_pattern: &String,
     folder: &Folder,
-    condition_captures: &Vec<Capture>,
+    condition_captures: &[Capture],
 ) -> Result<(), String> {
     let (pattern, regex) = normalize_check_pattern(condition_captures, sibling_file_pattern);
 
     for child in &folder.childs {
-        if let Child::FileChild(file) = child {
+        if let FolderChild::FileChild(file) = child {
             if regex.is_match(&file.name_with_ext) {
                 return Ok(());
             }
@@ -200,7 +205,7 @@ pub fn check_path_pattern(
 pub fn check_negated_path_pattern(
     path: &str,
     path_pattern: &String,
-    condition_captures: &Vec<Capture>,
+    condition_captures: &[Capture],
 ) -> Result<(), String> {
     let matches = check_path_pattern(path, path_pattern, condition_captures);
 
@@ -214,7 +219,7 @@ pub fn check_negated_path_pattern(
 pub fn check_content(
     content: &str,
     content_matches: &Vec<ContentMatches>,
-    condition_captures: &Vec<Capture>,
+    condition_captures: &[Capture],
     some: bool,
 ) -> Result<(), String> {
     let mut matched = false;
@@ -320,7 +325,7 @@ pub fn check_root_files_find_pattern(
     let mut last_match: Option<Vec<Capture>> = None;
 
     for child in &folder.childs {
-        if let Child::FileChild(file) = child {
+        if let FolderChild::FileChild(file) = child {
             if let Ok(captures) = regex_match(&regex, &file.name_with_ext) {
                 num_of_matches += 1;
                 last_match = Some(captures);
@@ -367,7 +372,7 @@ pub fn check_root_files_has_pattern(
     let regex = get_regex_from_path_pattern(pattern.clone())?;
 
     for child in &folder.childs {
-        if let Child::FileChild(file) = child {
+        if let FolderChild::FileChild(file) = child {
             if regex.is_match(&file.name_with_ext) {
                 return Ok(pattern);
             }

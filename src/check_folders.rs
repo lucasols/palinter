@@ -1,8 +1,11 @@
 use std::collections::HashSet;
 
-use crate::internal_config::{
-    AnyOr, Config, FileConditions, FileExpect, FileRule, FolderConditions, FolderConfig,
-    FolderExpect, FolderRule,
+use crate::{
+    internal_config::{
+        AnyOr, Config, FileConditions, FileExpect, FileRule, FolderConditions, FolderConfig,
+        FolderExpect, FolderRule,
+    },
+    load_folder_tree::{File, Folder, FolderChild},
 };
 
 use self::checks::{
@@ -10,27 +13,6 @@ use self::checks::{
     check_path_pattern, check_root_files_find_pattern, check_root_files_has_pattern, extension_is,
     has_sibling_file, name_case_is, path_pattern_match, Capture,
 };
-
-#[derive(Debug)]
-pub struct File {
-    pub basename: String,
-    pub name_with_ext: String,
-    pub sub_ext: Option<String>,
-    pub content: String,
-    pub extension: String,
-}
-
-#[derive(Debug)]
-pub enum Child {
-    FileChild(File),
-    Folder(Folder),
-}
-
-#[derive(Debug)]
-pub struct Folder {
-    pub name: String,
-    pub childs: Vec<Child>,
-}
 
 #[derive(Debug, Default)]
 pub struct ConditionsResult {
@@ -47,7 +29,7 @@ fn file_matches_condition(
             let mut has_name_captures: Vec<Capture> = Vec::new();
 
             if let Some(extensions) = &conditions.has_extension {
-                if !extensions.contains(&file.extension) {
+                if !extensions.contains(&file.extension.clone().unwrap_or_default()) {
                     return None;
                 }
             }
@@ -380,12 +362,12 @@ fn check_folder_childs(
 
     for child in &folder.childs {
         match child {
-            Child::FileChild(file) => {
+            FolderChild::FileChild(file) => {
                 let mut file_touched = false;
 
                 let file_error_prefix = format!(
                     "File '{}/{}.{}' error: ",
-                    folder_path, file.basename, file.extension
+                    folder_path, file.basename, file.extension.clone().unwrap_or_default()
                 );
 
                 let mut check_file_rule = |rule: &FileRule| {
@@ -412,10 +394,6 @@ fn check_folder_childs(
                         }
                     }
                 };
-
-                for rule in &config.global_files_rules {
-                    check_file_rule(rule)
-                }
 
                 if let Some(folder_config) = folder_config {
                     for rule in &folder_config.file_rules {
@@ -465,11 +443,13 @@ fn check_folder_childs(
                 if !file_touched && !allow_unconfigured_files {
                     errors.push(format!(
                         "File '{}.{}' is not expected in folder '{}'",
-                        file.basename, file.extension, folder_path
+                        file.basename,
+                        file.extension.clone().unwrap_or_default(),
+                        folder_path
                     ));
                 }
             }
-            Child::Folder(sub_folder) => {
+            FolderChild::Folder(sub_folder) => {
                 let folder_error_prefix =
                     format!("Folder '{}/{}' error: ", folder_path, sub_folder.name);
 
@@ -502,10 +482,6 @@ fn check_folder_childs(
                         }
                     }
                 };
-
-                for rule in &config.global_folders_rules {
-                    check_folder_rule(rule);
-                }
 
                 if let Some(folder_config) = folder_config {
                     for rule in &folder_config.folder_rules {

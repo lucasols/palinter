@@ -1,6 +1,9 @@
 use serde::Deserialize;
 use serde_yaml::Value;
-use std::collections::{BTreeMap, HashMap};
+use std::{
+    collections::{BTreeMap, HashMap},
+    path::PathBuf,
+};
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(untagged)]
@@ -155,8 +158,9 @@ pub type ParsedBlocks = Option<BTreeMap<String, SingleOrMultiple<ParsedRule>>>;
 #[derive(Deserialize, Debug, Clone)]
 pub struct ParsedConfig {
     pub blocks: ParsedBlocks,
-    pub global_rules: Option<Vec<ParsedRule>>,
     pub to_have_files: Option<Vec<String>>,
+    pub analyze_content_of_files_types: Option<Vec<String>>,
+    pub ignore: Option<Vec<String>>,
 
     #[serde(rename = "./")]
     pub root_folder: ParsedFolderConfig,
@@ -183,7 +187,7 @@ pub fn parse_config_string(config: &String, from: ParseFrom) -> Result<ParsedCon
     }
 }
 
-pub fn parse_config(config_path: &str) -> Result<ParsedConfig, String> {
+pub fn parse_config_file(config_path: &PathBuf) -> Result<ParsedConfig, String> {
     let config = std::fs::read_to_string(config_path).unwrap();
 
     let is_json = config_path.ends_with(".json");
@@ -196,17 +200,4 @@ pub fn parse_config(config_path: &str) -> Result<ParsedConfig, String> {
             ParseFrom::Yaml
         },
     )
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    #[ignore]
-    fn parse_config_works() {
-        let config = parse_config("./src/fixtures/config1.json");
-
-        insta::assert_debug_snapshot!(config);
-    }
 }

@@ -1,6 +1,7 @@
 # Config
 
 ```yaml
+analyze_content_of_files_types: ['ts', 'tsx']
 ./:
   /helloWorld:
     optional: true

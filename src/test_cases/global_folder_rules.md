@@ -1,15 +1,14 @@
 # Config
 
 ```yaml
-global_rules:
-  - if_file: any
-    expect: any
-
-  - if_folder: any
-    expect:
-      name_case_is: camelCase
 ./:
   rules:
+    - if_file: any
+      expect: any
+
+    - if_folder: any
+      expect:
+        name_case_is: camelCase
 ```
 
 # Projects

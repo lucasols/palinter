@@ -70,31 +70,24 @@ fn convert_from_parsed_folder_to_project(parsed: &ParsedFolder, folder_name: Str
             ParsedStructureChild::File(file_content) => {
                 let child_string = child_name.to_string();
 
-                let (basename, extension, sub_ext) = {
+                let (basename, extension) = {
                     let parts = child_string.split('.').collect::<Vec<&str>>();
 
                     let basename = parts[0..parts.len() - 1].join(".");
 
-                    let sub_extension = if parts.len() <= 2 {
-                        None
-                    } else {
-                        parts.get(parts.len() - 2).map(|s| s.to_string())
-                    };
-
                     let extension = parts.last().unwrap().to_string();
 
-                    (basename, extension, sub_extension)
+                    (basename, extension)
                 };
 
-                Child::FileChild(File {
+                FolderChild::FileChild(File {
                     basename,
                     name_with_ext: child_string,
-                    sub_ext,
                     content: file_content.to_owned(),
-                    extension,
+                    extension: Some(extension),
                 })
             }
-            ParsedStructureChild::Folder(folder) => Child::Folder(
+            ParsedStructureChild::Folder(folder) => FolderChild::Folder(
                 convert_from_parsed_folder_to_project(folder, child_name.to_owned()),
             ),
         })

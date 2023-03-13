@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 use serde_yaml::Value;
 
@@ -131,9 +131,9 @@ pub struct FolderConfig {
 
 #[derive(Debug)]
 pub struct Config {
-    pub global_files_rules: Vec<FileRule>,
-    pub global_folders_rules: Vec<FolderRule>,
     pub root_folder: FolderConfig,
+    pub analyze_content_of_files_types: Option<Vec<String>>,
+    pub ignore: HashSet<String>,
 }
 
 fn normalize_single_or_multiple<T: Clone>(single_or_multiple: &SingleOrMultiple<T>) -> Vec<T> {
@@ -218,6 +218,7 @@ fn normalize_rules(
     rules: &Vec<ParsedRule>,
     config_path: &String,
     normalized_blocks: &NormalizedBlocks,
+    config: &ParsedConfig,
 ) -> Result<(Vec<FileRule>, Vec<FolderRule>, OneOfBlocks), String> {
     let mut file_rules: Vec<FileRule> = vec![];
     let mut folder_rules: Vec<FolderRule> = vec![];
@@ -274,7 +275,11 @@ fn normalize_rules(
                                     config_path,
                                 )?;
 
-                                expects.push(get_file_expect(parsed_expected, config_path)?);
+                                expects.push(get_file_expect(
+                                    parsed_expected,
+                                    config_path,
+                                    config,
+                                )?);
                             }
 
                             AnyOr::Or(expects)
@@ -302,6 +307,7 @@ fn normalize_rules(
                                 expect: AnyOr::Or(vec![get_file_expect(
                                     rule.clone(),
                                     config_path,
+                                    config,
                                 )?]),
                                 not_touch: get_true_flag(config_path, not_touch, "not_touch")?,
                                 error_msg: None,
@@ -440,7 +446,7 @@ fn normalize_rules(
                 ))?;
 
                 let (block_file_rules, block_folder_rules, block_one_of_blocks) =
-                    normalize_rules(rules, config_path, normalized_blocks)?;
+                    normalize_rules(rules, config_path, normalized_blocks, config)?;
 
                 file_rules.extend(block_file_rules);
                 folder_rules.extend(block_folder_rules);
@@ -468,8 +474,12 @@ fn normalize_rules(
                             ));
                         }
 
-                        let (and_file_rules, and_folder_rules, _) =
-                            normalize_rules(&vec![rule.clone()], config_path, normalized_blocks)?;
+                        let (and_file_rules, and_folder_rules, _) = normalize_rules(
+                            &vec![rule.clone()],
+                            config_path,
+                            normalized_blocks,
+                            config,
+                        )?;
 
                         if !and_file_rules.is_empty() && !and_folder_rules.is_empty() {
                             return Err(format!(
@@ -613,7 +623,17 @@ fn get_function_expect(
 fn get_file_expect(
     parsed_expected: ParsedFileExpect,
     config_path: &String,
+    parsed_config: &ParsedConfig,
 ) -> Result<FileExpect, String> {
+    if (parsed_expected.content_matches.is_some() || parsed_expected.content_matches_any.is_some())
+        && parsed_config.analyze_content_of_files_types.is_none()
+    {
+        return Err(format!(
+            "Config error in '{}': to use 'content_matches' and 'content_matches_any' you must specify the 'analyze_content_of_files_types' property with the file extensions you want to analyze",
+            config_path
+        ));
+    }
+
     Ok(FileExpect {
         error_msg: parsed_expected.error_msg,
         name_is: parsed_expected.name_is,
@@ -711,10 +731,11 @@ fn check_rules_expects<T, B>(
     Ok(())
 }
 
-fn normalize_folder_config(
+pub fn normalize_folder_config(
     folder_config: &ParsedFolderConfig,
     folder_path: String,
     normalize_blocks: &NormalizedBlocks,
+    parsed_config: &ParsedConfig,
 ) -> Result<FolderConfig, String> {
     match folder_config {
         ParsedFolderConfig::Error(wrong_value) => Err(format!(
@@ -748,7 +769,7 @@ fn normalize_folder_config(
             }
 
             let (file_rules, folder_rules, one_of_blocks) =
-                normalize_rules(&rules, &folder_path, normalize_blocks)?;
+                normalize_rules(&rules, &folder_path, normalize_blocks, parsed_config)?;
 
             let mut sub_folders_config: HashMap<String, FolderConfig> = HashMap::new();
 
@@ -790,6 +811,7 @@ fn normalize_folder_config(
                             }),
                             folder_path.clone(),
                             normalize_blocks,
+                            parsed_config,
                         )?,
                     );
                 } else {
@@ -797,26 +819,29 @@ fn normalize_folder_config(
 
                     sub_folders_config.insert(
                         sub_folder_name.clone(),
-                        normalize_folder_config(sub_folder_config, folder_path, normalize_blocks)?,
+                        normalize_folder_config(
+                            sub_folder_config,
+                            folder_path,
+                            normalize_blocks,
+                            parsed_config,
+                        )?,
                     );
                 }
             }
+
+            let default_allow_unconfigured_files_or_folders = folder_path == ".";
 
             Ok(FolderConfig {
                 file_rules,
                 sub_folders_config,
                 folder_rules,
                 one_of_blocks,
-                allow_unconfigured_files: get_true_flag(
-                    &folder_path,
-                    &config.allow_unconfigured_files,
-                    "allow_unconfigured_files",
-                )?,
-                allow_unconfigured_folders: get_true_flag(
-                    &folder_path,
-                    &config.allow_unconfigured_folders,
-                    "allow_unconfigured_folders",
-                )?,
+                allow_unconfigured_files: config
+                    .allow_unconfigured_files
+                    .unwrap_or(default_allow_unconfigured_files_or_folders),
+                allow_unconfigured_folders: config
+                    .allow_unconfigured_folders
+                    .unwrap_or(default_allow_unconfigured_files_or_folders),
                 optional: get_true_flag(&folder_path, &config.optional, "optional")?,
             })
         }
@@ -849,22 +874,20 @@ fn normalize_blocks(parsed_blocks: &ParsedBlocks) -> Result<NormalizedBlocks, St
 pub fn get_config(parsed_config: &ParsedConfig) -> Result<Config, String> {
     let normalized_block = &normalize_blocks(&parsed_config.blocks)?;
 
-    let (global_files_rules, global_folders_rules, _) = match &parsed_config.global_rules {
-        Some(global_rules) => normalize_rules(
-            global_rules,
-            &String::from("global_rules"),
-            normalized_block,
-        )?,
-        None => (vec![], vec![], OneOfBlocks::default()),
-    };
-
     Ok(Config {
-        global_files_rules,
-        global_folders_rules,
         root_folder: normalize_folder_config(
             &parsed_config.root_folder,
             String::from("."),
             normalized_block,
+            parsed_config,
         )?,
+        ignore: HashSet::from_iter(
+            [
+                parsed_config.ignore.clone().unwrap_or_default(),
+                vec!["node_modules".to_string(), ".git".to_string()],
+            ]
+            .concat(),
+        ),
+        analyze_content_of_files_types: None,
     })
 }
