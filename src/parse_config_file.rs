@@ -20,7 +20,7 @@ pub struct ParsedFileConditions {
 }
 
 #[derive(Deserialize, Debug, Clone)]
-pub struct ParsedFileContentMatchesItem {
+pub struct ParsedFileContentMatchesConfig {
     pub all: Option<Vec<String>>,
     pub any: Option<Vec<String>>,
     pub at_least: Option<usize>,
@@ -29,10 +29,18 @@ pub struct ParsedFileContentMatchesItem {
 
 #[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
+pub enum ParsedFileContentMatchesItem {
+    Single(String),
+    Config(ParsedFileContentMatchesConfig),
+
+    Error(Value),
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(untagged)]
 pub enum ParsedFileContentMatches {
     Single(String),
-    Multiple(Vec<String>),
-    MultipleAdvanced(Vec<ParsedFileContentMatchesItem>),
+    Multiple(Vec<ParsedFileContentMatchesItem>),
 
     Error(Value),
 }
@@ -40,11 +48,13 @@ pub enum ParsedFileContentMatches {
 #[derive(Deserialize, Debug, Clone)]
 pub struct ParsedFileExpect {
     pub name_case_is: Option<String>,
-    pub error_msg: Option<String>,
     pub extension_is: Option<SingleOrMultiple<String>>,
     pub has_sibling_file: Option<String>,
     pub content_matches: Option<ParsedFileContentMatches>,
     pub content_matches_any: Option<ParsedFileContentMatches>,
+    pub name_is: Option<String>,
+
+    pub error_msg: Option<String>,
 
     #[serde(flatten)]
     pub wrong: HashMap<String, Value>,
@@ -53,6 +63,7 @@ pub struct ParsedFileExpect {
 #[derive(Deserialize, Debug, Clone)]
 pub struct ParsedFolderConditions {
     pub has_name_case: Option<String>,
+    pub has_name: Option<String>,
 
     #[serde(flatten)]
     pub wrong: HashMap<String, Value>,
@@ -61,6 +72,8 @@ pub struct ParsedFolderConditions {
 #[derive(Deserialize, Debug, Clone)]
 pub struct ParsedFolderExpect {
     pub name_case_is: Option<String>,
+    pub name_is: Option<String>,
+
     pub error_msg: Option<String>,
 
     #[serde(flatten)]

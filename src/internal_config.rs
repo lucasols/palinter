@@ -4,8 +4,8 @@ use serde_yaml::Value;
 
 use crate::parse_config_file::{
     CorrectParsedFolderConfig, ParsedAnyOr, ParsedBlocks, ParsedConfig, ParsedFileConditions,
-    ParsedFileContentMatches, ParsedFileExpect, ParsedFolderConfig, ParsedFolderExpect, ParsedRule,
-    SingleOrMultiple,
+    ParsedFileContentMatches, ParsedFileContentMatchesItem, ParsedFileExpect, ParsedFolderConfig,
+    ParsedFolderExpect, ParsedRule, SingleOrMultiple,
 };
 
 #[derive(Debug, Clone)]
@@ -49,6 +49,7 @@ pub struct FileExpect {
     pub has_sibling_file: Option<String>,
     pub content_matches: Option<Vec<ContentMatches>>,
     pub content_matches_some: Option<Vec<ContentMatches>>,
+    pub name_is: Option<String>,
 
     pub error_msg: Option<String>,
 }
@@ -56,12 +57,14 @@ pub struct FileExpect {
 #[derive(Debug, Clone)]
 pub struct FolderConditions {
     pub has_name_case: Option<NameCase>,
+    pub has_name: Option<String>,
 }
 
 #[derive(Debug, Clone)]
 pub struct FolderExpect {
     pub name_case_is: Option<NameCase>,
     pub error_msg: Option<String>,
+    pub name_is: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -332,6 +335,7 @@ fn normalize_rules(
                                 .as_ref()
                                 .map(|name_case| normalize_name_case(name_case, config_path))
                                 .transpose()?,
+                            has_name: conditions.has_name.clone(),
                         })
                     }
                 };
@@ -567,6 +571,7 @@ fn get_function_expect(
 ) -> Result<FolderExpect, String> {
     Ok(FolderExpect {
         error_msg: parsed_expected.error_msg.clone(),
+        name_is: parsed_expected.name_is,
         name_case_is: parsed_expected
             .name_case_is
             .as_ref()
@@ -581,6 +586,7 @@ fn get_file_expect(
 ) -> Result<FileExpect, String> {
     Ok(FileExpect {
         error_msg: parsed_expected.error_msg,
+        name_is: parsed_expected.name_is,
         extension_is: normalize_single_or_multiple_some(&parsed_expected.extension_is),
         name_case_is: parsed_expected
             .name_case_is
@@ -607,31 +613,36 @@ fn normalize_content_matches(
                 at_most: None,
                 matches: Matches::All(vec![match_text]),
             }]),
-            ParsedFileContentMatches::Multiple(matches) => Some(
-                matches
+            ParsedFileContentMatches::Multiple(items) => Some(
+                items
                     .iter()
-                    .map(|match_text| ContentMatches {
-                        at_least: 1,
-                        at_most: None,
-                        matches: Matches::All(vec![match_text.clone()]),
-                    })
-                    .collect::<Vec<ContentMatches>>(),
-            ),
-            ParsedFileContentMatches::MultipleAdvanced(configs) => Some(
-                configs
-                    .iter()
-                    .map(|config| ContentMatches {
-                        at_least: config.at_least.unwrap_or(1),
-                        at_most: config.at_most,
-                        matches: {
-                            if let Some(matches) = &config.all {
-                                Matches::All(matches.clone())
-                            } else if let Some(matches) = &config.any {
-                                Matches::Any(matches.clone())
-                            } else {
-                                Matches::All(vec![])
+                    .map(|item| -> ContentMatches {
+                        match item {
+                            ParsedFileContentMatchesItem::Single(match_text) => ContentMatches {
+                                at_least: 1,
+                                at_most: None,
+                                matches: Matches::All(vec![match_text.clone()]),
+                            },
+                            ParsedFileContentMatchesItem::Config(config) => ContentMatches {
+                                at_least: config.at_least.unwrap_or(1),
+                                at_most: config.at_most,
+                                matches: {
+                                    if let Some(matches) = &config.all {
+                                        Matches::All(matches.clone())
+                                    } else if let Some(matches) = &config.any {
+                                        Matches::Any(matches.clone())
+                                    } else {
+                                        Matches::All(vec![])
+                                    }
+                                },
+                            },
+                            ParsedFileContentMatchesItem::Error(error) => {
+                                panic!(
+                                    "Config error in {}: Invalid content_matches: {:#?}",
+                                    config_path, error
+                                )
                             }
-                        },
+                        }
                     })
                     .collect::<Vec<ContentMatches>>(),
             ),

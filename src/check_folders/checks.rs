@@ -3,7 +3,7 @@ use crate::{
     internal_config::{ContentMatches, NameCase},
     utils::wrap_vec_string_itens_in,
 };
-use regex::Regex;
+use regex::{escape, Regex};
 
 pub fn name_case_is(name: &str, name_case_is: &NameCase) -> Result<(), String> {
     match name_case_is {
@@ -66,7 +66,7 @@ pub struct Capture {
 
 pub fn str_pattern_match(str: &str, pattern: &String) -> Result<Vec<Capture>, String> {
     // TODO: move this to config
-    let regex = get_regex_from_pattern(pattern.clone());
+    let regex = get_regex_from_path_pattern(pattern.clone());
 
     let mut capture_names: Vec<String> = vec![];
 
@@ -132,17 +132,41 @@ pub fn has_sibling_file(
 
 fn normalize_check_pattern(
     captures: &Option<Vec<Capture>>,
-    sibling_file_pattern: &String,
+    check_pattern: &String,
 ) -> (String, Regex) {
     let pattern = if let Some(has_name_caputes) = captures {
-        replace_with_captures(sibling_file_pattern, has_name_caputes)
+        replace_with_captures(check_pattern, has_name_caputes)
     } else {
-        sibling_file_pattern.clone()
+        check_pattern.clone()
     };
 
-    let regex = get_regex_from_pattern(pattern.clone());
+    let regex = if pattern.starts_with("regex:") {
+        Regex::new(pattern.strip_prefix("regex:").unwrap_or("")).unwrap()
+    } else {
+        Regex::new(escape(&pattern).as_str()).unwrap()
+    };
 
     (pattern, regex)
+}
+
+pub fn check_path_pattern(
+    path: &str,
+    path_pattern: &String,
+    condition_captures: &Option<Vec<Capture>>,
+) -> Result<(), String> {
+    let pattern = if let Some(has_name_caputes) = condition_captures {
+        replace_with_captures(path_pattern, has_name_caputes)
+    } else {
+        path_pattern.clone()
+    };
+
+    let regex = get_regex_from_path_pattern(pattern.clone());
+
+    if !regex.is_match(path) {
+        return Err(format!("should match pattern '{}'", pattern));
+    }
+
+    Ok(())
 }
 
 pub fn check_content(
@@ -231,31 +255,14 @@ pub fn check_content(
     Ok(())
 }
 
-fn get_regex_from_pattern(pattern: String) -> Regex {
-    let escaped_pattern = regex::escape(&pattern);
+fn get_regex_from_path_pattern(pattern: String) -> Regex {
+    if pattern.starts_with("regex:") {
+        return Regex::new(pattern.strip_prefix("regex:").unwrap_or("")).unwrap();
+    }
 
-    let astrix_parts: Vec<&str> = escaped_pattern.split("\\*").collect();
+    let normalize_pattern = pattern.replace('.', "\\.").replace('*', "(.+)");
 
-    let normalize_pattern = {
-        let mut result = String::new();
-
-        for (i, part) in astrix_parts.iter().enumerate() {
-            result.push_str(part);
-
-            if (i + 1) == astrix_parts.len() {
-                break;
-            }
-
-            if result.ends_with("\\\\") {
-                result.pop();
-                result.push('*');
-            } else {
-                result.push_str("(.+)");
-            }
-        }
-
-        result
-    };
+    let normalize_pattern = "^".to_string() + &normalize_pattern + "$";
 
     Regex::new(&normalize_pattern).unwrap()
 }
@@ -265,17 +272,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_get_regex_from_pattern() {
-        let regex = get_regex_from_pattern("test*".to_string());
+    fn test_get_regex_from_path_pattern() {
+        let regex = get_regex_from_path_pattern("test*".to_string());
 
         assert_eq!(regex.as_str(), r"test(.+)");
 
-        let regex = get_regex_from_pattern("test.file*".to_string());
+        let regex = get_regex_from_path_pattern("test.file*".to_string());
 
         assert_eq!(regex.as_str(), r"test\.file(.+)");
-
-        let regex = get_regex_from_pattern("test.file\\*".to_string());
-
-        assert_eq!(regex.as_str(), r"test\.file\*");
     }
 }

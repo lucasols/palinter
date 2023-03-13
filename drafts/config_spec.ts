@@ -72,11 +72,12 @@ type Rule = {
         | 'any'
         | {
             has_name_case?: NameCases
-            // TODO 👇
             has_name?: string
+            // TODO 👇
             has_subname?: string
             root_files?: {
               does_not_have_duplicate_name?: string
+              have_duplicate_name?: string
             }
           }
       expect?: Expect<{
@@ -122,6 +123,8 @@ type Rule = {
 
 type Folder = {
   has_files_in_root?: string[]
+  allow_unconfigured_files?: boolean
+  allow_unconfigured_folders?: boolean
   rules?: (Rule | string)[]
   [k: `/${string}`]: Folder
 }

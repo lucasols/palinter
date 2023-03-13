@@ -21,6 +21,7 @@
           has_name: '*(Doc|List|Collection|Store).(actions|utils).ts'
         expect:
           has_sibling_file: '${1}${2}.ts'
+          content_matches: regex:from '(.+)/${1}${2}'
 
       - if_file:
           has_name: '*Doc.ts'
@@ -31,7 +32,57 @@
                 - = createDocumentStore
                 - = createCollectionStore
                 - = createListQueryStore
+                - = new Store
               at_most: 1
+
+      - if_file:
+          has_name: '*List.ts'
+        expect:
+          content_matches:
+            - export const ${1}List = createListQueryStore<
+            - any:
+                - = createDocumentStore
+                - = createCollectionStore
+                - = createListQueryStore
+                - = new Store
+              at_most: 1
+
+      - if_file:
+          has_name: '*Collection.ts'
+        expect:
+          content_matches:
+            - export const ${1}Collection = createCollectionStore<
+            - any:
+                - = createDocumentStore
+                - = createCollectionStore
+                - = createListQueryStore
+                - = new Store
+              at_most: 1
+
+      - if_file:
+          has_name: '*Store.ts'
+        expect:
+          content_matches:
+            - export const ${1}Store = new Store<
+            - any:
+                - = createDocumentStore
+                - = createCollectionStore
+                - = createListQueryStore
+                - = new Store
+              at_most: 1
+
+      - if_folder:
+          root_files:
+            # Here we assure that the folder is not a group folder
+            does_not_have_duplicate_name: regex:(?<base_name>.+)(Doc|Store|List).ts
+        expect:
+          name_is: '${base_name}${2}'
+
+      - if_folder:
+          root_files:
+            have_duplicate_name: regex:(?<base_name>.+)(Doc|Store|List).ts
+        expect:
+          name_is_not: '${base_name}${2}'
 ```
 
 # Projects
@@ -44,19 +95,65 @@ structure:
     listQueryStore.example.ts: ''
 
     /chat:
-      chatMessageList.actions.ts: ''
-      chatMessageList.ts: ''
-      chatsDoc.ts: ''
+      chatMessageList.actions.ts: |
+        import { chatMessageList } from '@src/stores/chatMessageList'
+
+        function createChatMessage() {
+          // ...
+        }
+      chatMessageList.ts: |
+        import { createListQueryStore } from '@src/stores/createListQueryStore'
+
+        export const chatMessageList = createListQueryStore<
+          ChatMessage,
+          ChatMessageListQuery
+        >({
+          // ...
+        })
+      chatsDoc.ts: |
+        import { createDocumentStore } from '@src/stores/createDocumentStore'
+
+        export const chatsDoc = createDocumentStore<Chat, ChatQuery>({
+          // ...
+        })
 
     /usersDoc:
-      usersDoc.ts: ''
-      usersDoc.actions.ts: ''
+      usersDoc.ts: |
+        import { createDocumentStore } from '@src/stores/createDocumentStore'
 
-    fileCollection.ts: ''
-    fileCollection.actions.ts: ''
-    fileCollection.utils.ts: ''
+        export const usersDoc = createDocumentStore<User, UserQuery>({
+          // ...
+        })
+      usersDoc.actions.ts: |
+        import { usersDoc } from '@src/stores/usersDoc'
 
-    uiStore.ts: ''
+        function createUser() {
+          // ...
+        }
+
+    fileCollection.ts: |
+      import { createCollectionStore } from '@src/stores/createCollectionStore'
+
+      export const fileCollection = createCollectionStore<File, FileQuery>({
+        // ...
+      })
+    fileCollection.actions.ts: |
+      import { fileCollection } from '@src/stores/fileCollection'
+
+      function createFile() {
+        // ...
+      }
+    fileCollection.utils.ts: |
+      import { fileCollection } from '@src/stores/fileCollection'
+
+      function createFile() {
+        // ...
+      }
+
+    uiStore.ts: |
+      export const uiStore = new Store<Type>({
+        // ...
+      })
 
 expected_errors: false
 ```

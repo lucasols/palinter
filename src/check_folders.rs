@@ -6,7 +6,8 @@ use crate::internal_config::{
 };
 
 use self::checks::{
-    check_content, extension_is, has_sibling_file, name_case_is, str_pattern_match, Capture,
+    check_content, check_path_pattern, extension_is, has_sibling_file, name_case_is,
+    str_pattern_match, Capture,
 };
 
 #[derive(Debug)]
@@ -31,16 +32,16 @@ pub struct Folder {
 }
 
 #[derive(Debug, Default)]
-pub struct FileConditionsResult {
+pub struct ConditionsResult {
     pub captures: Option<Vec<Capture>>,
 }
 
 fn file_matches_condition(
     file: &File,
     conditions: &AnyOr<FileConditions>,
-) -> Option<FileConditionsResult> {
+) -> Option<ConditionsResult> {
     match conditions {
-        AnyOr::Any => Some(FileConditionsResult::default()),
+        AnyOr::Any => Some(ConditionsResult::default()),
         AnyOr::Or(conditions) => {
             let mut has_name_captures: Option<Vec<Capture>> = None;
 
@@ -58,7 +59,7 @@ fn file_matches_condition(
                 }
             }
 
-            Some(FileConditionsResult {
+            Some(ConditionsResult {
                 captures: has_name_captures,
             })
         }
@@ -85,7 +86,7 @@ fn file_pass_expected(
     file: &File,
     expected: &AnyOr<Vec<FileExpect>>,
     folder: &Folder,
-    conditions_result: &FileConditionsResult,
+    conditions_result: &ConditionsResult,
 ) -> Result<(), Vec<String>> {
     let mut errors = Vec::new();
 
@@ -149,6 +150,14 @@ fn file_pass_expected(
                 );
             }
 
+            if let Some(name_is) = &expect.name_is {
+                pass_some_expect = true;
+                check_result(
+                    check_path_pattern(&file.name_with_ext, name_is, &conditions_result.captures),
+                    &expect.error_msg,
+                );
+            }
+
             if cfg!(debug_assertions) && !pass_some_expect {
                 panic!("Unexpect expect {:#?}", expect);
             }
@@ -162,26 +171,65 @@ fn file_pass_expected(
     }
 }
 
-fn folder_matches_condition(folder: &Folder, conditions: &AnyOr<FolderConditions>) -> bool {
+fn folder_matches_condition(
+    folder: &Folder,
+    conditions: &AnyOr<FolderConditions>,
+) -> Option<ConditionsResult> {
     match conditions {
-        AnyOr::Any => true,
-        AnyOr::Or(_) => true,
+        AnyOr::Any => Some(ConditionsResult::default()),
+        AnyOr::Or(conditions) => {
+            let mut has_name_captures: Option<Vec<Capture>> = None;
+
+            if let Some(pattern) = &conditions.has_name_case {
+                if name_case_is(&folder.name, pattern).is_err() {
+                    return None;
+                }
+            }
+
+            if let Some(pattern) = &conditions.has_name {
+                if let Ok(captures) = str_pattern_match(&folder.name, pattern) {
+                    has_name_captures = Some(captures);
+                } else {
+                    return None;
+                }
+            }
+
+            Some(ConditionsResult {
+                captures: has_name_captures,
+            })
+        }
     }
 }
 
 fn folder_pass_expected(
     folder: &Folder,
     expected: &AnyOr<Vec<FolderExpect>>,
+    conditions_result: &ConditionsResult,
 ) -> Result<(), String> {
     match expected {
         AnyOr::Any => Ok(()),
         AnyOr::Or(expected) => {
+            let mut pass_some_expect = false;
+
             for expect in expected {
                 if let Some(file_name_case_is) = &expect.name_case_is {
+                    pass_some_expect = true;
                     append_expect_error(
                         name_case_is(&folder.name, file_name_case_is),
                         &expect.error_msg,
                     )?;
+                }
+
+                if let Some(name_is) = &expect.name_is {
+                    pass_some_expect = true;
+                    append_expect_error(
+                        check_path_pattern(&folder.name, name_is, &conditions_result.captures),
+                        &expect.error_msg,
+                    )?;
+                }
+
+                if cfg!(debug_assertions) && !pass_some_expect {
+                    panic!("Unexpect expect {:#?}", expect);
                 }
             }
 
@@ -204,7 +252,15 @@ pub fn normalize_folder_config_name(name: &String) -> String {
     if name == "." {
         name.to_owned()
     } else {
-        name.strip_prefix('/').unwrap().to_string()
+        let normalized_name = name.strip_prefix('/');
+
+        let name = if let Some(name) = normalized_name {
+            name
+        } else {
+            panic!("Invalid folder config name: {}", name)
+        };
+
+        name.to_string()
     }
 }
 
@@ -341,18 +397,22 @@ fn check_folder_childs(
                     format!("Folder '{}/{}' error: ", folder_path, sub_folder.name);
 
                 let mut folder_touched = false;
+                let mut folder_has_error = false;
 
                 let mut check_folder_rule = |rule: &FolderRule| {
                     let folder_matches = folder_matches_condition(sub_folder, &rule.conditions);
 
-                    if folder_matches {
+                    if let Some(conditions_result) = folder_matches {
                         folders_missing_check.remove(&sub_folder.name);
 
                         if !rule.not_touch {
                             folder_touched = true;
                         }
 
-                        if let Err(error) = folder_pass_expected(sub_folder, &rule.expect) {
+                        if let Err(error) =
+                            folder_pass_expected(sub_folder, &rule.expect, &conditions_result)
+                        {
+                            folder_has_error = true;
                             errors.push(format!(
                                 "{}{}",
                                 folder_error_prefix,
@@ -378,6 +438,10 @@ fn check_folder_childs(
 
                 for inheridte_rule in &inherited_folders_rules {
                     check_folder_rule(&inheridte_rule.rule);
+                }
+
+                if folder_has_error {
+                    continue;
                 }
 
                 let sub_folder_cfg: Option<&FolderConfig> = match folder_config {

@@ -416,6 +416,11 @@ fn get_test_cases(dir: &str) -> Vec<(String, String)> {
                 get_test_cases(path.to_str().unwrap())
             } else {
                 let file_name = path.file_name().unwrap().to_str().unwrap().to_string();
+
+                if file_name == "example.md" {
+                    return vec![];
+                }
+
                 let file_content = std::fs::read_to_string(path).unwrap();
 
                 vec![(file_name, file_content)]
