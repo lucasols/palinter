@@ -5,7 +5,7 @@ use crate::{
         AnyOr, Config, FileConditions, FileExpect, FileRule, FolderConditions, FolderConfig,
         FolderExpect, FolderRule,
     },
-    load_folder_tree::{File, Folder, FolderChild},
+    load_folder_structure::{File, Folder, FolderChild},
 };
 
 use self::checks::{

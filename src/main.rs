@@ -1,6 +1,6 @@
 mod check_folders;
 mod internal_config;
-mod load_folder_tree;
+mod load_folder_structure;
 mod parse_config_file;
 mod utils;
 
@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use check_folders::check_root_folder;
 use clap::Parser;
 use internal_config::get_config;
-use load_folder_tree::load_folder_tree;
+use load_folder_structure::load_folder_structure;
 use parse_config_file::parse_config_file;
 
 #[derive(Parser)]
@@ -31,7 +31,7 @@ fn main() {
 
     let config = get_config(&parsed_config).unwrap();
 
-    let folder_tree = load_folder_tree(&root, &config, &root);
+    let folder_tree = load_folder_structure(&root, &config, &root, true);
 
     match check_root_folder(&config, &folder_tree) {
         Ok(_) => {}

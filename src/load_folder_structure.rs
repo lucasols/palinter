@@ -1,5 +1,5 @@
 use globset::Glob;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::internal_config::Config;
 
@@ -23,7 +23,7 @@ pub struct Folder {
     pub childs: Vec<FolderChild>,
 }
 
-pub fn load_folder_tree(path: &PathBuf, config: &Config, root: &PathBuf) -> Folder {
+pub fn load_folder_structure(path: &Path, config: &Config, root: &PathBuf, is_root: bool) -> Folder {
     let mut childs: Vec<FolderChild> = vec![];
 
     let mut builder = globset::GlobSetBuilder::new();
@@ -45,7 +45,20 @@ pub fn load_folder_tree(path: &PathBuf, config: &Config, root: &PathBuf) -> Fold
         }
 
         if path.is_dir() {
-            childs.push(FolderChild::Folder(load_folder_tree(&path, config, root)));
+            if is_root
+                && config.root_folder.folder_rules.is_empty()
+                && config
+                    .root_folder
+                    .sub_folders_config
+                    .get(path.file_name().unwrap().to_str().unwrap())
+                    .is_none()
+            {
+                continue;
+            }
+
+            childs.push(FolderChild::Folder(load_folder_structure(
+                &path, config, root, false,
+            )));
         } else {
             let extension = path.extension().map(|s| s.to_str().unwrap().to_string());
 
@@ -84,7 +97,7 @@ mod tests {
 
     use insta::assert_debug_snapshot;
 
-    use crate::internal_config::{FolderConfig, OneOfBlocks};
+    use crate::internal_config::{FolderConfig, FolderRule, OneOfBlocks};
 
     use super::*;
 
@@ -101,7 +114,13 @@ mod tests {
                 allow_unconfigured_files: true,
                 allow_unconfigured_folders: true,
                 file_rules: vec![],
-                folder_rules: vec![],
+                folder_rules: vec![FolderRule {
+                    conditions: crate::internal_config::AnyOr::Any,
+                    expect: crate::internal_config::AnyOr::Any,
+                    error_msg: None,
+                    non_recursive: false,
+                    not_touch: false,
+                }],
                 one_of_blocks: OneOfBlocks::default(),
                 optional: false,
                 sub_folders_config: HashMap::new(),
@@ -110,13 +129,42 @@ mod tests {
 
         let root = PathBuf::from("./src/fixtures/ignore_folder");
 
-        let folder = load_folder_tree(&root, &config, &root);
+        let folder = load_folder_structure(&root, &config, &root, true);
 
         assert_debug_snapshot!(folder);
     }
 
     #[test]
     fn analyze_content_of_files_types() {
+        let config = Config {
+            analyze_content_of_files_types: Some(vec!["js".to_string()]),
+            ignore: HashSet::from_iter(vec![".DS_Store".to_string()]),
+            root_folder: FolderConfig {
+                allow_unconfigured_files: true,
+                allow_unconfigured_folders: true,
+                file_rules: vec![],
+                folder_rules: vec![FolderRule {
+                    conditions: crate::internal_config::AnyOr::Any,
+                    expect: crate::internal_config::AnyOr::Any,
+                    error_msg: None,
+                    non_recursive: false,
+                    not_touch: false,
+                }],
+                one_of_blocks: OneOfBlocks::default(),
+                optional: false,
+                sub_folders_config: HashMap::new(),
+            },
+        };
+
+        let root = PathBuf::from("./src/fixtures/analyze_file_contents");
+
+        let folder = load_folder_structure(&root, &config, &root, true);
+
+        assert_debug_snapshot!(folder);
+    }
+
+    #[test]
+    fn ignore_unconfigured_folder() {
         let config = Config {
             analyze_content_of_files_types: Some(vec!["js".to_string()]),
             ignore: HashSet::from_iter(vec![".DS_Store".to_string()]),
@@ -133,7 +181,7 @@ mod tests {
 
         let root = PathBuf::from("./src/fixtures/analyze_file_contents");
 
-        let folder = load_folder_tree(&root, &config, &root);
+        let folder = load_folder_structure(&root, &config, &root, true);
 
         assert_debug_snapshot!(folder);
     }
