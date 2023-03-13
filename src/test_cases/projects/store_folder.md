@@ -72,15 +72,17 @@
               at_most: 1
 
       - if_folder:
-          root_files:
-            # Here we assure that the folder is not a group folder
-            does_not_have_duplicate_name: regex:(?<base_name>.+)(Doc|Store|List).ts
+          # Here we assure that the folder is not a group folder
+          root_files_find_pattern:
+            pattern: regex:(?P<base_name>.+)(Doc|Store|List).ts
+            at_most: 1
         expect:
           name_is: '${base_name}${2}'
 
       - if_folder:
-          root_files:
-            have_duplicate_name: regex:(?<base_name>.+)(Doc|Store|List).ts
+          root_files_find_pattern:
+            pattern: regex:(?P<base_name>.+)(Doc|Store|List).ts
+            at_least: 2
         expect:
           name_is_not: '${base_name}${2}'
 ```

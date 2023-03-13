@@ -27,6 +27,7 @@ pub enum NameCase {
 pub struct FileConditions {
     pub has_extension: Option<Vec<String>>,
     pub has_name: Option<String>,
+    pub not_has_name: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -50,21 +51,35 @@ pub struct FileExpect {
     pub content_matches: Option<Vec<ContentMatches>>,
     pub content_matches_some: Option<Vec<ContentMatches>>,
     pub name_is: Option<String>,
+    pub name_is_not: Option<String>,
 
     pub error_msg: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct RootFilesFindPattern {
+    pub pattern: String,
+    pub at_least: usize,
+    pub at_most: Option<usize>,
 }
 
 #[derive(Debug, Clone)]
 pub struct FolderConditions {
     pub has_name_case: Option<NameCase>,
     pub has_name: Option<String>,
+    pub not_has_name: Option<String>,
+    pub root_files_find_pattern: Option<RootFilesFindPattern>,
 }
 
 #[derive(Debug, Clone)]
 pub struct FolderExpect {
     pub name_case_is: Option<NameCase>,
-    pub error_msg: Option<String>,
     pub name_is: Option<String>,
+    pub name_is_not: Option<String>,
+    pub root_files_has: Option<String>,
+    pub root_files_has_not: Option<String>,
+
+    pub error_msg: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -110,6 +125,8 @@ pub struct FolderConfig {
     pub folder_rules: Vec<FolderRule>,
     pub optional: bool,
     pub one_of_blocks: OneOfBlocks,
+    pub allow_unconfigured_files: bool,
+    pub allow_unconfigured_folders: bool,
 }
 
 #[derive(Debug)]
@@ -234,6 +251,7 @@ fn normalize_rules(
                                 &conditions.has_extension,
                             ),
                             has_name: conditions.has_name.clone(),
+                            not_has_name: conditions.not_has_name.clone(),
                         })
                     }
                 };
@@ -336,6 +354,15 @@ fn normalize_rules(
                                 .map(|name_case| normalize_name_case(name_case, config_path))
                                 .transpose()?,
                             has_name: conditions.has_name.clone(),
+                            not_has_name: conditions.not_has_name.clone(),
+                            root_files_find_pattern: conditions
+                                .root_files_find_pattern
+                                .as_ref()
+                                .map(|root_files_find_pattern| RootFilesFindPattern {
+                                    pattern: root_files_find_pattern.pattern.clone(),
+                                    at_least: root_files_find_pattern.at_least.unwrap_or(1),
+                                    at_most: root_files_find_pattern.at_most,
+                                }),
                         })
                     }
                 };
@@ -343,7 +370,7 @@ fn normalize_rules(
                 check_rules_expects(expect, expect_one_of, config_path)?;
 
                 if let Some(expect) = expect {
-                    let new_expect = match expect {
+                    let new_expect = match &**expect {
                         ParsedAnyOr::Any(any) => {
                             check_any(any, config_path)?;
                             AnyOr::Any
@@ -577,6 +604,9 @@ fn get_function_expect(
             .as_ref()
             .map(|name_case| normalize_name_case(name_case, config_path))
             .transpose()?,
+        name_is_not: parsed_expected.name_is_not,
+        root_files_has: parsed_expected.root_files_has,
+        root_files_has_not: parsed_expected.root_files_has_not,
     })
 }
 
@@ -599,6 +629,7 @@ fn get_file_expect(
             parsed_expected.content_matches_any,
             config_path,
         ),
+        name_is_not: parsed_expected.name_is_not,
     })
 }
 
@@ -754,6 +785,8 @@ fn normalize_folder_config(
                                     sub_folder_name,
                                     sub_folder_config.clone(),
                                 )]),
+                                allow_unconfigured_files: None,
+                                allow_unconfigured_folders: None,
                             }),
                             folder_path.clone(),
                             normalize_blocks,
@@ -774,6 +807,16 @@ fn normalize_folder_config(
                 sub_folders_config,
                 folder_rules,
                 one_of_blocks,
+                allow_unconfigured_files: get_true_flag(
+                    &folder_path,
+                    &config.allow_unconfigured_files,
+                    "allow_unconfigured_files",
+                )?,
+                allow_unconfigured_folders: get_true_flag(
+                    &folder_path,
+                    &config.allow_unconfigured_folders,
+                    "allow_unconfigured_folders",
+                )?,
                 optional: get_true_flag(&folder_path, &config.optional, "optional")?,
             })
         }

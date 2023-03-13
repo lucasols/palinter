@@ -338,7 +338,7 @@ const configFile: Config = {
             },
             expect: {
               root_files: {
-                has: ['{{parentFolder}}.tsx'],
+                has: ['{{parent_folder}}.tsx'],
               },
             },
           },
@@ -348,7 +348,7 @@ const configFile: Config = {
             },
             expect: {
               root_files: {
-                does_not_have: ['{{parentFolder as PascalCase}}.tsx'],
+                does_not_have: ['{{parent_folder_PascalCase}}.tsx'],
               },
             },
           },

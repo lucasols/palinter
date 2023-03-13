@@ -13,7 +13,48 @@ pub enum SingleOrMultiple<T> {
 pub struct ParsedFileConditions {
     pub has_extension: Option<SingleOrMultiple<String>>,
     pub has_name: Option<String>,
-    pub does_not_have_name: Option<SingleOrMultiple<String>>,
+    pub not_has_name: Option<String>,
+
+    #[serde(flatten)]
+    pub wrong: HashMap<String, Value>,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct ParsedFileExpect {
+    pub name_case_is: Option<String>,
+    pub extension_is: Option<SingleOrMultiple<String>>,
+    pub has_sibling_file: Option<String>,
+    pub content_matches: Option<ParsedFileContentMatches>,
+    pub content_matches_any: Option<ParsedFileContentMatches>,
+    pub name_is: Option<String>,
+    pub name_is_not: Option<String>,
+
+    pub error_msg: Option<String>,
+
+    #[serde(flatten)]
+    pub wrong: HashMap<String, Value>,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct ParsedFolderConditions {
+    pub has_name_case: Option<String>,
+    pub has_name: Option<String>,
+    pub not_has_name: Option<String>,
+    pub root_files_find_pattern: Option<ParsedFindPattern>,
+
+    #[serde(flatten)]
+    pub wrong: HashMap<String, Value>,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct ParsedFolderExpect {
+    pub name_case_is: Option<String>,
+    pub name_is: Option<String>,
+    pub name_is_not: Option<String>,
+    pub root_files_has: Option<String>,
+    pub root_files_has_not: Option<String>,
+
+    pub error_msg: Option<String>,
 
     #[serde(flatten)]
     pub wrong: HashMap<String, Value>,
@@ -46,38 +87,10 @@ pub enum ParsedFileContentMatches {
 }
 
 #[derive(Deserialize, Debug, Clone)]
-pub struct ParsedFileExpect {
-    pub name_case_is: Option<String>,
-    pub extension_is: Option<SingleOrMultiple<String>>,
-    pub has_sibling_file: Option<String>,
-    pub content_matches: Option<ParsedFileContentMatches>,
-    pub content_matches_any: Option<ParsedFileContentMatches>,
-    pub name_is: Option<String>,
-
-    pub error_msg: Option<String>,
-
-    #[serde(flatten)]
-    pub wrong: HashMap<String, Value>,
-}
-
-#[derive(Deserialize, Debug, Clone)]
-pub struct ParsedFolderConditions {
-    pub has_name_case: Option<String>,
-    pub has_name: Option<String>,
-
-    #[serde(flatten)]
-    pub wrong: HashMap<String, Value>,
-}
-
-#[derive(Deserialize, Debug, Clone)]
-pub struct ParsedFolderExpect {
-    pub name_case_is: Option<String>,
-    pub name_is: Option<String>,
-
-    pub error_msg: Option<String>,
-
-    #[serde(flatten)]
-    pub wrong: HashMap<String, Value>,
+pub struct ParsedFindPattern {
+    pub pattern: String,
+    pub at_least: Option<usize>,
+    pub at_most: Option<usize>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -102,7 +115,7 @@ pub enum ParsedRule {
     Folder {
         #[serde(rename = "if_folder")]
         conditions: ParsedAnyOr<ParsedFolderConditions>,
-        expect: Option<ParsedAnyOr<SingleOrMultiple<ParsedFolderExpect>>>,
+        expect: Option<Box<ParsedAnyOr<SingleOrMultiple<ParsedFolderExpect>>>>,
         expect_one_of: Option<Vec<ParsedFolderExpect>>,
         error_msg: Option<String>,
         non_recursive: Option<bool>,
@@ -123,6 +136,8 @@ pub struct CorrectParsedFolderConfig {
     pub has_files_in_root: Option<Vec<String>>,
     pub rules: Option<Vec<ParsedRule>>,
     pub optional: Option<bool>,
+    pub allow_unconfigured_files: Option<bool>,
+    pub allow_unconfigured_folders: Option<bool>,
 
     #[serde(flatten)]
     pub folders: BTreeMap<String, ParsedFolderConfig>,

@@ -6,8 +6,9 @@ use crate::internal_config::{
 };
 
 use self::checks::{
-    check_content, check_path_pattern, extension_is, has_sibling_file, name_case_is,
-    str_pattern_match, Capture,
+    check_content, check_negated_path_pattern, check_negated_root_files_has_pattern,
+    check_path_pattern, check_root_files_find_pattern, check_root_files_has_pattern, extension_is,
+    has_sibling_file, name_case_is, path_pattern_match, Capture,
 };
 
 #[derive(Debug)]
@@ -33,7 +34,7 @@ pub struct Folder {
 
 #[derive(Debug, Default)]
 pub struct ConditionsResult {
-    pub captures: Option<Vec<Capture>>,
+    pub captures: Vec<Capture>,
 }
 
 fn file_matches_condition(
@@ -43,7 +44,7 @@ fn file_matches_condition(
     match conditions {
         AnyOr::Any => Some(ConditionsResult::default()),
         AnyOr::Or(conditions) => {
-            let mut has_name_captures: Option<Vec<Capture>> = None;
+            let mut has_name_captures: Vec<Capture> = Vec::new();
 
             if let Some(extensions) = &conditions.has_extension {
                 if !extensions.contains(&file.extension) {
@@ -52,9 +53,15 @@ fn file_matches_condition(
             }
 
             if let Some(pattern) = &conditions.has_name {
-                if let Ok(captures) = str_pattern_match(&file.name_with_ext, pattern) {
-                    has_name_captures = Some(captures);
+                if let Ok(captures) = path_pattern_match(&file.name_with_ext, pattern) {
+                    has_name_captures.extend(captures)
                 } else {
+                    return None;
+                }
+            }
+
+            if let Some(pattern) = &conditions.not_has_name {
+                if path_pattern_match(&file.name_with_ext, pattern).is_ok() {
                     return None;
                 }
             }
@@ -158,6 +165,18 @@ fn file_pass_expected(
                 );
             }
 
+            if let Some(name_is_not) = &expect.name_is_not {
+                pass_some_expect = true;
+                check_result(
+                    check_negated_path_pattern(
+                        &file.name_with_ext,
+                        name_is_not,
+                        &conditions_result.captures,
+                    ),
+                    &expect.error_msg,
+                );
+            }
+
             if cfg!(debug_assertions) && !pass_some_expect {
                 panic!("Unexpect expect {:#?}", expect);
             }
@@ -178,7 +197,7 @@ fn folder_matches_condition(
     match conditions {
         AnyOr::Any => Some(ConditionsResult::default()),
         AnyOr::Or(conditions) => {
-            let mut has_name_captures: Option<Vec<Capture>> = None;
+            let mut result_captures: Vec<Capture> = Vec::new();
 
             if let Some(pattern) = &conditions.has_name_case {
                 if name_case_is(&folder.name, pattern).is_err() {
@@ -187,15 +206,29 @@ fn folder_matches_condition(
             }
 
             if let Some(pattern) = &conditions.has_name {
-                if let Ok(captures) = str_pattern_match(&folder.name, pattern) {
-                    has_name_captures = Some(captures);
+                if let Ok(captures) = path_pattern_match(&folder.name, pattern) {
+                    result_captures.extend(captures);
                 } else {
                     return None;
                 }
             }
 
+            if let Some(find_pattern) = &conditions.root_files_find_pattern {
+                if let Ok(captures) = check_root_files_find_pattern(folder, find_pattern) {
+                    result_captures.extend(captures);
+                } else {
+                    return None;
+                }
+            }
+
+            if let Some(pattern) = &conditions.not_has_name {
+                if path_pattern_match(&folder.name, pattern).is_ok() {
+                    return None;
+                }
+            }
+
             Some(ConditionsResult {
-                captures: has_name_captures,
+                captures: result_captures,
             })
         }
     }
@@ -224,6 +257,43 @@ fn folder_pass_expected(
                     pass_some_expect = true;
                     append_expect_error(
                         check_path_pattern(&folder.name, name_is, &conditions_result.captures),
+                        &expect.error_msg,
+                    )?;
+                }
+
+                if let Some(name_is_not) = &expect.name_is_not {
+                    pass_some_expect = true;
+                    append_expect_error(
+                        check_negated_path_pattern(
+                            &folder.name,
+                            name_is_not,
+                            &conditions_result.captures,
+                        ),
+                        &expect.error_msg,
+                    )?;
+                }
+
+                if let Some(root_files_has) = &expect.root_files_has {
+                    pass_some_expect = true;
+                    append_expect_error(
+                        check_root_files_has_pattern(
+                            folder,
+                            root_files_has,
+                            &conditions_result.captures,
+                        )
+                        .map(|_| ()),
+                        &expect.error_msg,
+                    )?;
+                }
+
+                if let Some(root_files_has_not) = &expect.root_files_has_not {
+                    pass_some_expect = true;
+                    append_expect_error(
+                        check_negated_root_files_has_pattern(
+                            folder,
+                            root_files_has_not,
+                            &conditions_result.captures,
+                        ),
                         &expect.error_msg,
                     )?;
                 }
@@ -281,6 +351,13 @@ fn check_folder_childs(
     inherited_folders_rules: Vec<InheritedFolderRule>,
 ) -> Result<(), Vec<String>> {
     let mut errors: Vec<String> = Vec::new();
+
+    let allow_unconfigured_folders = folder_config.map_or(false, |folder_config| {
+        folder_config.allow_unconfigured_folders
+    });
+    let allow_unconfigured_files = folder_config.map_or(false, |folder_config| {
+        folder_config.allow_unconfigured_files
+    });
 
     let mut folders_missing_check = folder_config
         .map(|folder_config| {
@@ -385,7 +462,7 @@ fn check_folder_childs(
                     }
                 }
 
-                if !file_touched {
+                if !file_touched && !allow_unconfigured_files {
                     errors.push(format!(
                         "File '{}.{}' is not expected in folder '{}'",
                         file.basename, file.extension, folder_path
@@ -458,12 +535,17 @@ fn check_folder_childs(
                 };
 
                 if sub_folder_cfg.is_some() {
+                    folder_touched = true;
                     folders_missing_check.remove(&sub_folder.name);
-                } else if !folder_touched {
+                } else if !folder_touched && !allow_unconfigured_folders {
                     errors.push(format!(
                         "Folder '/{}' is not expected in folder '{}'",
                         sub_folder.name, folder_path
                     ));
+                }
+
+                if !folder_touched {
+                    continue;
                 }
 
                 let parent_file_rules: Vec<InheritedFileRule> =
