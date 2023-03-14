@@ -1,7 +1,7 @@
 build:
 	cargo build --release
 	cp target/release/palinter npm/bin
-	cp target/release/palinter /Users/lucasoliveirasantos/Github/jestor/web-app/node_modules/.pnpm/palinter@0.2.0/node_modules/palinter/bin
+	chmod +x npm/bin/palinter
 
 publish:
 	make build
