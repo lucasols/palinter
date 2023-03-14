@@ -23,7 +23,12 @@ pub struct Folder {
     pub childs: Vec<FolderChild>,
 }
 
-pub fn load_folder_structure(path: &Path, config: &Config, root: &PathBuf, is_root: bool) -> Folder {
+pub fn load_folder_structure(
+    path: &Path,
+    config: &Config,
+    root: &PathBuf,
+    is_root: bool,
+) -> Result<Folder, String> {
     let mut childs: Vec<FolderChild> = vec![];
 
     let mut builder = globset::GlobSetBuilder::new();
@@ -34,7 +39,13 @@ pub fn load_folder_structure(path: &Path, config: &Config, root: &PathBuf, is_ro
 
     let ignore_paths_set = builder.build().unwrap();
 
-    for entry in path.read_dir().unwrap() {
+    for entry in path.read_dir().map_err(|err| {
+        format!(
+            "Error reading directory: {}, Error: {}",
+            path.to_str().unwrap_or("invalid path"),
+            err
+        )
+    })? {
         let entry = entry.unwrap();
         let path = entry.path();
 
@@ -50,7 +61,7 @@ pub fn load_folder_structure(path: &Path, config: &Config, root: &PathBuf, is_ro
                 && config
                     .root_folder
                     .sub_folders_config
-                    .get(path.file_name().unwrap().to_str().unwrap())
+                    .get(&format!("/{}", path.file_name().unwrap().to_str().unwrap()))
                     .is_none()
             {
                 continue;
@@ -58,26 +69,14 @@ pub fn load_folder_structure(path: &Path, config: &Config, root: &PathBuf, is_ro
 
             childs.push(FolderChild::Folder(load_folder_structure(
                 &path, config, root, false,
-            )));
+            )?));
         } else {
             let extension = path.extension().map(|s| s.to_str().unwrap().to_string());
 
             let file = File {
                 basename: path.file_stem().unwrap().to_str().unwrap().to_string(),
                 name_with_ext: path.file_name().unwrap().to_str().unwrap().to_string(),
-                content: if let Some(extensions) = &config.analyze_content_of_files_types {
-                    if let Some(extension) = &extension {
-                        if extensions.contains(extension) {
-                            std::fs::read_to_string(&path).unwrap()
-                        } else {
-                            String::new()
-                        }
-                    } else {
-                        String::new()
-                    }
-                } else {
-                    String::new()
-                },
+                content: get_file_content(config, &extension, path),
                 extension,
             };
 
@@ -85,10 +84,22 @@ pub fn load_folder_structure(path: &Path, config: &Config, root: &PathBuf, is_ro
         }
     }
 
-    Folder {
+    Ok(Folder {
         name: path.file_name().unwrap().to_str().unwrap().to_string(),
         childs,
+    })
+}
+
+fn get_file_content(config: &Config, extension: &Option<String>, path: PathBuf) -> String {
+    if let Some(extensions) = &config.analyze_content_of_files_types {
+        if let Some(extension) = extension {
+            if extensions.contains(extension) {
+                return std::fs::read_to_string(path).unwrap();
+            }
+        }
     }
+
+    String::new()
 }
 
 #[cfg(test)]

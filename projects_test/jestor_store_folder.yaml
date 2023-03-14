@@ -1,3 +1,5 @@
+analyze_content_of_files_types: ['ts', 'tsx']
+
 ./:
   /stores:
     has_files_in_root:
@@ -19,52 +21,59 @@
         expect:
           has_sibling_file: '${1}${2}.ts'
           content_matches: regex:from '(.+)/${1}${2}'
+          error_msg: auxiliar store files should import and use the store
 
       - if_file:
           has_name: '*Doc.ts'
         expect:
+          error_msg: More than one store found. Each store should have it's own file
           content_matches:
-            - export const ${1}Doc = createDocumentStore<
+            - export const ${1}Doc = createApiDocumentStore<
             - any:
-                - = createDocumentStore
-                - = createCollectionStore
-                - = createListQueryStore
+                - = createApiDocumentStore
+                - = createApiCollectionStore
+                - = createApiListQueryStore
                 - = new Store
               at_most: 1
 
       - if_file:
           has_name: '*List.ts'
         expect:
-          content_matches:
-            - export const ${1}List = createListQueryStore<
-            - any:
-                - = createDocumentStore
-                - = createCollectionStore
-                - = createListQueryStore
-                - = new Store
-              at_most: 1
+          - error_msg: More than one store found. Each store should have it's own file
+            content_matches:
+              - any:
+                  - = createApiDocumentStore
+                  - = createApiCollectionStore
+                  - = createApiListQueryStore
+                  - = new Store
+                at_most: 1
+          - error_msg: ListQueryStores instances should be named with the store name + 'List'
+            content_matches:
+              - export const ${1}List = createApiListQueryStore<
 
       - if_file:
           has_name: '*Collection.ts'
         expect:
+          error_msg: More than one store found. Each store should have it's own file
           content_matches:
-            - export const ${1}Collection = createCollectionStore<
+            - export const ${1}Collection = createApiCollectionStore<
             - any:
-                - = createDocumentStore
-                - = createCollectionStore
-                - = createListQueryStore
+                - = createApiDocumentStore
+                - = createApiCollectionStore
+                - = createApiListQueryStore
                 - = new Store
               at_most: 1
 
       - if_file:
           has_name: '*Store.ts'
         expect:
+          error_msg: More than one store found. Each store should have it's own file
           content_matches:
             - export const ${1}Store = new Store<
             - any:
-                - = createDocumentStore
-                - = createCollectionStore
-                - = createListQueryStore
+                - = createApiDocumentStore
+                - = createApiCollectionStore
+                - = createApiListQueryStore
                 - = new Store
               at_most: 1
 

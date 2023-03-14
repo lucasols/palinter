@@ -27,13 +27,35 @@ fn main() {
 
     let root = args.root;
 
-    let parsed_config = parse_config_file(&confg_path).unwrap();
+    lint(confg_path, root);
+}
+
+fn lint(confg_path: PathBuf, root: PathBuf) {
+    let measure_time = std::time::Instant::now();
+
+    let parsed_config = match parse_config_file(&confg_path) {
+        Ok(config) => config,
+        Err(err) => {
+            println!(
+                "❌ Error parsing config file '{}': {}",
+                confg_path.to_str().unwrap(),
+                err
+            );
+            std::process::exit(1);
+        }
+    };
 
     let config = get_config(&parsed_config).unwrap();
 
-    let folder_tree = load_folder_structure(&root, &config, &root, true);
+    let root_structure = match load_folder_structure(&root, &config, &root, true) {
+        Ok(root_structure) => root_structure,
+        Err(err) => {
+            println!("❌ Error loading folder structure: {}", err);
+            std::process::exit(1);
+        }
+    };
 
-    match check_root_folder(&config, &folder_tree) {
+    match check_root_folder(&config, &root_structure) {
         Ok(_) => {}
         Err(err) => {
             println!("❌ Errors found in the project:\n\n{}", err.join("\n\n"));
@@ -42,5 +64,6 @@ fn main() {
     }
 
     println!("✅ No errors detected!");
+    println!("Time: {}ms", measure_time.elapsed().as_millis());
     std::process::exit(0);
 }

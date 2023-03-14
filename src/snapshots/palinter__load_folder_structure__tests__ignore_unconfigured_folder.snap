@@ -1,17 +1,17 @@
 ---
-source: src/load_folder_tree.rs
+source: src/load_folder_structure.rs
 expression: folder
 ---
 Folder {
-    name: "ignore_folder",
+    name: "analyze_file_contents",
     childs: [
         FileChild(
             File {
-                basename: "not_ignore",
-                name_with_ext: "not_ignore.ts",
+                basename: "test",
+                name_with_ext: "test.md",
                 content: "",
                 extension: Some(
-                    "ts",
+                    "md",
                 ),
             },
         ),

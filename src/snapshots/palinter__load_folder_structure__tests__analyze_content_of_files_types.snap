@@ -1,5 +1,5 @@
 ---
-source: src/load_folder_tree.rs
+source: src/load_folder_structure.rs
 expression: folder
 ---
 Folder {

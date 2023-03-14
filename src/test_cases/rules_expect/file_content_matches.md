@@ -75,7 +75,7 @@ structure:
       export const oneVar = 'hello world'
 
 expected_errors:
-  - "File './helloWorld/oneWithHelloWorld.ts' error: content not matches the configured pattern"
+  - "File './helloWorld/oneWithHelloWorld.ts' error: configured patterns not found in the file content"
 ```
 
 ### Content at most
@@ -106,7 +106,7 @@ structure:
     file.ts: ''
 
 expected_errors:
-  - "File './contentAtMost/file.ts' error: content not matches the configured pattern"
+  - "File './contentAtMost/file.ts' error: configured patterns not found in the file content"
 ```
 
 ### Content at least
@@ -183,5 +183,5 @@ structure:
       </svg>
 
 expected_errors:
-  - "File './contentMatchesSome/file.svg' error: content not matches the configured pattern"
+  - "File './contentMatchesSome/file.svg' error: configured patterns not found in the file content"
 ```

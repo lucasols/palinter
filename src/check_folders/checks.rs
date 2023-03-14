@@ -224,6 +224,8 @@ pub fn check_content(
 ) -> Result<(), String> {
     let mut matched = false;
 
+    let not_found_msg = "configured patterns not found in the file content".to_string();
+
     for content_match in content_matches {
         match content_match.matches.clone() {
             crate::internal_config::Matches::Any(matches) => {
@@ -239,7 +241,7 @@ pub fn check_content(
 
                 if num_of_matches == 0 {
                     if !some {
-                        return Err("content not matches the configured pattern".to_string());
+                        return Err(not_found_msg);
                     }
                 } else {
                     if num_of_matches < content_match.at_least {
@@ -269,7 +271,7 @@ pub fn check_content(
 
                     if pattern_matches == 0 {
                         if !some {
-                            return Err("content not matches the configured pattern".to_string());
+                            return Err(not_found_msg);
                         }
                     } else {
                         if pattern_matches < content_match.at_least {
@@ -296,7 +298,7 @@ pub fn check_content(
     }
 
     if some && !matched {
-        return Err("content not matches the configured pattern".to_string());
+        return Err(not_found_msg);
     }
 
     Ok(())

@@ -164,6 +164,9 @@ pub struct ParsedConfig {
 
     #[serde(rename = "./")]
     pub root_folder: ParsedFolderConfig,
+
+    #[serde(flatten)]
+    pub wrong: HashMap<String, Value>,
 }
 
 pub enum ParseFrom {
@@ -188,7 +191,7 @@ pub fn parse_config_string(config: &String, from: ParseFrom) -> Result<ParsedCon
 }
 
 pub fn parse_config_file(config_path: &PathBuf) -> Result<ParsedConfig, String> {
-    let config = std::fs::read_to_string(config_path).unwrap();
+    let config = std::fs::read_to_string(config_path).map_err(|err| err.to_string())?;
 
     let is_json = config_path.ends_with(".json");
 

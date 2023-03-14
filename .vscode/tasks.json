@@ -31,6 +31,15 @@
       "presentation": {
         "clear": true
       }
+    },
+    {
+      "label": "Build",
+      "type": "shell",
+      "command": "make build",
+      "problemMatcher": ["$rustc"],
+      "presentation": {
+        "clear": true
+      }
     }
   ]
 }

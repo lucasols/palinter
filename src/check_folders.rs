@@ -325,7 +325,6 @@ pub fn to_folder_config_name(name: &String) -> String {
 }
 
 fn check_folder_childs(
-    config: &Config,
     folder: &Folder,
     folder_config: Option<&FolderConfig>,
     folder_path: String,
@@ -555,7 +554,6 @@ fn check_folder_childs(
                     [inherited_folders_rules.clone(), parent_folder_rules].concat();
 
                 if let Err(extra_errors) = check_folder_childs(
-                    config,
                     sub_folder,
                     sub_folder_cfg,
                     parent_path,
@@ -584,7 +582,6 @@ fn check_folder_childs(
 
 pub fn check_root_folder(config: &Config, folder: &Folder) -> Result<(), Vec<String>> {
     check_folder_childs(
-        config,
         folder,
         Some(&config.root_folder),
         String::from("."),

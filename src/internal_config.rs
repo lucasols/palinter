@@ -391,7 +391,7 @@ fn normalize_rules(
                                     config_path,
                                 )?;
 
-                                expects.push(get_function_expect(parsed_expected, config_path)?);
+                                expects.push(get_folder_expect(parsed_expected, config_path)?);
                             }
 
                             AnyOr::Or(expects)
@@ -416,7 +416,7 @@ fn normalize_rules(
                         for rule_expect in expect_one_of {
                             rules.push(FolderRule {
                                 conditions: conditions.clone(),
-                                expect: AnyOr::Or(vec![get_function_expect(
+                                expect: AnyOr::Or(vec![get_folder_expect(
                                     rule_expect.clone(),
                                     config_path,
                                 )?]),
@@ -454,12 +454,6 @@ fn normalize_rules(
                 one_of_folder_blocks.extend(block_one_of_blocks.folder_blocks);
             }
             ParsedRule::OneOf { rules, error_msg } => {
-                if config_path.starts_with("global_rules") {
-                    return Err(
-                        "Config error: 'one_of' are not allowed in global rules".to_string()
-                    );
-                }
-
                 let config_path = &format!("{}.{}", config_path, "one_of");
 
                 if let Some(error_msg) = error_msg {
@@ -578,13 +572,6 @@ fn check_expect_one_of<T>(
     expect_one_of_len: usize,
     conditions: &AnyOr<T>,
 ) -> Result<(), String> {
-    if config_path.starts_with("global_rules") {
-        return Err(format!(
-                "Config error in '{}': rules with 'expect_one_of' property are not allowed in global_rules",
-                config_path
-            ));
-    }
-
     if expect_one_of_len < 2 {
         return Err(format!(
             "Config error in '{}': rules with 'expect_one_of' property should have at least 2 expect rules",
@@ -602,7 +589,7 @@ fn check_expect_one_of<T>(
     Ok(())
 }
 
-fn get_function_expect(
+fn get_folder_expect(
     parsed_expected: ParsedFolderExpect,
     config_path: &String,
 ) -> Result<FolderExpect, String> {
@@ -872,6 +859,13 @@ fn normalize_blocks(parsed_blocks: &ParsedBlocks) -> Result<NormalizedBlocks, St
 }
 
 pub fn get_config(parsed_config: &ParsedConfig) -> Result<Config, String> {
+    if !parsed_config.wrong.is_empty() {
+        return Err(format!(
+            "Config error: Invalid config, received: {:#?}",
+            parsed_config.wrong
+        ));
+    }
+
     let normalized_block = &normalize_blocks(&parsed_config.blocks)?;
 
     Ok(Config {
@@ -888,6 +882,6 @@ pub fn get_config(parsed_config: &ParsedConfig) -> Result<Config, String> {
             ]
             .concat(),
         ),
-        analyze_content_of_files_types: None,
+        analyze_content_of_files_types: parsed_config.analyze_content_of_files_types.clone(),
     })
 }
