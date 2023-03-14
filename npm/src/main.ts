@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { spawnSync } from 'child_process'
+import { chmodSync } from 'fs'
 
 function getExePath() {
   try {
@@ -13,7 +14,10 @@ function getExePath() {
 
 function runPalinter() {
   const args = process.argv.slice(2)
-  const processResult = spawnSync(getExePath(), args, { stdio: 'inherit' })
+  const exePath = getExePath()
+
+  chmodSync(exePath, 0o755)
+  const processResult = spawnSync(exePath, args, { stdio: 'inherit' })
 
   if (processResult.error) {
     throw processResult.error
