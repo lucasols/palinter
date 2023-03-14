@@ -5,7 +5,7 @@ build:
 
 publish:
 	make build
-	cd npm && pnpm build &&	pnpm publish
+	cd npm && pnpm build &&	pnpm publish --access public
 
 jestor_test:
 	cargo run -- --config projects_test/jestor_store_folder.yaml --root ../jestor/web-app
