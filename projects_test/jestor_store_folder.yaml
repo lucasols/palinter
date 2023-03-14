@@ -1,7 +1,7 @@
 analyze_content_of_files_types: ['ts', 'tsx']
 
 ./:
-  /stores:
+  /src/stores:
     has_files_in_root:
       - collectionStore.example.ts
       - documentStore.example.ts

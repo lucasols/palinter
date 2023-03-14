@@ -84,8 +84,21 @@ pub fn load_folder_structure(
         }
     }
 
+    let folder_name = match path.file_name() {
+        Some(name) => name.to_str().unwrap().to_string(),
+        None => {
+            let name = path.to_str().unwrap_or("invalid path");
+
+            if name == "." {
+                name.to_string()
+            } else {
+                return Err(format!("Error getting folder name: {}", name));
+            }
+        }
+    };
+
     Ok(Folder {
-        name: path.file_name().unwrap().to_str().unwrap().to_string(),
+        name: folder_name,
         childs,
     })
 }

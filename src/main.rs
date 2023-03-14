@@ -64,6 +64,6 @@ fn lint(confg_path: PathBuf, root: PathBuf) {
     }
 
     println!("✅ No errors detected!");
-    println!("Time: {}ms", measure_time.elapsed().as_millis());
+    println!("Time: {:.3}s", measure_time.elapsed().as_secs_f32());
     std::process::exit(0);
 }

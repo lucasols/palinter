@@ -4,3 +4,4 @@ jestor_*.md
 .DS_Store
 npm/node_modules
 npm/bin
+flamegraph.svg

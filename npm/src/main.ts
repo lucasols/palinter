@@ -14,6 +14,11 @@ function getExePath() {
 function runPalinter() {
   const args = process.argv.slice(2)
   const processResult = spawnSync(getExePath(), args, { stdio: 'inherit' })
+
+  if (processResult.error) {
+    throw processResult.error
+  }
+
   process.exit(processResult.status ?? 0)
 }
 
