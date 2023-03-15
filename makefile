@@ -17,8 +17,8 @@ publish_current:
 
 publish_minor:
 	make build
-	cd npm
-	pnpm version minor
+	cd npm \
+	&& pnpm version minor
 	git commit -am "minor version bump"
 	make publish_current
 
