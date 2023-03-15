@@ -1,6 +1,7 @@
 target
 dist
 jestor_*.md
+jestor_*.yaml
 .DS_Store
 npm/node_modules
 npm/bin
