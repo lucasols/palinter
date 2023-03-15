@@ -10,19 +10,23 @@ build:
 	cp target/x86_64-pc-windows-gnu/release/palinter.exe npm/bin/win-x64
 	cp target/x86_64-unknown-linux-gnu/release/palinter npm/bin/linux-x64
 
+publish_current:
+	cd npm \
+	&& pnpm build \
+	&& pnpm publish --access public --no-git-checks
+
+
 publish_minor:
 	make build
 	cd npm \
-	&& pnpm version minor \
-	&& pnpm build \
-	&& pnpm publish --access public
+	&& pnpm version minor
+	make publish_current
 
 publish_patch:
 	make build
 	cd npm \
-	&& pnpm version patch \
-	&& pnpm build \
-	&& pnpm publish --access public
+	&& pnpm version patch
+	make publish_current
 
 jestor_test:
 	cargo run -- --config projects_test/jestor_store_folder.yaml --root ../jestor/web-app
