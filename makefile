@@ -10,17 +10,17 @@ build:
 	cp target/x86_64-pc-windows-gnu/release/palinter.exe npm/bin/win-x64
 	cp target/x86_64-unknown-linux-gnu/release/palinter npm/bin/linux-x64
 
-publish_major:
-	make build
-	cd npm \
-	&& pnpm version major \
-	&& pnpm build \
-	&& pnpm publish --access public
-
 publish_minor:
 	make build
 	cd npm \
 	&& pnpm version minor \
+	&& pnpm build \
+	&& pnpm publish --access public
+
+publish_patch:
+	make build
+	cd npm \
+	&& pnpm version patch \
 	&& pnpm build \
 	&& pnpm publish --access public
 
