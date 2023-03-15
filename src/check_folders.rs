@@ -346,10 +346,10 @@ fn check_folder_childs(
     let mut errors: Vec<String> = Vec::new();
 
     let allow_unconfigured_folders = folder_config.map_or(false, |folder_config| {
-        folder_config.allow_unconfigured_folders
+        folder_config.allow_unexpected_folders
     });
     let allow_unconfigured_files = folder_config.map_or(false, |folder_config| {
-        folder_config.allow_unconfigured_files
+        folder_config.allow_unexpected_files
     });
 
     let mut folders_missing_check = folder_config

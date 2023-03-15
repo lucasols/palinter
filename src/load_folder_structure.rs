@@ -135,8 +135,8 @@ mod tests {
                 ".DS_Store".to_string(),
             ]),
             root_folder: FolderConfig {
-                allow_unconfigured_files: true,
-                allow_unconfigured_folders: true,
+                allow_unexpected_files: true,
+                allow_unexpected_folders: true,
                 file_rules: vec![],
                 folder_rules: vec![FolderRule {
                     conditions: crate::internal_config::AnyOr::Any,
@@ -164,8 +164,8 @@ mod tests {
             analyze_content_of_files_types: Some(vec!["js".to_string()]),
             ignore: HashSet::from_iter(vec![".DS_Store".to_string()]),
             root_folder: FolderConfig {
-                allow_unconfigured_files: true,
-                allow_unconfigured_folders: true,
+                allow_unexpected_files: true,
+                allow_unexpected_folders: true,
                 file_rules: vec![],
                 folder_rules: vec![FolderRule {
                     conditions: crate::internal_config::AnyOr::Any,
@@ -193,8 +193,8 @@ mod tests {
             analyze_content_of_files_types: Some(vec!["js".to_string()]),
             ignore: HashSet::from_iter(vec![".DS_Store".to_string()]),
             root_folder: FolderConfig {
-                allow_unconfigured_files: true,
-                allow_unconfigured_folders: true,
+                allow_unexpected_files: true,
+                allow_unexpected_folders: true,
                 file_rules: vec![],
                 folder_rules: vec![],
                 one_of_blocks: OneOfBlocks::default(),

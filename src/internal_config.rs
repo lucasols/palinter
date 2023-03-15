@@ -126,8 +126,8 @@ pub struct FolderConfig {
     pub folder_rules: Vec<FolderRule>,
     pub optional: bool,
     pub one_of_blocks: OneOfBlocks,
-    pub allow_unconfigured_files: bool,
-    pub allow_unconfigured_folders: bool,
+    pub allow_unexpected_files: bool,
+    pub allow_unexpected_folders: bool,
 }
 
 #[derive(Debug)]
@@ -797,8 +797,9 @@ pub fn normalize_folder_config(
                                     sub_folder_name,
                                     sub_folder_config.clone(),
                                 )]),
-                                allow_unconfigured_files: None,
-                                allow_unconfigured_folders: None,
+                                allow_unexpected_files: None,
+                                allow_unexpected_folders: None,
+                                allow_unexpected: None,
                             }),
                             folder_path.clone(),
                             normalize_blocks,
@@ -820,19 +821,20 @@ pub fn normalize_folder_config(
                 }
             }
 
-            let default_allow_unconfigured_files_or_folders = folder_path == ".";
+            let default_allow_unexpected_files_or_folders =
+                config.allow_unexpected.unwrap_or(false) || folder_path == ".";
 
             Ok(FolderConfig {
                 file_rules,
                 sub_folders_config,
                 folder_rules,
                 one_of_blocks,
-                allow_unconfigured_files: config
-                    .allow_unconfigured_files
-                    .unwrap_or(default_allow_unconfigured_files_or_folders),
-                allow_unconfigured_folders: config
-                    .allow_unconfigured_folders
-                    .unwrap_or(default_allow_unconfigured_files_or_folders),
+                allow_unexpected_files: config
+                    .allow_unexpected_files
+                    .unwrap_or(default_allow_unexpected_files_or_folders),
+                allow_unexpected_folders: config
+                    .allow_unexpected_folders
+                    .unwrap_or(default_allow_unexpected_files_or_folders),
                 optional: get_true_flag(&folder_path, &config.optional, "optional")?,
             })
         }

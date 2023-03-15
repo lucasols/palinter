@@ -3,8 +3,8 @@
 ```yaml
 ./:
   /folder:
-    allow_unconfigured_files: true
-    allow_unconfigured_folders: true
+    allow_unexpected_files: true
+    allow_unexpected_folders: true
 
     /subFolder:
       rules:

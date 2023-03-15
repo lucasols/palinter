@@ -140,8 +140,9 @@ pub struct CorrectParsedFolderConfig {
     pub has_files_in_root: Option<Vec<String>>,
     pub rules: Option<Vec<ParsedRule>>,
     pub optional: Option<bool>,
-    pub allow_unconfigured_files: Option<bool>,
-    pub allow_unconfigured_folders: Option<bool>,
+    pub allow_unexpected_files: Option<bool>,
+    pub allow_unexpected_folders: Option<bool>,
+    pub allow_unexpected: Option<bool>,
 
     #[serde(flatten)]
     pub folders: BTreeMap<String, ParsedFolderConfig>,
