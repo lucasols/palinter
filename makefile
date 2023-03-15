@@ -15,17 +15,18 @@ publish_current:
 	&& pnpm build \
 	&& pnpm publish --access public
 
-
 publish_minor:
 	make build
-	cd npm \
-	&& pnpm version minor --git-tag-version
+	cd npm
+	pnpm version minor
+	git commit -am "minor version bump"
 	make publish_current
 
 publish_patch:
 	make build
 	cd npm \
-	&& pnpm version patch --git-tag-version
+	&& pnpm version patch
+	git commit -am "patch version bump"
 	make publish_current
 
 jestor_test:
