@@ -23,5 +23,5 @@ structure:
   icon_1.svg: ''
 
 expected_errors:
-  - "File './icon_1.svg' error: should be named in kebab-case"
+  - "File ./icon_1.svg:\n • should be named in kebab-case"
 ```

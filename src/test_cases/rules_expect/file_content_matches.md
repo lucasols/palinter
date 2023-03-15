@@ -75,7 +75,7 @@ structure:
       export const oneVar = 'hello world'
 
 expected_errors:
-  - "File './helloWorld/oneWithHelloWorld.ts' error: configured `content_matches` patterns not found in the file content"
+  - "File ./helloWorld/oneWithHelloWorld.ts:\n • configured `content_matches` patterns not found in the file content"
 ```
 
 ### Content at most
@@ -97,7 +97,7 @@ structure:
       export const fileC = 'hello world'
 
 expected_errors:
-  - "File './contentAtMost/file.ts' error: content should match at most 1 of the configured `content_matches` patterns"
+  - "File ./contentAtMost/file.ts:\n • content should match at most 1 of the configured `content_matches` patterns"
 ```
 
 ```yaml
@@ -106,7 +106,7 @@ structure:
     file.ts: ''
 
 expected_errors:
-  - "File './contentAtMost/file.ts' error: configured `content_matches` patterns not found in the file content"
+  - "File ./contentAtMost/file.ts:\n • configured `content_matches` patterns not found in the file content"
 ```
 
 ### Content at least
@@ -128,7 +128,7 @@ structure:
       export const B = 'hello world'
 
 expected_errors:
-  - "File './contentAtLeast/file.ts' error: content should match at least 2 of the configured `content_matches` patterns"
+  - "File ./contentAtLeast/file.ts:\n • content should match at least 2 of the configured `content_matches` patterns"
 ```
 
 ### Content at least 2
@@ -154,7 +154,7 @@ structure:
       export function C() {}
 
 expected_errors:
-  - "File './contentAtLeast2/file.ts' error: content should match at least 2 of the configured `content_matches` patterns"
+  - "File ./contentAtLeast2/file.ts:\n • content should match at least 2 of the configured `content_matches` patterns"
 ```
 
 ### Matches some
@@ -183,5 +183,5 @@ structure:
       </svg>
 
 expected_errors:
-  - "File './contentMatchesSome/file.svg' error: configured `content_matches` patterns not found in the file content"
+  - "File ./contentMatchesSome/file.svg:\n • configured `content_matches` patterns not found in the file content"
 ```

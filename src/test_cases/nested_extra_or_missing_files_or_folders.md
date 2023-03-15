@@ -34,7 +34,7 @@ structure:
           level4.tsx: ''
 
 expected_errors:
-  - Folder '/level4' is not expected in folder './level1/level2/level3'
+  - Folder /level4 is not expected in folder ./level1/level2/level3
 ```
 
 ```yaml
@@ -45,5 +45,5 @@ structure:
         level-3.tsx: ''
 
 expected_errors:
-  - "File './level1/level2/level3/level-3.tsx' error: should be named in camelCase"
+  - "File ./level1/level2/level3/level-3.tsx:\n • should be named in camelCase"
 ```

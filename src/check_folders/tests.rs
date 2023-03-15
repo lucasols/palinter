@@ -1,4 +1,4 @@
-use colored::Colorize;
+use colored::{control::ShouldColorize, Colorize};
 use regex::Regex;
 use serde::Deserialize;
 use std::{collections::BTreeMap, hash::Hash};
@@ -324,7 +324,11 @@ fn test_cases() {
                                 })
                                 .enumerate()
                             {
+                                colored::control::set_override(false);
+
                                 let result = check_root_folder(config, &project.structure);
+
+                                colored::control::unset_override();
 
                                 let test_case = format!(
                                     "❌ Test case '{}' - project {}:",

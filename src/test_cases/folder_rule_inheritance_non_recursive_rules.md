@@ -31,7 +31,7 @@ structure:
     kebab-case.svg: ''
 
 expected_errors:
-  - "File 'kebab-case.svg' is not expected in folder './level1/level2/level3'"
+  - "File kebab-case.svg is not expected in folder ./level1/level2/level3"
 ```
 
 ```yaml
@@ -43,5 +43,5 @@ structure:
     kebab_case.svg: ''
 
 expected_errors:
-  - "File './level1/kebab_case.svg' error: should be named in kebab-case"
+  - "File ./level1/kebab_case.svg:\n • should be named in kebab-case"
 ```

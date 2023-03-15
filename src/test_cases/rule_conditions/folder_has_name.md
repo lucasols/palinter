@@ -48,8 +48,8 @@ structure:
     /folderb: {}
 
 expected_errors:
-  - "Folder '/exacts' is not expected in folder './exact'"
-  - "Folder '/foldera' is not expected in folder './capGroup'"
-  - "Folder '/folderb' is not expected in folder './capGroup'"
-  - "Folder '/testFolders' is not expected in folder './withPattern'"
+  - "Folder /exacts is not expected in folder ./exact"
+  - "Folder /foldera is not expected in folder ./capGroup"
+  - "Folder /folderb is not expected in folder ./capGroup"
+  - "Folder /testFolders is not expected in folder ./withPattern"
 ```

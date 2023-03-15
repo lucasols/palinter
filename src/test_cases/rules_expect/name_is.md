@@ -31,6 +31,6 @@ structure:
       filePascalCase.ts: ''
 
 expected_errors:
-  - "File './folder/fileTest.ts' error: should match pattern '*CamelCase.ts'"
-  - "Folder './folder/subFolderTest' error: should match pattern '*CamelCase'"
+  - "File ./folder/fileTest.ts:\n • should match pattern '*CamelCase.ts'"
+  - "Folder ./folder/subFolderTest:\n • should match pattern '*CamelCase'"
 ```

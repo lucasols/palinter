@@ -49,6 +49,6 @@ structure:
       foo3.ts: ''
 
 expected_errors:
-  - "Folder './folder/folder' error: should match pattern 'folderA'"
-  - "Folder './folder/foo1' error: should not match pattern '*(1|2|3)'"
+  - "Folder ./folder/folder:\n • should match pattern 'folderA'"
+  - "Folder ./folder/foo1:\n • should not match pattern '*(1|2|3)'"
 ```

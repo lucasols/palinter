@@ -36,8 +36,8 @@ structure:
     /level-3: {}
 
 expected_errors:
-  - "Folder './errorInExpect/level-3' error: Custom folder error message in expect | should be named in camelCase"
-  - "File './errorInExpect/level-3.tsx' error: Custom file error message in expect | should be named in camelCase"
-  - "Folder './errorInRule/level-3' error: custom folder error message | should be named in camelCase"
-  - "File './errorInRule/level-3.tsx' error: custom file error message | should be named in camelCase"
+  - "Folder ./errorInExpect/level-3:\n • Custom folder error message in expect | should be named in camelCase"
+  - "File ./errorInExpect/level-3.tsx:\n • Custom file error message in expect | should be named in camelCase"
+  - "Folder ./errorInRule/level-3:\n • custom folder error message | should be named in camelCase"
+  - "File ./errorInRule/level-3.tsx:\n • custom file error message | should be named in camelCase"
 ```

@@ -32,6 +32,6 @@ structure:
     /AbCamelCase: {}
 
 expected_errors:
-  - "Folder './folders/AbCamelCase' error: should match pattern '*PascalCase'"
-  - "Folder './folders/aPascalCase' error: should match pattern '*CamelCase'"
+  - "Folder ./folders/AbCamelCase:\n • should match pattern '*PascalCase'"
+  - "Folder ./folders/aPascalCase:\n • should match pattern '*CamelCase'"
 ```

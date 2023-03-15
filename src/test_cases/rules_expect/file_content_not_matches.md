@@ -40,5 +40,5 @@ structure:
       export const test = 'hello world'
 
 expected_errors:
-  - "File './helloWorld/oneWithHelloWorld.ts' error: content should not match the configured `export const test =` pattern"
+  - "File ./helloWorld/oneWithHelloWorld.ts:\n • content should not match the configured `export const test =` pattern"
 ```

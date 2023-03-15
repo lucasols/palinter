@@ -33,5 +33,5 @@ structure:
     snake_case.tsx: ''
 
 expected_errors:
-  - "File './src/snake_case.tsx' error: File name should be in camelCase or kebab-case"
+  - "File ./src/snake_case.tsx:\n • File name should be in camelCase or kebab-case"
 ```

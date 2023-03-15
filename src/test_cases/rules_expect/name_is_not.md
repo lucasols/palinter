@@ -31,6 +31,6 @@ structure:
       filePascalNOT.ts: ''
 
 expected_errors:
-  - "File './folder/fileNOT.ts' error: should not match pattern '*NOT.ts'"
-  - "Folder './folder/subFolderNOT' error: should not match pattern '*NOT'"
+  - "File ./folder/fileNOT.ts:\n • should not match pattern '*NOT.ts'"
+  - "Folder ./folder/subFolderNOT:\n • should not match pattern '*NOT'"
 ```

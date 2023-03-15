@@ -59,8 +59,8 @@ structure:
     collectionStore.invalid.ts: ''
 
 expected_errors:
-  - File 'collectionStore.examples.ts' is not expected in folder './stores'
-  - File 'collectionStore.invalid.ts' is not expected in folder './examples'
+  - File collectionStore.examples.ts is not expected in folder ./stores
+  - File collectionStore.invalid.ts is not expected in folder ./examples
 ```
 
 ```yaml
@@ -71,5 +71,5 @@ structure:
     file.c.ts: ''
 
 expected_errors:
-  - File 'file.c.ts' is not expected in folder './capGroup'
+  - File file.c.ts is not expected in folder ./capGroup
 ```

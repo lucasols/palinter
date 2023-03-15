@@ -61,7 +61,7 @@ structure:
     kebab-case.svg: ''
 
 expected_errors:
-  - File 'PascalCase.tsx' is not expected in folder './PascalCase'
+  - File PascalCase.tsx is not expected in folder ./PascalCase
 ```
 
 ```yaml
@@ -82,5 +82,5 @@ structure:
       kebab-case.svg: ''
 
 expected_errors:
-  - Folder '/subfolder' is not expected in folder './kebab-case'
+  - Folder /subfolder is not expected in folder ./kebab-case
 ```

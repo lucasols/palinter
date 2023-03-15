@@ -33,6 +33,6 @@ structure:
       filePascalNOT.ts: ''
 
 expected_errors:
-  - "File 'fileNOT.ts' is not expected in folder './folder'"
-  - "Folder '/subFolderNOT' is not expected in folder './folder'"
+  - "File fileNOT.ts is not expected in folder ./folder"
+  - "Folder /subFolderNOT is not expected in folder ./folder"
 ```

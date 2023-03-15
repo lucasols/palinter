@@ -39,7 +39,7 @@ structure:
     multiple.md: ''
 
 expected_errors:
-  - "File './single/single.ts' error: should have extension 'svg'"
-  - "File './multiple/multiple.tsx' error: should have extension 'svg' or 'png'"
-  - "File './multiple/multiple.md' error: should have extension 'svg' or 'png'"
+  - "File ./single/single.ts:\n • should have extension 'svg'"
+  - "File ./multiple/multiple.tsx:\n • should have extension 'svg' or 'png'"
+  - "File ./multiple/multiple.md:\n • should have extension 'svg' or 'png'"
 ```

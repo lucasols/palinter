@@ -40,5 +40,5 @@ structure:
         kebab_case.svg: ''
 
 expected_errors:
-  - "File './level1/level2/level3/kebab_case.svg' error: should be named in kebab-case"
+  - "File ./level1/level2/level3/kebab_case.svg:\n • should be named in kebab-case"
 ```

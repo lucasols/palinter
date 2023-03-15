@@ -35,8 +35,8 @@ structure:
     /empty-Folder: {}
 
 expected_errors:
-  - "Folder './level1/camel-Case' error: should be named in camelCase"
-  - "Folder './level1/empty-Folder' error: should be named in camelCase"
+  - "Folder ./level1/camel-Case:\n • should be named in camelCase"
+  - "Folder ./level1/empty-Folder:\n • should be named in camelCase"
 ```
 
 ```yaml
@@ -47,5 +47,5 @@ structure:
         level-3.tsx: ''
 
 expected_errors:
-  - "Folder './level1/level2/level-3' error: should be named in camelCase"
+  - "Folder ./level1/level2/level-3:\n • should be named in camelCase"
 ```

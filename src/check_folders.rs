@@ -1,3 +1,4 @@
+use colored::Colorize;
 use std::collections::HashSet;
 
 use crate::{
@@ -9,9 +10,10 @@ use crate::{
 };
 
 use self::checks::{
-    check_content, check_negated_path_pattern, check_negated_root_files_has_pattern,
-    check_path_pattern, check_root_files_find_pattern, check_root_files_has_pattern, extension_is,
-    has_sibling_file, name_case_is, path_pattern_match, Capture, check_content_not_matches,
+    check_content, check_content_not_matches, check_negated_path_pattern,
+    check_negated_root_files_has_pattern, check_path_pattern, check_root_files_find_pattern,
+    check_root_files_has_pattern, extension_is, has_sibling_file, name_case_is, path_pattern_match,
+    Capture,
 };
 
 #[derive(Debug, Default)]
@@ -63,7 +65,11 @@ fn append_expect_error(
         Ok(_) => Ok(()),
         Err(error) => {
             if let Some(expect_error_msg) = expect_error_msg {
-                Err(format!("{} | {}", expect_error_msg, error))
+                Err(format!(
+                    "{}{}",
+                    expect_error_msg,
+                    format!(" | {}", error).dimmed()
+                ))
             } else {
                 Err(error)
             }
@@ -348,9 +354,8 @@ fn check_folder_childs(
     let allow_unconfigured_folders = folder_config.map_or(false, |folder_config| {
         folder_config.allow_unexpected_folders
     });
-    let allow_unconfigured_files = folder_config.map_or(false, |folder_config| {
-        folder_config.allow_unexpected_files
-    });
+    let allow_unconfigured_files =
+        folder_config.map_or(false, |folder_config| folder_config.allow_unexpected_files);
 
     let mut folders_missing_check = folder_config
         .map(|folder_config| {
@@ -377,8 +382,8 @@ fn check_folder_childs(
                 let mut file_touched = false;
 
                 let file_error_prefix = format!(
-                    "File '{}/{}.{}' error: ",
-                    folder_path, file.basename, file.extension.clone().unwrap_or_default()
+                    "File {}\n • ",
+                    format!("{}/{}:", folder_path, file.name_with_ext).bright_yellow()
                 );
 
                 let mut check_file_rule = |rule: &FileRule| {
@@ -453,16 +458,17 @@ fn check_folder_childs(
 
                 if !file_touched && !allow_unconfigured_files {
                     errors.push(format!(
-                        "File '{}.{}' is not expected in folder '{}'",
-                        file.basename,
-                        file.extension.clone().unwrap_or_default(),
-                        folder_path
+                        "File {} is not expected in folder {}",
+                        file.name_with_ext.bright_yellow(),
+                        folder_path.bright_red()
                     ));
                 }
             }
             FolderChild::Folder(sub_folder) => {
-                let folder_error_prefix =
-                    format!("Folder '{}/{}' error: ", folder_path, sub_folder.name);
+                let folder_error_prefix = format!(
+                    "Folder {}\n • ",
+                    format!("{}/{}:", folder_path, sub_folder.name).bright_red()
+                );
 
                 let mut folder_touched = false;
                 let mut folder_has_error = false;
@@ -526,8 +532,9 @@ fn check_folder_childs(
                     folders_missing_check.remove(&sub_folder.name);
                 } else if !folder_touched && !allow_unconfigured_folders {
                     errors.push(format!(
-                        "Folder '/{}' is not expected in folder '{}'",
-                        sub_folder.name, folder_path
+                        "Folder {} is not expected in folder {}",
+                        format!("/{}", sub_folder.name).bright_red(),
+                        folder_path.bright_red()
                     ));
                 }
 

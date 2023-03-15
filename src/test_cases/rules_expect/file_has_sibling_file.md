@@ -41,7 +41,7 @@ structure:
     chatMessageStore.utils.ts: ''
 
 expected_errors:
-  - "File './stores/chatMessageStore.utils.ts' error: should have a sibling file matching pattern 'chatMessageStore.ts'"
+  - "File ./stores/chatMessageStore.utils.ts:\n • should have a sibling file matching pattern 'chatMessageStore.ts'"
 ```
 
 ```yaml
@@ -61,6 +61,6 @@ structure:
     chatMessageStore.actions.ts: ''
 
 expected_errors:
-  - "File './multiple_has_name/chatMessageStore.utils.ts' error: should have a sibling file matching pattern 'chatMessageStore.ts'"
-  - "File './multiple_has_name/chatMessageStore.actions.ts' error: should have a sibling file matching pattern 'chatMessageStore.ts'"
+  - "File ./multiple_has_name/chatMessageStore.utils.ts:\n • should have a sibling file matching pattern 'chatMessageStore.ts'"
+  - "File ./multiple_has_name/chatMessageStore.actions.ts:\n • should have a sibling file matching pattern 'chatMessageStore.ts'"
 ```

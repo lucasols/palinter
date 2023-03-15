@@ -44,5 +44,5 @@ structure:
     file.example.ts: ''
 
 expected_errors:
-  - "File './stores/test_examples.ts' error: should be named in camelCase"
+  - "File ./stores/test_examples.ts:\n • should be named in camelCase"
 ```

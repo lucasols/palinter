@@ -40,6 +40,6 @@ structure:
       CompGroup.tsx: ''
 
 expected_errors:
-  - "Folder './folders/CompFolder' error: should have at least one file matching pattern 'CompFolder.tsx'"
-  - "Folder './folders/compGroup' error: should not have any file matching pattern 'CompGroup.tsx'"
+  - "Folder ./folders/CompFolder:\n • should have at least one file matching pattern 'CompFolder.tsx'"
+  - "Folder ./folders/compGroup:\n • should not have any file matching pattern 'CompGroup.tsx'"
 ```
