@@ -2,18 +2,20 @@
 source: src/load_folder_structure.rs
 expression: folder
 ---
-Folder {
-    name: "analyze_file_contents",
-    childs: [
-        FileChild(
-            File {
-                basename: "test",
-                name_with_ext: "test.md",
-                content: "",
-                extension: Some(
-                    "md",
-                ),
-            },
-        ),
-    ],
-}
+Ok(
+    Folder {
+        name: "analyze_file_contents",
+        childs: [
+            FileChild(
+                File {
+                    basename: "test",
+                    name_with_ext: "test.md",
+                    content: "",
+                    extension: Some(
+                        "md",
+                    ),
+                },
+            ),
+        ],
+    },
+)

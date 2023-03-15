@@ -29,6 +29,7 @@ pub struct ParsedFileExpect {
     pub has_sibling_file: Option<String>,
     pub content_matches: Option<ParsedFileContentMatches>,
     pub content_matches_any: Option<ParsedFileContentMatches>,
+    pub content_not_matches: Option<SingleOrMultiple<String>>,
     pub name_is: Option<String>,
     pub name_is_not: Option<String>,
 

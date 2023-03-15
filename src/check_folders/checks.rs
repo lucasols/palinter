@@ -224,7 +224,8 @@ pub fn check_content(
 ) -> Result<(), String> {
     let mut matched = false;
 
-    let not_found_msg = "configured patterns not found in the file content".to_string();
+    let not_found_msg =
+        "configured `content_matches` patterns not found in the file content".to_string();
 
     for content_match in content_matches {
         match content_match.matches.clone() {
@@ -246,7 +247,7 @@ pub fn check_content(
                 } else {
                     if num_of_matches < content_match.at_least {
                         return Err(format!(
-                            "content should match at least {} of the configured patterns",
+                            "content should match at least {} of the configured `content_matches` patterns",
                             content_match.at_least
                         ));
                     }
@@ -254,7 +255,7 @@ pub fn check_content(
                     if let Some(at_most) = content_match.at_most {
                         if num_of_matches > at_most {
                             return Err(format!(
-                                "content should match at most {} of the configured patterns",
+                                "content should match at most {} of the configured `content_matches` patterns",
                                 at_most
                             ));
                         }
@@ -276,7 +277,7 @@ pub fn check_content(
                     } else {
                         if pattern_matches < content_match.at_least {
                             return Err(format!(
-                                "content should match at least {} of the configured patterns",
+                                "content should match at least {} of the configured `content_matches` patterns",
                                 content_match.at_least
                             ));
                         }
@@ -284,7 +285,7 @@ pub fn check_content(
                         if let Some(at_most) = content_match.at_most {
                             if pattern_matches > at_most {
                                 return Err(format!(
-                                    "content should match at most {} of the configured patterns",
+                                    "content should match at most {} of the configured `content_matches` patterns",
                                     at_most
                                 ));
                             }
@@ -399,6 +400,25 @@ pub fn check_negated_root_files_has_pattern(
             "should not have any file matching pattern '{}'",
             pattern
         ));
+    }
+
+    Ok(())
+}
+
+pub fn check_content_not_matches(
+    content: &str,
+    content_not_matches: &[String],
+    condition_captures: &[Capture],
+) -> Result<(), String> {
+    for pattern in content_not_matches {
+        let (_, regex) = normalize_check_pattern(condition_captures, pattern);
+
+        if regex.is_match(content) {
+            return Err(format!(
+                "content should not match the configured `{}` pattern",
+                pattern
+            ));
+        }
     }
 
     Ok(())

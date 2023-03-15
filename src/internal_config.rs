@@ -50,6 +50,7 @@ pub struct FileExpect {
     pub has_sibling_file: Option<String>,
     pub content_matches: Option<Vec<ContentMatches>>,
     pub content_matches_some: Option<Vec<ContentMatches>>,
+    pub content_not_matches: Option<Vec<String>>,
     pub name_is: Option<String>,
     pub name_is_not: Option<String>,
 
@@ -635,6 +636,9 @@ fn get_file_expect(
         content_matches_some: normalize_content_matches(
             parsed_expected.content_matches_any,
             config_path,
+        ),
+        content_not_matches: normalize_single_or_multiple_some(
+            &parsed_expected.content_not_matches,
         ),
         name_is_not: parsed_expected.name_is_not,
     })

@@ -2,52 +2,54 @@
 source: src/load_folder_structure.rs
 expression: folder
 ---
-Folder {
-    name: "analyze_file_contents",
-    childs: [
-        Folder(
-            Folder {
-                name: "dist",
-                childs: [
-                    FileChild(
-                        File {
-                            basename: "test",
-                            name_with_ext: "test.js",
-                            content: "const value = 'test';\n",
-                            extension: Some(
-                                "js",
-                            ),
-                        },
+Ok(
+    Folder {
+        name: "analyze_file_contents",
+        childs: [
+            Folder(
+                Folder {
+                    name: "dist",
+                    childs: [
+                        FileChild(
+                            File {
+                                basename: "test",
+                                name_with_ext: "test.js",
+                                content: "const value = 'test';\n",
+                                extension: Some(
+                                    "js",
+                                ),
+                            },
+                        ),
+                    ],
+                },
+            ),
+            Folder(
+                Folder {
+                    name: "folder",
+                    childs: [
+                        FileChild(
+                            File {
+                                basename: "test",
+                                name_with_ext: "test.js",
+                                content: "export const test2 = () => {\n  console.log('test2');\n}\n",
+                                extension: Some(
+                                    "js",
+                                ),
+                            },
+                        ),
+                    ],
+                },
+            ),
+            FileChild(
+                File {
+                    basename: "test",
+                    name_with_ext: "test.md",
+                    content: "",
+                    extension: Some(
+                        "md",
                     ),
-                ],
-            },
-        ),
-        Folder(
-            Folder {
-                name: "folder",
-                childs: [
-                    FileChild(
-                        File {
-                            basename: "test",
-                            name_with_ext: "test.js",
-                            content: "export const test2 = () => {\n  console.log('test2');\n}\n",
-                            extension: Some(
-                                "js",
-                            ),
-                        },
-                    ),
-                ],
-            },
-        ),
-        FileChild(
-            File {
-                basename: "test",
-                name_with_ext: "test.md",
-                content: "",
-                extension: Some(
-                    "md",
-                ),
-            },
-        ),
-    ],
-}
+                },
+            ),
+        ],
+    },
+)

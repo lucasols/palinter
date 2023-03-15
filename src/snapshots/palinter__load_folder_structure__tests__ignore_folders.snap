@@ -2,18 +2,20 @@
 source: src/load_folder_structure.rs
 expression: folder
 ---
-Folder {
-    name: "ignore_folder",
-    childs: [
-        FileChild(
-            File {
-                basename: "not_ignore",
-                name_with_ext: "not_ignore.ts",
-                content: "",
-                extension: Some(
-                    "ts",
-                ),
-            },
-        ),
-    ],
-}
+Ok(
+    Folder {
+        name: "ignore_folder",
+        childs: [
+            FileChild(
+                File {
+                    basename: "not_ignore",
+                    name_with_ext: "not_ignore.ts",
+                    content: "",
+                    extension: Some(
+                        "ts",
+                    ),
+                },
+            ),
+        ],
+    },
+)

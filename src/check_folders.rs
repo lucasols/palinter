@@ -11,7 +11,7 @@ use crate::{
 use self::checks::{
     check_content, check_negated_path_pattern, check_negated_root_files_has_pattern,
     check_path_pattern, check_root_files_find_pattern, check_root_files_has_pattern, extension_is,
-    has_sibling_file, name_case_is, path_pattern_match, Capture,
+    has_sibling_file, name_case_is, path_pattern_match, Capture, check_content_not_matches,
 };
 
 #[derive(Debug, Default)]
@@ -153,6 +153,18 @@ fn file_pass_expected(
                     check_negated_path_pattern(
                         &file.name_with_ext,
                         name_is_not,
+                        &conditions_result.captures,
+                    ),
+                    &expect.error_msg,
+                );
+            }
+
+            if let Some(content_not_matches) = &expect.content_not_matches {
+                pass_some_expect = true;
+                check_result(
+                    check_content_not_matches(
+                        &file.content,
+                        content_not_matches,
                         &conditions_result.captures,
                     ),
                     &expect.error_msg,
