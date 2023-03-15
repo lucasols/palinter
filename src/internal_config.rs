@@ -456,14 +456,90 @@ fn normalize_rules(
                     }
                 }
             }
-            ParsedRule::Block(block_id) => {
-                let rules = normalized_blocks.get(block_id).ok_or(format!(
-                    "Config error: Block '{}' in '{}' rules not found",
-                    block_id, config_path
-                ))?;
+            ParsedRule::Block(block_sring) => {
+                let (block_id, custom_error, custom_not_touch, custom_non_recursive) = {
+                    if block_sring.contains("::") {
+                        let mut block_id = String::new();
+                        let mut custom_error: Option<String> = None;
+                        let mut custom_not_touch = None;
+                        let mut custom_non_recursive = None;
+
+                        for (i, part) in block_sring.split("::").enumerate() {
+                            if i == 0 {
+                                block_id = part.to_string();
+                            } else if part.starts_with("error_msg=") {
+                                custom_error =
+                                    part.strip_prefix("error_msg=").map(|s| s.to_string());
+                            } else if part.starts_with("not_touch") {
+                                custom_not_touch = if part == "not_touch=false" {
+                                    Some(false)
+                                } else {
+                                    Some(true)
+                                };
+                            } else if part.starts_with("non_recursive") {
+                                custom_non_recursive = if part == "non_recursive=false" {
+                                    Some(false)
+                                } else {
+                                    Some(true)
+                                };
+                            }
+                        }
+
+                        (
+                            block_id,
+                            custom_error,
+                            custom_not_touch,
+                            custom_non_recursive,
+                        )
+                    } else {
+                        (block_sring.clone(), None, None, None)
+                    }
+                };
+
+                let rules = normalized_blocks
+                    .get(&block_id)
+                    .ok_or(format!(
+                        "Config error: Block '{}' in '{}' rules not found",
+                        block_id, config_path
+                    ))?
+                    .iter()
+                    .map(|rule| match rule {
+                        ParsedRule::File {
+                            conditions,
+                            expect,
+                            expect_one_of,
+                            non_recursive,
+                            not_touch,
+                            error_msg,
+                        } => ParsedRule::File {
+                            conditions: conditions.clone(),
+                            expect: expect.clone(),
+                            expect_one_of: expect_one_of.clone(),
+                            non_recursive: custom_non_recursive.or(*non_recursive),
+                            not_touch: custom_not_touch.or(*not_touch),
+                            error_msg: custom_error.clone().or(error_msg.clone()),
+                        },
+                        ParsedRule::Folder {
+                            conditions,
+                            expect,
+                            expect_one_of,
+                            non_recursive,
+                            not_touch,
+                            error_msg,
+                        } => ParsedRule::Folder {
+                            conditions: conditions.clone(),
+                            expect: expect.clone(),
+                            expect_one_of: expect_one_of.clone(),
+                            non_recursive: custom_non_recursive.or(*non_recursive),
+                            not_touch: custom_not_touch.or(*not_touch),
+                            error_msg: custom_error.clone().or(error_msg.clone()),
+                        },
+                        _ => rule.clone(),
+                    })
+                    .collect::<Vec<ParsedRule>>();
 
                 let (block_file_rules, block_folder_rules, block_one_of_blocks) =
-                    normalize_rules(rules, config_path, normalized_blocks, config)?;
+                    normalize_rules(&rules, config_path, normalized_blocks, config)?;
 
                 file_rules.extend(block_file_rules);
                 folder_rules.extend(block_folder_rules);

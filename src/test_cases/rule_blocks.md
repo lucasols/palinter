@@ -22,12 +22,20 @@ blocks:
 
 ./:
   /src:
+    optional: true
     rules:
       - 'is_tsx_and_camel_case'
       - 'folder_is_camel_case'
   /camelCase:
+    optional: true
     rules:
-      - 'camel_case_file'
+      - 'camel_case_file::error_msg=Custom error'
+
+  /test:
+    optional: true
+    rules:
+      - 'camel_case_file::non_recursive'
+      - 'folder_is_camel_case::not_touch'
 ```
 
 # Projects
@@ -55,8 +63,20 @@ structure:
     camel_case.svg: ''
 
 expected_errors:
-  - "File ./camelCase/camel_case.svg:\n • should be named in camelCase"
+  - "File ./camelCase/camel_case.svg:\n • Custom error | should be named in camelCase"
   - "File ./src/file-test.tsx:\n • should be named in camelCase"
   - "Folder ./src/camel_Case:\n • should be named in camelCase"
   - "File ./src/wrongExtension.ts:\n • should have extension 'tsx'"
+```
+
+```yaml
+structure:
+  /test:
+    fileTest.tsx: ''
+    wrongExtension.ts: ''
+    /camelCase:
+      camelCase.tsx: ''
+
+expected_errors:
+  - Folder /camelCase is not expected in folder ./test
 ```
