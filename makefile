@@ -13,19 +13,19 @@ build:
 publish_current:
 	cd npm \
 	&& pnpm build \
-	&& pnpm publish --access public --no-git-checks
+	&& pnpm publish --access public
 
 
 publish_minor:
 	make build
 	cd npm \
-	&& pnpm version minor
+	&& pnpm version minor --git-tag-version
 	make publish_current
 
 publish_patch:
 	make build
 	cd npm \
-	&& pnpm version patch
+	&& pnpm version patch --git-tag-version
 	make publish_current
 
 jestor_test:
