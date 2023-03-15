@@ -3,14 +3,21 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use serde_yaml::Value;
 
 use crate::parse_config_file::{
-    CorrectParsedFolderConfig, ParsedAnyOr, ParsedBlocks, ParsedConfig, ParsedFileConditions,
-    ParsedFileContentMatches, ParsedFileContentMatchesItem, ParsedFileExpect, ParsedFolderConfig,
-    ParsedFolderExpect, ParsedRule, SingleOrMultiple,
+    CorrectParsedFolderConfig, ParsedAnyNoneOrConditions, ParsedBlocks, ParsedConfig,
+    ParsedFileConditions, ParsedFileContentMatches, ParsedFileContentMatchesItem, ParsedFileExpect,
+    ParsedFolderConfig, ParsedFolderExpect, ParsedRule, SingleOrMultiple,
 };
 
 #[derive(Debug, Clone)]
 pub enum AnyOr<T> {
     Any,
+    Or(T),
+}
+
+#[derive(Debug, Clone)]
+pub enum AnyNoneOr<T> {
+    Any,
+    None,
     Or(T),
 }
 
@@ -86,7 +93,7 @@ pub struct FolderExpect {
 #[derive(Debug, Clone)]
 pub struct FileRule {
     pub conditions: AnyOr<FileConditions>,
-    pub expect: AnyOr<Vec<FileExpect>>,
+    pub expect: AnyNoneOr<Vec<FileExpect>>,
     pub non_recursive: bool,
     pub not_touch: bool,
     pub error_msg: Option<String>,
@@ -95,7 +102,7 @@ pub struct FileRule {
 #[derive(Debug, Clone)]
 pub struct FolderRule {
     pub conditions: AnyOr<FolderConditions>,
-    pub expect: AnyOr<Vec<FolderExpect>>,
+    pub expect: AnyNoneOr<Vec<FolderExpect>>,
     pub non_recursive: bool,
     pub not_touch: bool,
     pub error_msg: Option<String>,
@@ -160,6 +167,17 @@ fn check_any(any: &String, config_path: &String) -> Result<(), String> {
         ))
     } else {
         Ok(())
+    }
+}
+
+fn check_any_or_none<T>(any: &String, config_path: &String) -> Result<AnyNoneOr<T>, String> {
+    match any.as_str() {
+        "any" => Ok(AnyNoneOr::Any),
+        "none" => Ok(AnyNoneOr::None),
+        _ => Err(format!(
+            "Config error: Invalid any '{}' in '{}' rules, should be 'any' or 'none'",
+            any, config_path
+        )),
     }
 }
 
@@ -237,11 +255,11 @@ fn normalize_rules(
                 not_touch,
             } => {
                 let conditions = match parsed_conditions {
-                    ParsedAnyOr::Any(any) => {
+                    ParsedAnyNoneOrConditions::AnyOrNone(any) => {
                         check_any(any, config_path)?;
                         AnyOr::Any
                     }
-                    ParsedAnyOr::Conditions(conditions) => {
+                    ParsedAnyNoneOrConditions::Conditions(conditions) => {
                         check_invalid_conditions(
                             &conditions.wrong,
                             "if_file condition",
@@ -261,12 +279,11 @@ fn normalize_rules(
                 check_rules_expects(expect, expect_one_of, config_path)?;
 
                 if let Some(expect) = expect {
-                    let new_expect: AnyOr<Vec<FileExpect>> = match &**expect {
-                        ParsedAnyOr::Any(any) => {
-                            check_any(any, config_path)?;
-                            AnyOr::Any
+                    let new_expect: AnyNoneOr<Vec<FileExpect>> = match &**expect {
+                        ParsedAnyNoneOrConditions::AnyOrNone(any) => {
+                            check_any_or_none(any, config_path)?
                         }
-                        ParsedAnyOr::Conditions(expect_conditions) => {
+                        ParsedAnyNoneOrConditions::Conditions(expect_conditions) => {
                             let mut expects: Vec<FileExpect> = Vec::new();
 
                             for parsed_expected in normalize_single_or_multiple(expect_conditions) {
@@ -283,7 +300,7 @@ fn normalize_rules(
                                 )?);
                             }
 
-                            AnyOr::Or(expects)
+                            AnyNoneOr::Or(expects)
                         }
                     };
 
@@ -305,7 +322,7 @@ fn normalize_rules(
                         for rule in expect_one_of {
                             rules.push(FileRule {
                                 conditions: conditions.clone(),
-                                expect: AnyOr::Or(vec![get_file_expect(
+                                expect: AnyNoneOr::Or(vec![get_file_expect(
                                     rule.clone(),
                                     config_path,
                                     config,
@@ -343,11 +360,11 @@ fn normalize_rules(
                 not_touch,
             } => {
                 let conditions = match parsed_conditions {
-                    ParsedAnyOr::Any(any) => {
+                    ParsedAnyNoneOrConditions::AnyOrNone(any) => {
                         check_any(any, config_path)?;
                         AnyOr::Any
                     }
-                    ParsedAnyOr::Conditions(conditions) => {
+                    ParsedAnyNoneOrConditions::Conditions(conditions) => {
                         check_invalid_conditions(
                             &conditions.wrong,
                             "if_folder condition",
@@ -378,11 +395,10 @@ fn normalize_rules(
 
                 if let Some(expect) = expect {
                     let new_expect = match &**expect {
-                        ParsedAnyOr::Any(any) => {
-                            check_any(any, config_path)?;
-                            AnyOr::Any
+                        ParsedAnyNoneOrConditions::AnyOrNone(any) => {
+                            check_any_or_none(any, config_path)?
                         }
-                        ParsedAnyOr::Conditions(expect_conditions) => {
+                        ParsedAnyNoneOrConditions::Conditions(expect_conditions) => {
                             let mut expects: Vec<FolderExpect> = Vec::new();
 
                             for parsed_expected in normalize_single_or_multiple(expect_conditions) {
@@ -395,7 +411,7 @@ fn normalize_rules(
                                 expects.push(get_folder_expect(parsed_expected, config_path)?);
                             }
 
-                            AnyOr::Or(expects)
+                            AnyNoneOr::Or(expects)
                         }
                     };
 
@@ -417,7 +433,7 @@ fn normalize_rules(
                         for rule_expect in expect_one_of {
                             rules.push(FolderRule {
                                 conditions: conditions.clone(),
-                                expect: AnyOr::Or(vec![get_folder_expect(
+                                expect: AnyNoneOr::Or(vec![get_folder_expect(
                                     rule_expect.clone(),
                                     config_path,
                                 )?]),
@@ -740,11 +756,13 @@ pub fn normalize_folder_config(
                 let has_file_rules: Vec<ParsedRule> = files
                     .iter()
                     .map(|file| ParsedRule::File {
-                        conditions: ParsedAnyOr::Conditions(ParsedFileConditions {
+                        conditions: ParsedAnyNoneOrConditions::Conditions(ParsedFileConditions {
                             has_name: Some(file.clone()),
                             ..Default::default()
                         }),
-                        expect: Some(Box::new(ParsedAnyOr::Any("any".to_string()))),
+                        expect: Some(Box::new(ParsedAnyNoneOrConditions::AnyOrNone(
+                            "any".to_string(),
+                        ))),
                         expect_one_of: None,
                         error_msg: None,
                         non_recursive: Some(true),

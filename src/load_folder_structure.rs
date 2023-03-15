@@ -140,7 +140,7 @@ mod tests {
                 file_rules: vec![],
                 folder_rules: vec![FolderRule {
                     conditions: crate::internal_config::AnyOr::Any,
-                    expect: crate::internal_config::AnyOr::Any,
+                    expect: crate::internal_config::AnyNoneOr::Any,
                     error_msg: None,
                     non_recursive: false,
                     not_touch: false,
@@ -169,7 +169,7 @@ mod tests {
                 file_rules: vec![],
                 folder_rules: vec![FolderRule {
                     conditions: crate::internal_config::AnyOr::Any,
-                    expect: crate::internal_config::AnyOr::Any,
+                    expect: crate::internal_config::AnyNoneOr::Any,
                     error_msg: None,
                     non_recursive: false,
                     not_touch: false,

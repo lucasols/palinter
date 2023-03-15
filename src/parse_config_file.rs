@@ -99,9 +99,9 @@ pub struct ParsedFindPattern {
 
 #[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
-pub enum ParsedAnyOr<T> {
+pub enum ParsedAnyNoneOrConditions<T> {
     Conditions(T),
-    Any(String),
+    AnyOrNone(String),
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -109,8 +109,8 @@ pub enum ParsedAnyOr<T> {
 pub enum ParsedRule {
     File {
         #[serde(rename = "if_file")]
-        conditions: ParsedAnyOr<ParsedFileConditions>,
-        expect: Option<Box<ParsedAnyOr<SingleOrMultiple<ParsedFileExpect>>>>,
+        conditions: ParsedAnyNoneOrConditions<ParsedFileConditions>,
+        expect: Option<Box<ParsedAnyNoneOrConditions<SingleOrMultiple<ParsedFileExpect>>>>,
         expect_one_of: Option<Vec<ParsedFileExpect>>,
         error_msg: Option<String>,
         non_recursive: Option<bool>,
@@ -118,8 +118,8 @@ pub enum ParsedRule {
     },
     Folder {
         #[serde(rename = "if_folder")]
-        conditions: ParsedAnyOr<ParsedFolderConditions>,
-        expect: Option<Box<ParsedAnyOr<SingleOrMultiple<ParsedFolderExpect>>>>,
+        conditions: ParsedAnyNoneOrConditions<ParsedFolderConditions>,
+        expect: Option<Box<ParsedAnyNoneOrConditions<SingleOrMultiple<ParsedFolderExpect>>>>,
         expect_one_of: Option<Vec<ParsedFolderExpect>>,
         error_msg: Option<String>,
         non_recursive: Option<bool>,

@@ -3,8 +3,8 @@ use std::collections::HashSet;
 
 use crate::{
     internal_config::{
-        AnyOr, Config, FileConditions, FileExpect, FileRule, FolderConditions, FolderConfig,
-        FolderExpect, FolderRule,
+        AnyNoneOr, AnyOr, Config, FileConditions, FileExpect, FileRule, FolderConditions,
+        FolderConfig, FolderExpect, FolderRule,
     },
     load_folder_structure::{File, Folder, FolderChild},
 };
@@ -79,10 +79,14 @@ fn append_expect_error(
 
 fn file_pass_expected(
     file: &File,
-    expected: &AnyOr<Vec<FileExpect>>,
+    expected: &AnyNoneOr<Vec<FileExpect>>,
     folder: &Folder,
     conditions_result: &ConditionsResult,
 ) -> Result<(), Vec<String>> {
+    if let AnyNoneOr::None = expected {
+        return Err(vec!["File is not expected".to_string()]);
+    }
+
     let mut errors = Vec::new();
 
     let mut check_result = |result: Result<(), String>, expect_error_msg: &Option<String>| {
@@ -91,7 +95,7 @@ fn file_pass_expected(
         }
     };
 
-    if let AnyOr::Or(expected) = expected {
+    if let AnyNoneOr::Or(expected) = expected {
         for expect in expected {
             let mut pass_some_expect = false;
 
@@ -236,12 +240,13 @@ fn folder_matches_condition(
 
 fn folder_pass_expected(
     folder: &Folder,
-    expected: &AnyOr<Vec<FolderExpect>>,
+    expected: &AnyNoneOr<Vec<FolderExpect>>,
     conditions_result: &ConditionsResult,
 ) -> Result<(), String> {
     match expected {
-        AnyOr::Any => Ok(()),
-        AnyOr::Or(expected) => {
+        AnyNoneOr::None => Err("Folder is not expected".to_string()),
+        AnyNoneOr::Any => Ok(()),
+        AnyNoneOr::Or(expected) => {
             let mut pass_some_expect = false;
 
             for expect in expected {

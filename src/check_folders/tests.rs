@@ -1,4 +1,4 @@
-use colored::{control::ShouldColorize, Colorize};
+use colored::Colorize;
 use regex::Regex;
 use serde::Deserialize;
 use std::{collections::BTreeMap, hash::Hash};
