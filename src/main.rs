@@ -4,7 +4,7 @@ mod load_folder_structure;
 mod parse_config_file;
 mod utils;
 
-use std::path::PathBuf;
+use std::{path::PathBuf, process};
 
 use check_folders::check_root_folder;
 use clap::Parser;
@@ -36,12 +36,12 @@ fn lint(confg_path: PathBuf, root: PathBuf) {
     let parsed_config = match parse_config_file(&confg_path) {
         Ok(config) => config,
         Err(err) => {
-            println!(
+            eprintln!(
                 "❌ Error parsing config file '{}': {}",
                 confg_path.to_str().unwrap(),
                 err
             );
-            std::process::exit(1);
+            process::exit(1);
         }
     };
 
@@ -50,20 +50,19 @@ fn lint(confg_path: PathBuf, root: PathBuf) {
     let root_structure = match load_folder_structure(&root, &config, &root, true) {
         Ok(root_structure) => root_structure,
         Err(err) => {
-            println!("❌ Error loading folder structure: {}", err);
-            std::process::exit(1);
+            eprintln!("❌ Error loading folder structure: {}", err);
+            process::exit(1);
         }
     };
 
     match check_root_folder(&config, &root_structure) {
         Ok(_) => {}
         Err(err) => {
-            println!("❌ Errors found in the project:\n\n{}", err.join("\n\n"));
-            std::process::exit(1);
+            eprintln!("❌ Errors found in the project:\n\n{}\n\n", err.join("\n\n"));
+            process::exit(1);
         }
     }
 
     println!("✅ No errors detected!");
     println!("Time: {:.3}s", measure_time.elapsed().as_secs_f32());
-    std::process::exit(0);
 }
