@@ -58,7 +58,7 @@ fn lint(confg_path: PathBuf, root: PathBuf) {
     match check_root_folder(&config, &root_structure) {
         Ok(_) => {}
         Err(err) => {
-            eprintln!("❌ Errors found in the project:\n\n{}", err.join("\n\n"));
+            eprintln!("❌ Errors found in the project:\n\n{}\n", err.join("\n\n"));
             process::exit(1);
         }
     }
