@@ -21,7 +21,7 @@ analyze_content_of_files_types: ['ts', 'tsx']
       - if_file:
           has_name: '*(Doc|List|Collection|Store).(actions|utils).ts'
         expect:
-          has_sibling_file: '${1}${2}.ts'
+          have_sibling_file: '${1}${2}.ts'
           content_matches: regex:from '(.+)/${1}${2}'
 
       - if_file:

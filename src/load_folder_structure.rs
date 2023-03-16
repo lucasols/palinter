@@ -1,5 +1,8 @@
 use globset::Glob;
-use std::path::{Path, PathBuf};
+use std::{
+    fs::{self, read_to_string},
+    path::{Path, PathBuf},
+};
 
 use crate::internal_config::Config;
 
@@ -7,7 +10,7 @@ use crate::internal_config::Config;
 pub struct File {
     pub basename: String,
     pub name_with_ext: String,
-    pub content: String,
+    pub content: Option<String>,
     pub extension: Option<String>,
 }
 
@@ -103,16 +106,16 @@ pub fn load_folder_structure(
     })
 }
 
-fn get_file_content(config: &Config, extension: &Option<String>, path: PathBuf) -> String {
+fn get_file_content(config: &Config, extension: &Option<String>, path: PathBuf) -> Option<String> {
     if let Some(extensions) = &config.analyze_content_of_files_types {
         if let Some(extension) = extension {
             if extensions.contains(extension) {
-                return std::fs::read_to_string(path).unwrap();
+                return Some(read_to_string(path).unwrap());
             }
         }
     }
 
-    String::new()
+    None
 }
 
 #[cfg(test)]

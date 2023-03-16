@@ -115,7 +115,7 @@ fn file_pass_expected(
                 );
             }
 
-            if let Some(sibling_file_pattern) = &expect.has_sibling_file {
+            if let Some(sibling_file_pattern) = &expect.have_sibling_file {
                 pass_some_expect = true;
                 check_result(
                     has_sibling_file(sibling_file_pattern, folder, &conditions_result.captures),

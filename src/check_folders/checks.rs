@@ -217,11 +217,16 @@ pub fn check_negated_path_pattern(
 }
 
 pub fn check_content(
-    content: &str,
+    content: &Option<String>,
     content_matches: &Vec<ContentMatches>,
     condition_captures: &[Capture],
     some: bool,
 ) -> Result<(), String> {
+    // unwrap or return error
+    let content = content.as_ref().ok_or(
+        "Empty content, check if the file type is added to `analyze_content_of_files_types` config",
+    )?;
+
     let mut matched = false;
 
     let not_found_msg =
@@ -235,7 +240,7 @@ pub fn check_content(
                 for pattern in matches {
                     let (_, regex) = normalize_check_pattern(condition_captures, &pattern);
 
-                    let pattern_matches = regex.captures_iter(content).count();
+                    let pattern_matches = regex.captures_iter(content.as_str()).count();
 
                     num_of_matches += pattern_matches;
                 }
@@ -268,7 +273,7 @@ pub fn check_content(
                 for pattern in matches {
                     let (_, regex) = normalize_check_pattern(condition_captures, &pattern);
 
-                    let pattern_matches = regex.captures_iter(content).count();
+                    let pattern_matches = regex.captures_iter(content.as_str()).count();
 
                     if pattern_matches == 0 {
                         if !some {
@@ -406,14 +411,18 @@ pub fn check_negated_root_files_has_pattern(
 }
 
 pub fn check_content_not_matches(
-    content: &str,
+    content: &Option<String>,
     content_not_matches: &[String],
     condition_captures: &[Capture],
 ) -> Result<(), String> {
+    let content = content.as_ref().ok_or(
+        "Empty content, check if the file type is added to `analyze_content_of_files_types` config",
+    )?;
+
     for pattern in content_not_matches {
         let (_, regex) = normalize_check_pattern(condition_captures, pattern);
 
-        if regex.is_match(content) {
+        if regex.is_match(content.as_str()) {
             return Err(format!(
                 "content should not match the configured `{}` pattern",
                 pattern

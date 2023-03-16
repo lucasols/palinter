@@ -3,6 +3,7 @@ mod internal_config;
 mod load_folder_structure;
 mod parse_config_file;
 mod utils;
+mod analyse_ts_deps;
 
 use std::path::PathBuf;
 
@@ -58,12 +59,12 @@ fn lint(confg_path: PathBuf, root: PathBuf) {
     match check_root_folder(&config, &root_structure) {
         Ok(_) => {}
         Err(err) => {
-            println!("❌ Errors found in the project:\n\n{}", err.join("\n\n"));
+            println!("❌ Errors found in the project:\n\n{}\n\n", err.join("\n\n"));
             std::process::exit(1);
         }
     }
 
-    println!("✅ No errors detected!");
+    println!("The project architecture is valid!");
     println!("Time: {:.3}s", measure_time.elapsed().as_secs_f32());
     std::process::exit(0);
 }

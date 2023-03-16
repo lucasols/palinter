@@ -11,7 +11,7 @@
       - if_file:
           has_name: '*Store.utils.ts'
         expect:
-          has_sibling_file: '${1}Store.ts'
+          have_sibling_file: '${1}Store.ts'
   /multiple_has_name:
     optional: true
     rules:
@@ -21,7 +21,7 @@
       - if_file:
           has_name: '*Store.(utils|actions).ts'
         expect:
-          has_sibling_file: '${1}Store.ts'
+          have_sibling_file: '${1}Store.ts'
 ```
 
 # Projects

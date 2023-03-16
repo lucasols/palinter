@@ -26,7 +26,7 @@ pub struct ParsedFileConditions {
 pub struct ParsedFileExpect {
     pub name_case_is: Option<String>,
     pub extension_is: Option<SingleOrMultiple<String>>,
-    pub has_sibling_file: Option<String>,
+    pub have_sibling_file: Option<String>,
     pub content_matches: Option<ParsedFileContentMatches>,
     pub content_matches_any: Option<ParsedFileContentMatches>,
     pub content_not_matches: Option<SingleOrMultiple<String>>,

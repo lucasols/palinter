@@ -54,7 +54,7 @@ pub struct ContentMatches {
 pub struct FileExpect {
     pub name_case_is: Option<NameCase>,
     pub extension_is: Option<Vec<String>>,
-    pub has_sibling_file: Option<String>,
+    pub have_sibling_file: Option<String>,
     pub content_matches: Option<Vec<ContentMatches>>,
     pub content_matches_some: Option<Vec<ContentMatches>>,
     pub content_not_matches: Option<Vec<String>>,
@@ -723,7 +723,7 @@ fn get_file_expect(
             .as_ref()
             .map(|name_case| normalize_name_case(name_case, config_path))
             .transpose()?,
-        has_sibling_file: parsed_expected.has_sibling_file,
+        have_sibling_file: parsed_expected.have_sibling_file,
         content_matches: normalize_content_matches(parsed_expected.content_matches, config_path),
         content_matches_some: normalize_content_matches(
             parsed_expected.content_matches_any,
