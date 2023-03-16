@@ -37,7 +37,7 @@ fn lint(confg_path: PathBuf, root: PathBuf) {
         Ok(config) => config,
         Err(err) => {
             eprintln!(
-                "Error parsing config file '{}': {}",
+                "❌ Error parsing config file '{}': {}",
                 confg_path.to_str().unwrap(),
                 err
             );
@@ -50,7 +50,7 @@ fn lint(confg_path: PathBuf, root: PathBuf) {
     let root_structure = match load_folder_structure(&root, &config, &root, true) {
         Ok(root_structure) => root_structure,
         Err(err) => {
-            eprintln!("Error loading folder structure: {}", err);
+            eprintln!("❌ Error loading folder structure: {}", err);
             process::exit(1);
         }
     };
@@ -58,8 +58,7 @@ fn lint(confg_path: PathBuf, root: PathBuf) {
     match check_root_folder(&config, &root_structure) {
         Ok(_) => {}
         Err(err) => {
-            eprintln!("Errors found in the project:\n\n{}", err.join("\n\n"));
-            println!("\n\n");
+            eprintln!("❌ Errors found in the project:\n\n{}", err.join("\n\n"));
             process::exit(1);
         }
     }
