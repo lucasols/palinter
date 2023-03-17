@@ -21,7 +21,8 @@
       "problemMatcher": ["$rustc"],
       "presentation": {
         "clear": true
-      }
+      },
+      "group": "test"
     },
     {
       "label": "Cargo Review Snapshot",

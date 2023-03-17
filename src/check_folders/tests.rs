@@ -83,7 +83,7 @@ fn convert_from_parsed_folder_to_project(parsed: &ParsedFolder, folder_name: Str
                 FolderChild::FileChild(File {
                     basename,
                     name_with_ext: child_string,
-                    content: file_content.to_owned(),
+                    content: Some(file_content.to_owned()),
                     extension: Some(extension),
                 })
             }

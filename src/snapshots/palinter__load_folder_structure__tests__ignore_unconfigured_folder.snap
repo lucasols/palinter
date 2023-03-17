@@ -10,7 +10,7 @@ Ok(
                 File {
                     basename: "test",
                     name_with_ext: "test.md",
-                    content: "",
+                    content: None,
                     extension: Some(
                         "md",
                     ),

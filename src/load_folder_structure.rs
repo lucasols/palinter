@@ -1,6 +1,6 @@
 use globset::Glob;
 use std::{
-    fs::{self, read_to_string},
+    fs::read_to_string,
     path::{Path, PathBuf},
 };
 

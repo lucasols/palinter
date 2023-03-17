@@ -14,7 +14,9 @@ Ok(
                             File {
                                 basename: "test",
                                 name_with_ext: "test.js",
-                                content: "const value = 'test';\n",
+                                content: Some(
+                                    "const value = 'test';\n",
+                                ),
                                 extension: Some(
                                     "js",
                                 ),
@@ -31,7 +33,9 @@ Ok(
                             File {
                                 basename: "test",
                                 name_with_ext: "test.js",
-                                content: "export const test2 = () => {\n  console.log('test2');\n}\n",
+                                content: Some(
+                                    "export const test2 = () => {\n  console.log('test2');\n}\n",
+                                ),
                                 extension: Some(
                                     "js",
                                 ),
@@ -44,7 +48,7 @@ Ok(
                 File {
                     basename: "test",
                     name_with_ext: "test.md",
-                    content: "",
+                    content: None,
                     extension: Some(
                         "md",
                     ),

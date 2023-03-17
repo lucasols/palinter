@@ -10,7 +10,7 @@ Ok(
                 File {
                     basename: "not_ignore",
                     name_with_ext: "not_ignore.ts",
-                    content: "",
+                    content: None,
                     extension: Some(
                         "ts",
                     ),
