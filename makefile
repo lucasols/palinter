@@ -7,7 +7,7 @@ build:
 		--target aarch64-apple-darwin
 	cp target/aarch64-apple-darwin/release/palinter npm/bin/darwin-arm64
 	cp target/x86_64-apple-darwin/release/palinter npm/bin/darwin-x64
-	cp target/x86_64-pc-windows-gnu/release/palinter.exe npm/bin/win-x64
+	cp target/x86_64-pc-windows-gnu/release/palinter.exe npm/bin/win-x64.exe
 	cp target/x86_64-unknown-linux-gnu/release/palinter npm/bin/linux-x64
 
 publish_current:
