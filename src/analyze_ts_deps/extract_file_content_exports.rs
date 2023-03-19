@@ -1,7 +1,7 @@
 use lazy_static::lazy_static;
 use regex::Regex;
 
-use crate::utils::split_string_by;
+use crate::utils::{get_code_from_line, split_string_by, remove_comments_from_code};
 
 #[derive(Debug, PartialEq)]
 pub struct Export {
@@ -14,19 +14,13 @@ const DEFAULT: &str = "default";
 pub fn extract_file_content_exports(
     file_content: &str,
 ) -> Result<Vec<Export>, String> {
+    let file_content = remove_comments_from_code(file_content);
+
     let mut exports = Vec::new();
 
     let mut current_line = 0;
     let lines_iter = file_content.lines();
     let lines = lines_iter.clone().collect::<Vec<&str>>();
-
-    let get_string_from_line = |line: usize| {
-        lines_iter
-            .clone()
-            .skip(line - 1)
-            .collect::<Vec<&str>>()
-            .join("\n")
-    };
 
     while current_line < lines.len() {
         current_line += 1;
@@ -40,25 +34,25 @@ pub fn extract_file_content_exports(
             });
         } else {
             lazy_static! {
-                static ref SIMPLE_EXPORT: regex::Regex = regex::Regex::new(
-                    r#"export\s+(let|const|class|function\*?|type|interface)\s+(\w+)"#
+                static ref SIMPLE_EXPORT: Regex = Regex::new(
+                    r#"^export\s+(let|const|class|function\*?|type|interface)\s+(\w+)"#
                 )
                 .unwrap();
 
                 static ref CAN_BE_VALUE_MULTILINE_EXPORT: Regex = Regex::new(
-                    r#"export\s+(let|const)"#
+                    r#"^export\s+(let|const)"#
                 ).unwrap();
 
                 static ref CAN_BE_MULTILINE_EXPORT: Regex = Regex::new(
-                    r#"export\s+\{"#
+                    r#"^export\s+\{"#
                 ).unwrap();
 
                 static ref DESTRUCTURED_VALUE_EXPORT: Regex = Regex::new(
-                   r#"export\s+(let|const)\s+[\{\[]([\w,:\s=]+)[\}\]]"#
+                   r#"^export\s+(let|const)\s+[\{\[]([\S\s]+?)[\}\]]"#
                 ).unwrap();
 
                 static ref DESTRUCTURED_EXPORT: Regex = Regex::new(
-                    r#"export\s+\{([\w,\s]+)\}"#
+                    r#"^export\s+\{([\S\s]+?)\}"#
                 ).unwrap();
             }
 
@@ -71,7 +65,8 @@ pub fn extract_file_content_exports(
             }
 
             if CAN_BE_VALUE_MULTILINE_EXPORT.is_match(line) {
-                let remaining_file_content = get_string_from_line(current_line);
+                let remaining_file_content =
+                    get_code_from_line(&lines_iter, current_line);
 
                 if let Some(captures) =
                     DESTRUCTURED_VALUE_EXPORT.captures(&remaining_file_content)
@@ -106,7 +101,8 @@ pub fn extract_file_content_exports(
                     continue;
                 }
             } else if CAN_BE_MULTILINE_EXPORT.is_match(line) {
-                let remaining_file_content = get_string_from_line(current_line);
+                let remaining_file_content =
+                    get_code_from_line(&lines_iter, current_line);
 
                 if let Some(captures) =
                     DESTRUCTURED_EXPORT.captures(&remaining_file_content)
@@ -246,6 +242,7 @@ mod tests {
           export let {test3 = 1, test: test4 = 2 } = obj;
         "#;
         let exports = extract_file_content_exports(file_content).unwrap();
+
         assert_eq!(
             exports,
             vec![
