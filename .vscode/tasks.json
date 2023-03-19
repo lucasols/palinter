@@ -5,7 +5,9 @@
       "type": "cargo",
       "label": "Cargo Run",
       "command": "run",
-      "problemMatcher": ["$rustc"],
+      "problemMatcher": [
+        "$rustc"
+      ],
       "presentation": {
         "clear": true
       }
@@ -14,11 +16,42 @@
       "type": "cargo",
       "label": "Cargo Test",
       "command": "test",
-      "args": ["--color=always", "--", "--nocapture", "--color=always"],
+      "args": [
+        "--color=always",
+        "--",
+        "--nocapture",
+        "--color=always",
+        "-q"
+      ],
       "env": {
         "DEVTEST": "true"
       },
-      "problemMatcher": ["$rustc"],
+      "problemMatcher": [
+        "$rustc"
+      ],
+      "presentation": {
+        "clear": true
+      },
+      "group": "test"
+    },
+    {
+      "label": "Cargo Test Active File",
+      "type": "cargo",
+      "command": "test",
+      "args": [
+        "${fileBasenameNoExtension}",
+        "--color=always",
+        "--",
+        "--nocapture",
+        "--color=always",
+        "-q"
+      ],
+      "env": {
+        "DEVTEST": "true"
+      },
+      "problemMatcher": [
+        "$rustc"
+      ],
       "presentation": {
         "clear": true
       },
@@ -28,7 +61,9 @@
       "label": "Cargo Review Snapshot",
       "type": "shell",
       "command": "cargo insta review",
-      "problemMatcher": ["$rustc"],
+      "problemMatcher": [
+        "$rustc"
+      ],
       "presentation": {
         "clear": true
       }
@@ -37,10 +72,35 @@
       "label": "Build",
       "type": "shell",
       "command": "make build",
-      "problemMatcher": ["$rustc"],
+      "problemMatcher": [
+        "$rustc"
+      ],
       "presentation": {
         "clear": true
       }
+    },
+    {
+      "label": "Cargo Test Active File",
+      "type": "cargo",
+      "command": "test",
+      "args": [
+        "${fileBasenameNoExtension}",
+        "--color=always",
+        "--",
+        "--nocapture",
+        "--color=always",
+        "-q"
+      ],
+      "env": {
+        "DEVTEST": "true"
+      },
+      "problemMatcher": [
+        "$rustc"
+      ],
+      "presentation": {
+        "clear": true
+      },
+      "group": "test"
     }
   ]
 }

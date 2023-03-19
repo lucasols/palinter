@@ -3,7 +3,7 @@ mod internal_config;
 mod load_folder_structure;
 mod parse_config_file;
 mod utils;
-mod analyse_ts_deps;
+mod analyze_ts_deps;
 
 use std::path::PathBuf;
 
