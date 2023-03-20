@@ -1,0 +1,72 @@
+---
+source: src/analyze_ts_deps.rs
+expression: "BTreeMap::from_iter(result)"
+---
+{
+    "./src/fileA.ts": FileDepsInfo {
+        deps: {},
+        has_circular_deps: false,
+        imports: [],
+        exports: [
+            Export {
+                line: 2,
+                name: "a",
+            },
+            Export {
+                line: 3,
+                name: "b",
+            },
+        ],
+    },
+    "./src/fileB.ts": FileDepsInfo {
+        deps: {
+            "./src/fileA.ts",
+        },
+        has_circular_deps: false,
+        imports: [
+            Import {
+                import_path: "@src/fileA",
+                line: 2,
+                values: Named(
+                    [
+                        "a",
+                    ],
+                ),
+            },
+            Import {
+                import_path: "@src/fileA",
+                line: 3,
+                values: Named(
+                    [
+                        "b",
+                    ],
+                ),
+            },
+            Import {
+                import_path: "testLib",
+                line: 4,
+                values: Named(
+                    [
+                        "test",
+                    ],
+                ),
+            },
+        ],
+        exports: [],
+    },
+    "./src/index.ts": FileDepsInfo {
+        deps: {
+            "./src/fileA.ts",
+            "./src/fileB.ts",
+        },
+        has_circular_deps: false,
+        imports: [
+            Import {
+                import_path: "@src/fileB",
+                line: 1,
+                values: SideEffect,
+            },
+        ],
+        exports: [],
+    },
+}

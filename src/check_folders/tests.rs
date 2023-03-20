@@ -1,16 +1,23 @@
 use colored::Colorize;
 use regex::Regex;
 use serde::Deserialize;
-use std::{collections::BTreeMap, hash::Hash};
+use std::{collections::BTreeMap, hash::Hash, path::PathBuf};
 
 use super::*;
 
 use crate::{
-    internal_config::get_config,
+    analyze_ts_deps::get_used_project_files_deps_info_from_cfg,
+    internal_config::{get_config, OneOfBlocks},
+    load_folder_structure,
     parse_config_file::{parse_config_string, ParseFrom},
 };
 
-fn config_from_string(config_string: &String, parse_from: ParseFrom) -> Result<Config, String> {
+use pretty_assertions::assert_eq;
+
+fn config_from_string(
+    config_string: &String,
+    parse_from: ParseFrom,
+) -> Result<Config, String> {
     let parsed_config = parse_config_string(config_string, parse_from)?;
 
     get_config(&parsed_config)
@@ -62,7 +69,11 @@ struct ParsedProjectYaml {
     expected_errors: ExpectedErrors,
 }
 
-fn convert_from_parsed_folder_to_project(parsed: &ParsedFolder, folder_name: String) -> Folder {
+fn convert_from_parsed_folder_to_project(
+    parsed: &ParsedFolder,
+    folder_name: String,
+    path: &str,
+) -> Folder {
     let childs = parsed
         .childs
         .iter()
@@ -82,14 +93,20 @@ fn convert_from_parsed_folder_to_project(parsed: &ParsedFolder, folder_name: Str
 
                 FolderChild::FileChild(File {
                     basename,
-                    name_with_ext: child_string,
+                    name_with_ext: child_string.clone(),
                     content: Some(file_content.to_owned()),
                     extension: Some(extension),
+                    path: format!("{}/{}", path, child_string),
                 })
             }
-            ParsedStructureChild::Folder(folder) => FolderChild::Folder(
-                convert_from_parsed_folder_to_project(folder, child_name.to_owned()),
-            ),
+            ParsedStructureChild::Folder(folder) => {
+                FolderChild::Folder(convert_from_parsed_folder_to_project(
+                    folder,
+                    child_name.to_owned(),
+                    format!("{}/{}", path, normalize_folder_config_name(child_name))
+                        .as_str(),
+                ))
+            }
         })
         .collect();
 
@@ -100,10 +117,14 @@ fn convert_from_parsed_folder_to_project(parsed: &ParsedFolder, folder_name: Str
 }
 
 fn parse_project_yaml(project_yaml: String) -> Result<Project, serde_yaml::Error> {
-    let parsed_project_yaml: ParsedProjectYaml = serde_yaml::from_str(&project_yaml)?;
+    let parsed_project_yaml: ParsedProjectYaml =
+        serde_yaml::from_str(&project_yaml)?;
 
-    let structure =
-        convert_from_parsed_folder_to_project(&parsed_project_yaml.structure, ".".to_string());
+    let structure = convert_from_parsed_folder_to_project(
+        &parsed_project_yaml.structure,
+        ".".to_string(),
+        ".",
+    );
 
     Ok(Project {
         only: parsed_project_yaml.only.unwrap_or(false),
@@ -147,7 +168,8 @@ fn extract_config_and_projects_from_test_case(
 
         let config_fist_line = config_string.lines().next().unwrap().to_string();
 
-        let expect_config_error = if config_fist_line.starts_with("# expect_error: ") {
+        let expect_config_error = if config_fist_line.starts_with("# expect_error: ")
+        {
             Some(config_fist_line.replace("# expect_error: ", ""))
         } else {
             None
@@ -181,7 +203,13 @@ fn extract_config_and_projects_from_test_case(
 
         match project {
             Ok(project) => projects.push(project),
-            Err(error) => return Err(format!("Error parsing project {} yaml: {}", i + 1, error)),
+            Err(error) => {
+                return Err(format!(
+                    "Error parsing project {} yaml: {}",
+                    i + 1,
+                    error
+                ))
+            }
         }
     }
 
@@ -298,8 +326,10 @@ fn test_cases() {
                                 ));
                             }
 
-                            let some_project_has_only =
-                                test_case.projects.iter().any(|project| project.only);
+                            let some_project_has_only = test_case
+                                .projects
+                                .iter()
+                                .any(|project| project.only);
 
                             if some_project_has_only {
                                 if !is_dev {
@@ -326,7 +356,31 @@ fn test_cases() {
                             {
                                 colored::control::set_override(false);
 
-                                let result = check_root_folder(config, &project.structure);
+                                let used_files_deps_info =
+                                    match get_used_project_files_deps_info_from_cfg(
+                                        config,
+                                        &project.structure,
+                                    ) {
+                                        Ok(used_files_deps_info) => {
+                                            used_files_deps_info
+                                        }
+                                        Err(error) => {
+                                            test_errors.push(format!(
+                                                "❌ Test case '{}': Project {}: {}",
+                                                file_name.blue(),
+                                                i + 1,
+                                                error
+                                            ));
+
+                                            continue;
+                                        }
+                                    };
+
+                                let result = check_root_folder(
+                                    config,
+                                    &project.structure,
+                                    &used_files_deps_info,
+                                );
 
                                 colored::control::unset_override();
 
@@ -339,7 +393,10 @@ fn test_cases() {
                                 match &project.expected_errors {
                                     Some(expected_errors) => {
                                         if let Err(errors) = result {
-                                            if !do_vecs_match(&errors, expected_errors) {
+                                            if !do_vecs_match(
+                                                &errors,
+                                                expected_errors,
+                                            ) {
                                                 test_errors.push(format!(
                                                     "{}\n\
                                                     Expected errors: {:#?}\n\
@@ -368,7 +425,9 @@ fn test_cases() {
                             }
                         }
                         Err(error) => {
-                            if let Some(expect_config_error) = &project_config.expect_config_error {
+                            if let Some(expect_config_error) =
+                                &project_config.expect_config_error
+                            {
                                 if error != expect_config_error {
                                     test_errors.push(format!(
                                         "❌ Test case '{}': Config {}:\n\
@@ -412,7 +471,8 @@ fn get_test_cases(dir: &str) -> Vec<(String, String)> {
             if path.is_dir() {
                 get_test_cases(path.to_str().unwrap())
             } else {
-                let file_name = path.file_name().unwrap().to_str().unwrap().to_string();
+                let file_name =
+                    path.file_name().unwrap().to_str().unwrap().to_string();
 
                 if file_name == "example.md" {
                     return vec![];
@@ -424,4 +484,59 @@ fn get_test_cases(dir: &str) -> Vec<(String, String)> {
             }
         })
         .collect::<Vec<(String, String)>>()
+}
+
+#[test]
+fn test_case_folder_structure_is_equal_to_loaded_structure() {
+    let parsed_structure = parse_project_yaml(
+        r#"
+            expected_errors: false
+            structure:
+                /dist:
+                    test.js: "const value = 'test';\n"
+                /folder:
+                    test.js: |
+                        export const test2 = () => {
+                          console.log('test2');
+                        }
+        "#
+        .to_string(),
+    )
+    .unwrap();
+
+    let config = Config {
+        analyze_content_of_files_types: vec!["js".to_string()],
+        ignore: HashSet::from_iter(vec![
+            ".DS_Store".to_string(),
+            "*.md".to_string(),
+        ]),
+        root_folder: FolderConfig {
+            allow_unexpected_files: true,
+            allow_unexpected_folders: true,
+            file_rules: vec![],
+            folder_rules: vec![FolderRule {
+                conditions: crate::internal_config::AnyOr::Any,
+                expect: crate::internal_config::AnyNoneOr::Any,
+                error_msg: None,
+                non_recursive: false,
+                not_touch: false,
+            }],
+            one_of_blocks: OneOfBlocks::default(),
+            optional: false,
+            sub_folders_config: HashMap::new(),
+        },
+        ts_config: None,
+    };
+
+    let root = PathBuf::from("./src/fixtures/analyze_file_contents");
+
+    let loaded = load_folder_structure(&root, &config, &root, true).unwrap();
+
+    assert_eq!(
+        loaded,
+        Folder {
+            name: "analyze_file_contents".to_string(),
+            childs: parsed_structure.structure.childs,
+        }
+    );
 }

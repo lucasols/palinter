@@ -17,9 +17,15 @@ pub struct ParsedFileConditions {
     pub has_extension: Option<SingleOrMultiple<String>>,
     pub has_name: Option<String>,
     pub not_has_name: Option<String>,
+    pub is_ts: Option<bool>,
 
     #[serde(flatten)]
     pub wrong: HashMap<String, Value>,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct ParsedTsFileExpect {
+    pub not_have_unused_exports: Option<bool>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -32,6 +38,7 @@ pub struct ParsedFileExpect {
     pub content_not_matches: Option<SingleOrMultiple<String>>,
     pub name_is: Option<String>,
     pub name_is_not: Option<String>,
+    pub ts: Option<ParsedTsFileExpect>,
 
     pub error_msg: Option<String>,
 
@@ -110,7 +117,9 @@ pub enum ParsedRule {
     File {
         #[serde(rename = "if_file")]
         conditions: ParsedAnyNoneOrConditions<ParsedFileConditions>,
-        expect: Option<Box<ParsedAnyNoneOrConditions<SingleOrMultiple<ParsedFileExpect>>>>,
+        expect: Option<
+            Box<ParsedAnyNoneOrConditions<SingleOrMultiple<ParsedFileExpect>>>,
+        >,
         expect_one_of: Option<Vec<ParsedFileExpect>>,
         error_msg: Option<String>,
         non_recursive: Option<bool>,
@@ -119,7 +128,9 @@ pub enum ParsedRule {
     Folder {
         #[serde(rename = "if_folder")]
         conditions: ParsedAnyNoneOrConditions<ParsedFolderConditions>,
-        expect: Option<Box<ParsedAnyNoneOrConditions<SingleOrMultiple<ParsedFolderExpect>>>>,
+        expect: Option<
+            Box<ParsedAnyNoneOrConditions<SingleOrMultiple<ParsedFolderExpect>>>,
+        >,
         expect_one_of: Option<Vec<ParsedFolderExpect>>,
         error_msg: Option<String>,
         non_recursive: Option<bool>,
@@ -155,6 +166,12 @@ pub enum ParsedFolderConfig {
     Error(Value),
 }
 
+#[derive(Deserialize, Debug, Clone)]
+pub struct ParsedTsConfig {
+    pub aliases: BTreeMap<String, String>,
+    pub unused_exports_entry_points: Vec<String>,
+}
+
 pub type ParsedBlocks = Option<BTreeMap<String, SingleOrMultiple<ParsedRule>>>;
 
 #[derive(Deserialize, Debug, Clone)]
@@ -163,6 +180,7 @@ pub struct ParsedConfig {
     pub to_have_files: Option<Vec<String>>,
     pub analyze_content_of_files_types: Option<Vec<String>>,
     pub ignore: Option<Vec<String>>,
+    pub ts: Option<ParsedTsConfig>,
 
     #[serde(rename = "./")]
     pub root_folder: ParsedFolderConfig,
@@ -176,7 +194,10 @@ pub enum ParseFrom {
     Json,
 }
 
-pub fn parse_config_string(config: &String, from: ParseFrom) -> Result<ParsedConfig, String> {
+pub fn parse_config_string(
+    config: &String,
+    from: ParseFrom,
+) -> Result<ParsedConfig, String> {
     match from {
         ParseFrom::Yaml => match serde_yaml::from_str(config) {
             Ok(config) => Ok(config),
@@ -193,7 +214,8 @@ pub fn parse_config_string(config: &String, from: ParseFrom) -> Result<ParsedCon
 }
 
 pub fn parse_config_file(config_path: &PathBuf) -> Result<ParsedConfig, String> {
-    let config = std::fs::read_to_string(config_path).map_err(|err| err.to_string())?;
+    let config =
+        std::fs::read_to_string(config_path).map_err(|err| err.to_string())?;
 
     let is_json = config_path.ends_with(".json");
 

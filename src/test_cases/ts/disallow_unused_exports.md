@@ -1,5 +1,3 @@
-ignore
-
 # Config
 
 ```yaml
@@ -7,13 +5,13 @@ ts:
   aliases:
     '@src/': ./src/
   unused_exports_entry_points:
-    - './src/folder/index.ts'
+    - './src/index.ts'
 
 ./:
-  /folder:
+  /src:
     rules:
       - if_file:
-          has_extension: [ts, tsx]
+          is_ts: true
         expect:
           ts:
             not_have_unused_exports: true
@@ -23,30 +21,30 @@ ts:
 
 ```yaml
 structure:
-  /folder:
+  /src:
     index.ts: |
-      import '@src/folder/fileB';
+      import '@src/fileB';
     fileA.ts: |
       export const a = 1;
       export const b = 2;
     fileB.ts: |
-      import { a } from '@src/folder/fileA';
-      import { b } from '@src/folder/fileA';
+      import { a } from '@src/fileA';
+      import { b } from '@src/fileA';
 
 expected_errors: false
 ```
 
 ```yaml
 structure:
-  /folder:
+  /src:
     index.ts: |
-      import '@src/folder/fileB';
+      import '@src/fileB';
     fileA.ts: |
       export const a = 1;
       export const b = 2;
     fileB.ts: |
-      import { a } from '@src/folder/fileA';
+      import { a } from '@src/fileA';
 
 expected_errors:
-  - "File ./folder/fileA.ts:\n • File has unused exports: b"
+  - "File ./src/fileA.ts:\n • File has unused exports: 'b' in line 2"
 ```

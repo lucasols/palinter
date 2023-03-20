@@ -2,13 +2,14 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use std::path::PathBuf;
 
-use crate::utils::{get_code_from_line, split_string_by, remove_comments_from_code};
+use crate::utils::{get_code_from_line, remove_comments_from_code};
 
 #[derive(Debug, PartialEq)]
 pub enum ImportType {
     Named(Vec<String>),
     All,
     Dynamic,
+    SideEffect,
 }
 
 #[derive(Debug, PartialEq)]
@@ -46,19 +47,38 @@ pub fn extract_imports_from_file_content(
                             \w+\s*,\s+\*.+
                         )
                         |
-                        \{(?P<named>[\S\s]+?)\}\s+
+                        \{(?P<named>[\w\s,]+?)\}\s+
                         |
                         (?P<default>\w+\s+)
                         |
-                        \w+\s*,\s+\{(?P<named_with_default>[\S\s]+?)\}\s+
+                        \w+\s*,\s+\{(?P<named_with_default>[\w\s,]+?)\}\s+
                     )
                     from\s+["'](?P<import_path>.+)["']
+                "#
+            )
+            .unwrap();
+            static ref SIDE_EFFECT_IMPORT_RE: Regex = Regex::new(
+                r#"(?x)
+                    ^import\s+
+                    ["'](?P<import_path>.+)["']
                 "#
             )
             .unwrap();
         }
 
         if line.starts_with("import") || line.starts_with("export") {
+            if let Some(captures) = SIDE_EFFECT_IMPORT_RE.captures(line) {
+                let import_path =
+                    captures.name("import_path").unwrap().as_str().to_string();
+
+                imports.push(Import {
+                    import_path: PathBuf::from(import_path),
+                    line: current_line,
+                    values: ImportType::SideEffect,
+                });
+                continue;
+            }
+
             let content_to_check = if line.contains("from") {
                 line.to_string()
             } else {
@@ -201,6 +221,7 @@ mod tests {
     #[test]
     fn multiple_imports() {
         let file_content = r#"
+        // comment
             import { Foo, Bar } from '@src/foo';
             import { Baz } from "@src/baz";
             import { Qux } from '@src/qux';
@@ -212,7 +233,7 @@ mod tests {
             vec![
                 Import {
                     import_path: PathBuf::from("@src/foo"),
-                    line: 2,
+                    line: 3,
                     values: ImportType::Named(vec![
                         "Foo".to_string(),
                         "Bar".to_string()
@@ -220,12 +241,12 @@ mod tests {
                 },
                 Import {
                     import_path: PathBuf::from("@src/baz"),
-                    line: 3,
+                    line: 4,
                     values: ImportType::Named(vec!["Baz".to_string()]),
                 },
                 Import {
                     import_path: PathBuf::from("@src/qux"),
-                    line: 4,
+                    line: 5,
                     values: ImportType::Named(vec!["Qux".to_string()]),
                 },
             ],
@@ -468,7 +489,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn multiline_dynamic_import() {
         let file_content = r#"
             const test = import(
@@ -490,7 +510,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn reexport() {
         let file_content = r#"
             export { foo } from '@src/foo';
@@ -528,6 +547,23 @@ mod tests {
                     ]),
                 }
             ],
+        );
+    }
+
+    #[test]
+    fn side_effect_import() {
+        let file_content = r#"
+            import '@src/foo';
+        "#;
+        let imports = extract_imports_from_file_content(file_content).unwrap();
+
+        assert_eq!(
+            imports,
+            vec![Import {
+                import_path: PathBuf::from("@src/foo"),
+                line: 2,
+                values: ImportType::SideEffect,
+            }],
         );
     }
 }

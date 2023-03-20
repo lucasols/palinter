@@ -1,9 +1,9 @@
+mod analyze_ts_deps;
 mod check_folders;
 mod internal_config;
 mod load_folder_structure;
 mod parse_config_file;
 mod utils;
-mod analyze_ts_deps;
 
 use std::path::PathBuf;
 
@@ -12,6 +12,8 @@ use clap::Parser;
 use internal_config::get_config;
 use load_folder_structure::load_folder_structure;
 use parse_config_file::parse_config_file;
+
+use crate::analyze_ts_deps::get_used_project_files_deps_info_from_cfg;
 
 #[derive(Parser)]
 struct Cli {
@@ -56,10 +58,22 @@ fn lint(confg_path: PathBuf, root: PathBuf) {
         }
     };
 
-    match check_root_folder(&config, &root_structure) {
+    let used_files_deps_info =
+        match get_used_project_files_deps_info_from_cfg(&config, &root_structure) {
+            Ok(used_files_deps_info) => used_files_deps_info,
+            Err(err) => {
+                println!("❌ Error getting used files deps info: {}", err);
+                std::process::exit(1);
+            }
+        };
+
+    match check_root_folder(&config, &root_structure, &used_files_deps_info) {
         Ok(_) => {}
         Err(err) => {
-            println!("❌ Errors found in the project:\n\n{}\n\n", err.join("\n\n"));
+            println!(
+                "❌ Errors found in the project:\n\n{}\n\n",
+                err.join("\n\n")
+            );
             std::process::exit(1);
         }
     }

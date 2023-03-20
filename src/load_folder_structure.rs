@@ -1,26 +1,28 @@
 use globset::Glob;
 use std::{
+    collections::HashMap,
     fs::read_to_string,
     path::{Path, PathBuf},
 };
 
 use crate::internal_config::Config;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct File {
     pub basename: String,
     pub name_with_ext: String,
     pub content: Option<String>,
     pub extension: Option<String>,
+    pub path: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum FolderChild {
     FileChild(File),
     Folder(Folder),
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Folder {
     pub name: String,
     pub childs: Vec<FolderChild>,
@@ -64,7 +66,10 @@ pub fn load_folder_structure(
                 && config
                     .root_folder
                     .sub_folders_config
-                    .get(&format!("/{}", path.file_name().unwrap().to_str().unwrap()))
+                    .get(&format!(
+                        "/{}",
+                        path.file_name().unwrap().to_str().unwrap()
+                    ))
                     .is_none()
             {
                 continue;
@@ -74,13 +79,20 @@ pub fn load_folder_structure(
                 &path, config, root, false,
             )?));
         } else {
-            let extension = path.extension().map(|s| s.to_str().unwrap().to_string());
+            let extension =
+                path.extension().map(|s| s.to_str().unwrap().to_string());
 
             let file = File {
                 basename: path.file_stem().unwrap().to_str().unwrap().to_string(),
-                name_with_ext: path.file_name().unwrap().to_str().unwrap().to_string(),
-                content: get_file_content(config, &extension, path),
+                name_with_ext: path
+                    .file_name()
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
+                    .to_string(),
+                content: get_file_content(config, &extension, path.clone()),
                 extension,
+                path: format!("./{}", relative_path.to_str().unwrap().to_string(),),
             };
 
             childs.push(FolderChild::FileChild(file));
@@ -106,16 +118,35 @@ pub fn load_folder_structure(
     })
 }
 
-fn get_file_content(config: &Config, extension: &Option<String>, path: PathBuf) -> Option<String> {
-    if let Some(extensions) = &config.analyze_content_of_files_types {
-        if let Some(extension) = extension {
-            if extensions.contains(extension) {
-                return Some(read_to_string(path).unwrap());
-            }
+fn get_file_content(
+    config: &Config,
+    extension: &Option<String>,
+    path: PathBuf,
+) -> Option<String> {
+    if let Some(extension) = extension {
+        if config.analyze_content_of_files_types.contains(extension) {
+            return Some(read_to_string(path).unwrap());
         }
     }
 
     None
+}
+
+pub fn get_flattened_files_structure(folder: &Folder) -> HashMap<String, File> {
+    let mut result: HashMap<String, File> = HashMap::new();
+
+    for child in &folder.childs {
+        match child {
+            FolderChild::FileChild(file) => {
+                result.insert(file.clone().path, file.clone());
+            }
+            FolderChild::Folder(folder) => {
+                result.extend(get_flattened_files_structure(folder));
+            }
+        }
+    }
+
+    result
 }
 
 #[cfg(test)]
@@ -131,7 +162,7 @@ mod tests {
     #[test]
     fn ignore_folders() {
         let config = Config {
-            analyze_content_of_files_types: None,
+            analyze_content_of_files_types: vec![],
             ignore: HashSet::from_iter(vec![
                 "dist".to_string(),
                 "node_modules".to_string(),
@@ -152,6 +183,7 @@ mod tests {
                 optional: false,
                 sub_folders_config: HashMap::new(),
             },
+            ts_config: None,
         };
 
         let root = PathBuf::from("./src/fixtures/ignore_folder");
@@ -164,7 +196,7 @@ mod tests {
     #[test]
     fn analyze_content_of_files_types() {
         let config = Config {
-            analyze_content_of_files_types: Some(vec!["js".to_string()]),
+            analyze_content_of_files_types: vec!["js".to_string()],
             ignore: HashSet::from_iter(vec![".DS_Store".to_string()]),
             root_folder: FolderConfig {
                 allow_unexpected_files: true,
@@ -181,6 +213,7 @@ mod tests {
                 optional: false,
                 sub_folders_config: HashMap::new(),
             },
+            ts_config: None,
         };
 
         let root = PathBuf::from("./src/fixtures/analyze_file_contents");
@@ -193,7 +226,7 @@ mod tests {
     #[test]
     fn ignore_unconfigured_folder() {
         let config = Config {
-            analyze_content_of_files_types: Some(vec!["js".to_string()]),
+            analyze_content_of_files_types: vec!["js".to_string()],
             ignore: HashSet::from_iter(vec![".DS_Store".to_string()]),
             root_folder: FolderConfig {
                 allow_unexpected_files: true,
@@ -204,6 +237,7 @@ mod tests {
                 optional: false,
                 sub_folders_config: HashMap::new(),
             },
+            ts_config: None,
         };
 
         let root = PathBuf::from("./src/fixtures/analyze_file_contents");

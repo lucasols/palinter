@@ -3,10 +3,10 @@ use regex::Regex;
 
 use crate::utils::{get_code_from_line, split_string_by, remove_comments_from_code};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Export {
-    line: usize,
-    name: String,
+    pub line: usize,
+    pub name: String,
 }
 
 const DEFAULT: &str = "default";

@@ -2,10 +2,14 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 
 use serde_yaml::Value;
 
-use crate::parse_config_file::{
-    CorrectParsedFolderConfig, ParsedAnyNoneOrConditions, ParsedBlocks, ParsedConfig,
-    ParsedFileConditions, ParsedFileContentMatches, ParsedFileContentMatchesItem, ParsedFileExpect,
-    ParsedFolderConfig, ParsedFolderExpect, ParsedRule, SingleOrMultiple,
+use crate::{
+    parse_config_file::{
+        CorrectParsedFolderConfig, ParsedAnyNoneOrConditions, ParsedBlocks,
+        ParsedConfig, ParsedFileConditions, ParsedFileContentMatches,
+        ParsedFileContentMatchesItem, ParsedFileExpect, ParsedFolderConfig,
+        ParsedFolderExpect, ParsedRule, SingleOrMultiple,
+    },
+    utils::clone_extend_vec,
 };
 
 #[derive(Debug, Clone)]
@@ -51,6 +55,11 @@ pub struct ContentMatches {
 }
 
 #[derive(Debug, Clone)]
+pub struct TsFileExpect {
+    pub not_have_unused_exports: bool,
+}
+
+#[derive(Debug, Clone)]
 pub struct FileExpect {
     pub name_case_is: Option<NameCase>,
     pub extension_is: Option<Vec<String>>,
@@ -60,6 +69,7 @@ pub struct FileExpect {
     pub content_not_matches: Option<Vec<String>>,
     pub name_is: Option<String>,
     pub name_is_not: Option<String>,
+    pub ts: Option<TsFileExpect>,
 
     pub error_msg: Option<String>,
 }
@@ -108,25 +118,25 @@ pub struct FolderRule {
     pub error_msg: Option<String>,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct OneOfFile {
     pub rules: Vec<FileRule>,
     pub error_msg: String,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct OneOfFolder {
     pub rules: Vec<FolderRule>,
     pub error_msg: String,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct OneOfBlocks {
     pub file_blocks: Vec<OneOfFile>,
     pub folder_blocks: Vec<OneOfFolder>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct FolderConfig {
     pub sub_folders_config: HashMap<String, FolderConfig>,
     pub file_rules: Vec<FileRule>,
@@ -137,21 +147,30 @@ pub struct FolderConfig {
     pub allow_unexpected_folders: bool,
 }
 
-#[derive(Debug)]
-pub struct Config {
-    pub root_folder: FolderConfig,
-    pub analyze_content_of_files_types: Option<Vec<String>>,
-    pub ignore: HashSet<String>,
+#[derive(Debug, Clone)]
+pub struct TsConfig {
+    pub aliases: HashMap<String, String>,
+    pub unused_exports_entry_points: Vec<String>,
 }
 
-fn normalize_single_or_multiple<T: Clone>(single_or_multiple: &SingleOrMultiple<T>) -> Vec<T> {
+#[derive(Debug, Clone)]
+pub struct Config {
+    pub root_folder: FolderConfig,
+    pub analyze_content_of_files_types: Vec<String>,
+    pub ignore: HashSet<String>,
+    pub ts_config: Option<TsConfig>,
+}
+
+fn normalize_single_or_multiple<T: Clone>(
+    single_or_multiple: &SingleOrMultiple<T>,
+) -> Vec<T> {
     match single_or_multiple {
         SingleOrMultiple::Single(single) => vec![single.clone()],
         SingleOrMultiple::Multiple(multiple) => multiple.to_vec(),
     }
 }
 
-pub fn normalize_single_or_multiple_some<T: Clone>(
+pub fn normalize_single_or_multiple_option<T: Clone>(
     single_or_multiple_option: &Option<SingleOrMultiple<T>>,
 ) -> Option<Vec<T>> {
     single_or_multiple_option
@@ -170,7 +189,10 @@ fn check_any(any: &String, config_path: &String) -> Result<(), String> {
     }
 }
 
-fn check_any_or_none<T>(any: &String, config_path: &String) -> Result<AnyNoneOr<T>, String> {
+fn check_any_or_none<T>(
+    any: &String,
+    config_path: &String,
+) -> Result<AnyNoneOr<T>, String> {
     match any.as_str() {
         "any" => Ok(AnyNoneOr::Any),
         "none" => Ok(AnyNoneOr::None),
@@ -181,7 +203,10 @@ fn check_any_or_none<T>(any: &String, config_path: &String) -> Result<AnyNoneOr<
     }
 }
 
-fn normalize_name_case(name_case: &String, config_path: &String) -> Result<NameCase, String> {
+fn normalize_name_case(
+    name_case: &String,
+    config_path: &String,
+) -> Result<NameCase, String> {
     match name_case.as_str() {
         "camelCase" => Ok(NameCase::Camel),
         "snake_case" => Ok(NameCase::Snake),
@@ -260,18 +285,40 @@ fn normalize_rules(
                         AnyOr::Any
                     }
                     ParsedAnyNoneOrConditions::Conditions(conditions) => {
+                        let ParsedFileConditions {
+                            has_extension,
+                            has_name,
+                            not_has_name,
+                            is_ts,
+                            wrong,
+                        } = conditions;
+
                         check_invalid_conditions(
-                            &conditions.wrong,
+                            wrong,
                             "if_file condition",
                             config_path,
                         )?;
 
+                        let validated_is_ts =
+                            get_true_flag(config_path, is_ts, "is_ts")?;
+
                         AnyOr::Or(FileConditions {
-                            has_extension: normalize_single_or_multiple_some(
-                                &conditions.has_extension,
-                            ),
-                            has_name: conditions.has_name.clone(),
-                            not_has_name: conditions.not_has_name.clone(),
+                            has_extension: (has_extension.is_some()
+                                || validated_is_ts)
+                                .then_some(clone_extend_vec(
+                                    &normalize_single_or_multiple_option(
+                                        has_extension,
+                                    )
+                                    .unwrap_or_default(),
+                                    &validated_is_ts
+                                        .then_some(vec![
+                                            "ts".to_string(),
+                                            "tsx".to_string(),
+                                        ])
+                                        .unwrap_or_default(),
+                                )),
+                            has_name: has_name.clone(),
+                            not_has_name: not_has_name.clone(),
                         })
                     }
                 };
@@ -286,7 +333,9 @@ fn normalize_rules(
                         ParsedAnyNoneOrConditions::Conditions(expect_conditions) => {
                             let mut expects: Vec<FileExpect> = Vec::new();
 
-                            for parsed_expected in normalize_single_or_multiple(expect_conditions) {
+                            for parsed_expected in
+                                normalize_single_or_multiple(expect_conditions)
+                            {
                                 check_invalid_conditions(
                                     &parsed_expected.wrong,
                                     "file expect condition",
@@ -308,13 +357,25 @@ fn normalize_rules(
                         conditions: conditions.clone(),
                         expect: new_expect,
                         error_msg: error_msg.clone(),
-                        not_touch: get_true_flag(config_path, not_touch, "not_touch")?,
-                        non_recursive: get_true_flag(config_path, non_recursive, "non_recursive")?,
+                        not_touch: get_true_flag(
+                            config_path,
+                            not_touch,
+                            "not_touch",
+                        )?,
+                        non_recursive: get_true_flag(
+                            config_path,
+                            non_recursive,
+                            "non_recursive",
+                        )?,
                     });
                 };
 
                 if let Some(expect_one_of) = expect_one_of {
-                    check_expect_one_of(config_path, expect_one_of.len(), &conditions)?;
+                    check_expect_one_of(
+                        config_path,
+                        expect_one_of.len(),
+                        &conditions,
+                    )?;
 
                     if let Some(error_msg) = error_msg {
                         let mut rules: Vec<FileRule> = Vec::new();
@@ -327,7 +388,11 @@ fn normalize_rules(
                                     config_path,
                                     config,
                                 )?]),
-                                not_touch: get_true_flag(config_path, not_touch, "not_touch")?,
+                                not_touch: get_true_flag(
+                                    config_path,
+                                    not_touch,
+                                    "not_touch",
+                                )?,
                                 error_msg: None,
                                 non_recursive: get_true_flag(
                                     config_path,
@@ -375,17 +440,25 @@ fn normalize_rules(
                             has_name_case: conditions
                                 .has_name_case
                                 .as_ref()
-                                .map(|name_case| normalize_name_case(name_case, config_path))
+                                .map(|name_case| {
+                                    normalize_name_case(name_case, config_path)
+                                })
                                 .transpose()?,
                             has_name: conditions.has_name.clone(),
                             not_has_name: conditions.not_has_name.clone(),
                             root_files_find_pattern: conditions
                                 .root_files_find_pattern
                                 .as_ref()
-                                .map(|root_files_find_pattern| RootFilesFindPattern {
-                                    pattern: root_files_find_pattern.pattern.clone(),
-                                    at_least: root_files_find_pattern.at_least.unwrap_or(1),
-                                    at_most: root_files_find_pattern.at_most,
+                                .map(|root_files_find_pattern| {
+                                    RootFilesFindPattern {
+                                        pattern: root_files_find_pattern
+                                            .pattern
+                                            .clone(),
+                                        at_least: root_files_find_pattern
+                                            .at_least
+                                            .unwrap_or(1),
+                                        at_most: root_files_find_pattern.at_most,
+                                    }
                                 }),
                         })
                     }
@@ -401,14 +474,19 @@ fn normalize_rules(
                         ParsedAnyNoneOrConditions::Conditions(expect_conditions) => {
                             let mut expects: Vec<FolderExpect> = Vec::new();
 
-                            for parsed_expected in normalize_single_or_multiple(expect_conditions) {
+                            for parsed_expected in
+                                normalize_single_or_multiple(expect_conditions)
+                            {
                                 check_invalid_conditions(
                                     &parsed_expected.wrong,
                                     "file expect condition",
                                     config_path,
                                 )?;
 
-                                expects.push(get_folder_expect(parsed_expected, config_path)?);
+                                expects.push(get_folder_expect(
+                                    parsed_expected,
+                                    config_path,
+                                )?);
                             }
 
                             AnyNoneOr::Or(expects)
@@ -419,13 +497,25 @@ fn normalize_rules(
                         conditions: conditions.clone(),
                         error_msg: error_msg.clone(),
                         expect: new_expect,
-                        not_touch: get_true_flag(config_path, not_touch, "not_touch")?,
-                        non_recursive: get_true_flag(config_path, non_recursive, "non_recursive")?,
+                        not_touch: get_true_flag(
+                            config_path,
+                            not_touch,
+                            "not_touch",
+                        )?,
+                        non_recursive: get_true_flag(
+                            config_path,
+                            non_recursive,
+                            "non_recursive",
+                        )?,
                     });
                 }
 
                 if let Some(expect_one_of) = expect_one_of {
-                    check_expect_one_of(config_path, expect_one_of.len(), &conditions)?;
+                    check_expect_one_of(
+                        config_path,
+                        expect_one_of.len(),
+                        &conditions,
+                    )?;
 
                     if let Some(error_msg) = error_msg {
                         let mut rules: Vec<FolderRule> = Vec::new();
@@ -437,7 +527,11 @@ fn normalize_rules(
                                     rule_expect.clone(),
                                     config_path,
                                 )?]),
-                                not_touch: get_true_flag(config_path, not_touch, "not_touch")?,
+                                not_touch: get_true_flag(
+                                    config_path,
+                                    not_touch,
+                                    "not_touch",
+                                )?,
                                 error_msg: None,
                                 non_recursive: get_true_flag(
                                     config_path,
@@ -468,8 +562,9 @@ fn normalize_rules(
                             if i == 0 {
                                 block_id = part.to_string();
                             } else if part.starts_with("error_msg=") {
-                                custom_error =
-                                    part.strip_prefix("error_msg=").map(|s| s.to_string());
+                                custom_error = part
+                                    .strip_prefix("error_msg=")
+                                    .map(|s| s.to_string());
                             } else if part.starts_with("not_touch") {
                                 custom_not_touch = if part == "not_touch=false" {
                                     Some(false)
@@ -477,11 +572,12 @@ fn normalize_rules(
                                     Some(true)
                                 };
                             } else if part.starts_with("non_recursive") {
-                                custom_non_recursive = if part == "non_recursive=false" {
-                                    Some(false)
-                                } else {
-                                    Some(true)
-                                };
+                                custom_non_recursive =
+                                    if part == "non_recursive=false" {
+                                        Some(false)
+                                    } else {
+                                        Some(true)
+                                    };
                             }
                         }
 
@@ -568,7 +664,8 @@ fn normalize_rules(
                             config,
                         )?;
 
-                        if !and_file_rules.is_empty() && !and_folder_rules.is_empty() {
+                        if !and_file_rules.is_empty() && !and_folder_rules.is_empty()
+                        {
                             return Err(format!(
                             "Config error in '{}': Blocks used in 'one_of' cannot contain both file and folder rules",
                             config_path
@@ -601,7 +698,8 @@ fn normalize_rules(
                         }
 
                         if (!and_file_rules.is_empty() && !one_of_folder.is_empty())
-                            || (!and_folder_rules.is_empty() && !one_of_file.is_empty())
+                            || (!and_folder_rules.is_empty()
+                                && !one_of_file.is_empty())
                         {
                             return Err(format!(
                             "Config error in '{}': 'one_of' block cannot contain both file and folder rules",
@@ -705,8 +803,10 @@ fn get_file_expect(
     config_path: &String,
     parsed_config: &ParsedConfig,
 ) -> Result<FileExpect, String> {
-    if (parsed_expected.content_matches.is_some() || parsed_expected.content_matches_any.is_some())
-        && parsed_config.analyze_content_of_files_types.is_none()
+    if (parsed_expected.content_matches.is_some()
+        || parsed_expected.content_matches_any.is_some())
+        && (parsed_config.analyze_content_of_files_types.is_none()
+            && parsed_config.ts.is_none())
     {
         return Err(format!(
             "Config error in '{}': to use 'content_matches' and 'content_matches_any' you must specify the 'analyze_content_of_files_types' property with the file extensions you want to analyze",
@@ -717,22 +817,37 @@ fn get_file_expect(
     Ok(FileExpect {
         error_msg: parsed_expected.error_msg,
         name_is: parsed_expected.name_is,
-        extension_is: normalize_single_or_multiple_some(&parsed_expected.extension_is),
+        extension_is: normalize_single_or_multiple_option(
+            &parsed_expected.extension_is,
+        ),
         name_case_is: parsed_expected
             .name_case_is
             .as_ref()
             .map(|name_case| normalize_name_case(name_case, config_path))
             .transpose()?,
         have_sibling_file: parsed_expected.have_sibling_file,
-        content_matches: normalize_content_matches(parsed_expected.content_matches, config_path),
+        content_matches: normalize_content_matches(
+            parsed_expected.content_matches,
+            config_path,
+        ),
         content_matches_some: normalize_content_matches(
             parsed_expected.content_matches_any,
             config_path,
         ),
-        content_not_matches: normalize_single_or_multiple_some(
+        content_not_matches: normalize_single_or_multiple_option(
             &parsed_expected.content_not_matches,
         ),
         name_is_not: parsed_expected.name_is_not,
+        ts: match parsed_expected.ts {
+            Some(ts) => Some(TsFileExpect {
+                not_have_unused_exports: get_true_flag(
+                    config_path,
+                    &ts.not_have_unused_exports,
+                    "ts.not_have_unused_exports",
+                )?,
+            }),
+            None => None,
+        },
     })
 }
 
@@ -832,13 +947,15 @@ pub fn normalize_folder_config(
                 let has_file_rules: Vec<ParsedRule> = files
                     .iter()
                     .map(|file| ParsedRule::File {
-                        conditions: ParsedAnyNoneOrConditions::Conditions(ParsedFileConditions {
-                            has_name: Some(file.clone()),
-                            ..Default::default()
-                        }),
-                        expect: Some(Box::new(ParsedAnyNoneOrConditions::AnyOrNone(
-                            "any".to_string(),
-                        ))),
+                        conditions: ParsedAnyNoneOrConditions::Conditions(
+                            ParsedFileConditions {
+                                has_name: Some(file.clone()),
+                                ..Default::default()
+                            },
+                        ),
+                        expect: Some(Box::new(
+                            ParsedAnyNoneOrConditions::AnyOrNone("any".to_string()),
+                        )),
                         expect_one_of: None,
                         error_msg: None,
                         non_recursive: Some(true),
@@ -853,10 +970,15 @@ pub fn normalize_folder_config(
                 rules.extend(parsed_rule.clone());
             }
 
-            let (file_rules, folder_rules, one_of_blocks) =
-                normalize_rules(&rules, &folder_path, normalize_blocks, parsed_config)?;
+            let (file_rules, folder_rules, one_of_blocks) = normalize_rules(
+                &rules,
+                &folder_path,
+                normalize_blocks,
+                parsed_config,
+            )?;
 
-            let mut sub_folders_config: HashMap<String, FolderConfig> = HashMap::new();
+            let mut sub_folders_config: HashMap<String, FolderConfig> =
+                HashMap::new();
 
             for (sub_folder_name, sub_folder_config) in &config.folders {
                 if !sub_folder_name.starts_with('/') {
@@ -866,7 +988,8 @@ pub fn normalize_folder_config(
                     ));
                 }
 
-                let compound_path_parts = sub_folder_name.split('/').collect::<Vec<&str>>();
+                let compound_path_parts =
+                    sub_folder_name.split('/').collect::<Vec<&str>>();
 
                 if compound_path_parts.len() > 2 {
                     let fisrt_part = format!("/{}", compound_path_parts[1]);
@@ -878,7 +1001,8 @@ pub fn normalize_folder_config(
                         ));
                     }
 
-                    let sub_folder_name = format!("/{}", compound_path_parts[2..].join("/"));
+                    let sub_folder_name =
+                        format!("/{}", compound_path_parts[2..].join("/"));
 
                     sub_folders_config.insert(
                         fisrt_part,
@@ -935,7 +1059,9 @@ pub fn normalize_folder_config(
     }
 }
 
-fn normalize_blocks(parsed_blocks: &ParsedBlocks) -> Result<NormalizedBlocks, String> {
+fn normalize_blocks(
+    parsed_blocks: &ParsedBlocks,
+) -> Result<NormalizedBlocks, String> {
     let mut normalized_blocks: NormalizedBlocks = BTreeMap::new();
 
     if let Some(blocks) = parsed_blocks {
@@ -968,6 +1094,22 @@ pub fn get_config(parsed_config: &ParsedConfig) -> Result<Config, String> {
 
     let normalized_block = &normalize_blocks(&parsed_config.blocks)?;
 
+    let mut analyze_content_of_files_types = parsed_config
+        .analyze_content_of_files_types
+        .clone()
+        .map(|types| {
+            types
+                .iter()
+                .map(|type_| type_.to_string())
+                .collect::<Vec<String>>()
+        })
+        .unwrap_or_default();
+
+    if parsed_config.ts.is_some() {
+        analyze_content_of_files_types
+            .extend(vec!["ts".to_string(), "tsx".to_string()]);
+    }
+
     Ok(Config {
         root_folder: normalize_folder_config(
             &parsed_config.root_folder,
@@ -982,6 +1124,10 @@ pub fn get_config(parsed_config: &ParsedConfig) -> Result<Config, String> {
             ]
             .concat(),
         ),
-        analyze_content_of_files_types: parsed_config.analyze_content_of_files_types.clone(),
+        analyze_content_of_files_types,
+        ts_config: parsed_config.ts.as_ref().map(|ts| TsConfig {
+            aliases: HashMap::from_iter(ts.aliases.clone()),
+            unused_exports_entry_points: ts.unused_exports_entry_points.clone(),
+        }),
     })
 }

@@ -2,6 +2,7 @@
 
 ```yaml
 analyze_content_of_files_types: ['ts', 'tsx']
+
 ./:
   /stores:
     has_files_in_root:

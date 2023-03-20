@@ -50,6 +50,12 @@ pub fn remove_comments_from_code(code: &str) -> String {
     .to_string()
 }
 
+pub fn clone_extend_vec<T: Clone>(vec: &Vec<T>, extend_with: &Vec<T>) -> Vec<T> {
+    let mut new_vec = vec.clone();
+    new_vec.extend(extend_with.clone());
+    new_vec
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
