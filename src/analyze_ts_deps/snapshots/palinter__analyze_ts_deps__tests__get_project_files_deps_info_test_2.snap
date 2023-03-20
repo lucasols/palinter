@@ -1,6 +1,5 @@
 ---
-source: src/analyze_ts_deps.rs
-assertion_line: 382
+source: src/analyze_ts_deps/tests.rs
 expression: "BTreeMap::from_iter(result)"
 ---
 {
@@ -9,8 +8,8 @@ expression: "BTreeMap::from_iter(result)"
             "./src/fileC.ts",
         },
         has_circular_deps: false,
-        imports: [
-            Import {
+        imports: {
+            "./src/fileC.ts": Import {
                 import_path: "@src/fileC",
                 line: 2,
                 values: Named(
@@ -19,7 +18,7 @@ expression: "BTreeMap::from_iter(result)"
                     ],
                 ),
             },
-        ],
+        },
         exports: [],
     },
     "./src/fileB.ts": FileDepsInfo {
@@ -27,8 +26,8 @@ expression: "BTreeMap::from_iter(result)"
             "./src/fileC.ts",
         },
         has_circular_deps: false,
-        imports: [
-            Import {
+        imports: {
+            "./src/fileC.ts": Import {
                 import_path: "@src/fileC",
                 line: 2,
                 values: Named(
@@ -37,13 +36,13 @@ expression: "BTreeMap::from_iter(result)"
                     ],
                 ),
             },
-        ],
+        },
         exports: [],
     },
     "./src/fileC.ts": FileDepsInfo {
         deps: {},
         has_circular_deps: false,
-        imports: [],
+        imports: {},
         exports: [
             Export {
                 line: 2,
@@ -58,8 +57,8 @@ expression: "BTreeMap::from_iter(result)"
             "./src/fileC.ts",
         },
         has_circular_deps: false,
-        imports: [
-            Import {
+        imports: {
+            "./src/fileA.ts": Import {
                 import_path: "@src/fileA",
                 line: 2,
                 values: Named(
@@ -68,7 +67,7 @@ expression: "BTreeMap::from_iter(result)"
                     ],
                 ),
             },
-            Import {
+            "./src/fileB.ts": Import {
                 import_path: "@src/fileB",
                 line: 3,
                 values: Named(
@@ -77,7 +76,7 @@ expression: "BTreeMap::from_iter(result)"
                     ],
                 ),
             },
-        ],
+        },
         exports: [],
     },
 }

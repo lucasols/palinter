@@ -1,5 +1,5 @@
 use std::{
-    collections::{BTreeSet, HashMap, HashSet},
+    collections::{BTreeMap, BTreeSet, HashMap, HashSet},
     fs::read_to_string,
     path::{Path, PathBuf},
 };
@@ -24,7 +24,7 @@ pub mod ts_checks;
 pub struct FileDepsInfo {
     deps: BTreeSet<PathBuf>,
     has_circular_deps: bool,
-    imports: HashMap<String, Import>,
+    imports: BTreeMap<String, Import>,
     exports: Vec<Export>,
 }
 
@@ -201,8 +201,8 @@ fn normalize_imports(
     aliases: &HashMap<String, String>,
     files_cache: &mut HashMap<String, File>,
     resolve_cache: &mut HashMap<PathBuf, PathBuf>,
-) -> Result<HashMap<String, Import>, String> {
-    let mut normalized_imports: HashMap<String, Import> = HashMap::new();
+) -> Result<BTreeMap<String, Import>, String> {
+    let mut normalized_imports: BTreeMap<String, Import> = BTreeMap::new();
 
     for import in imports {
         let resolved_import_name = get_resolved_path(
