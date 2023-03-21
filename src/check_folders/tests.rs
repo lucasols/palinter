@@ -531,6 +531,8 @@ fn test_case_folder_structure_is_equal_to_loaded_structure() {
             one_of_blocks: OneOfBlocks::default(),
             optional: false,
             sub_folders_config: HashMap::new(),
+            unexpected_files_error_msg: None,
+            unexpected_folders_error_msg: None,
         },
         ts_config: None,
     };

@@ -517,9 +517,13 @@ fn check_folder_childs(
 
                 if !file_touched && !allow_unconfigured_files {
                     errors.push(format!(
-                        "File {} is not expected in folder {}",
+                        "File {} is not expected in folder {}{}",
                         file.name_with_ext.bright_yellow(),
-                        folder_path.bright_red()
+                        folder_path.bright_red(),
+                        folder_config
+                            .and_then(|cfg| cfg.unexpected_files_error_msg.as_ref())
+                            .map(|msg| format!(" | {}", msg))
+                            .unwrap_or_default()
                     ));
                 }
             }
@@ -594,9 +598,15 @@ fn check_folder_childs(
                     folders_missing_check.remove(&sub_folder.name);
                 } else if !folder_touched && !allow_unconfigured_folders {
                     errors.push(format!(
-                        "Folder {} is not expected in folder {}",
+                        "Folder {} is not expected in folder {}{}",
                         format!("/{}", sub_folder.name).bright_red(),
-                        folder_path.bright_red()
+                        folder_path.bright_red(),
+                        folder_config
+                            .and_then(|cfg| cfg
+                                .unexpected_folders_error_msg
+                                .as_ref())
+                            .map(|msg| format!(" | {}", msg))
+                            .unwrap_or_default()
                     ));
                 }
 

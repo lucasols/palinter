@@ -22,8 +22,12 @@
           name_case_is: PascalCase
 
   /kebab-case:
+    unexpected_files_error_msg: Unexpected file
+    unexpected_folders_error_msg: Unexpected folder
+
     rules:
-      - if_file: any
+      - if_file:
+          has_extension: svg
         expect:
           name_case_is: kebab-case
 ```
@@ -77,10 +81,12 @@ structure:
 
   /kebab-case:
     kebab-case.svg: ''
+    unexpected.ts: ''
 
     /subfolder:
       kebab-case.svg: ''
 
 expected_errors:
-  - Folder /subfolder is not expected in folder ./kebab-case
+  - Folder /subfolder is not expected in folder ./kebab-case | Unexpected folder
+  - File unexpected.ts is not expected in folder ./kebab-case | Unexpected file
 ```

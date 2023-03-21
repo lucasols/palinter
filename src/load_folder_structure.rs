@@ -92,7 +92,7 @@ pub fn load_folder_structure(
                     .to_string(),
                 content: get_file_content(config, &extension, path.clone()),
                 extension,
-                path: format!("./{}", relative_path.to_str().unwrap().to_string(),),
+                path: format!("./{}", relative_path.to_str().unwrap()),
             };
 
             childs.push(FolderChild::FileChild(file));
@@ -179,6 +179,8 @@ mod tests {
                     non_recursive: false,
                     not_touch: false,
                 }],
+                unexpected_files_error_msg: None,
+                unexpected_folders_error_msg: None,
                 one_of_blocks: OneOfBlocks::default(),
                 optional: false,
                 sub_folders_config: HashMap::new(),
@@ -209,6 +211,8 @@ mod tests {
                     non_recursive: false,
                     not_touch: false,
                 }],
+                unexpected_files_error_msg: None,
+                unexpected_folders_error_msg: None,
                 one_of_blocks: OneOfBlocks::default(),
                 optional: false,
                 sub_folders_config: HashMap::new(),
@@ -233,6 +237,8 @@ mod tests {
                 allow_unexpected_folders: true,
                 file_rules: vec![],
                 folder_rules: vec![],
+                unexpected_files_error_msg: None,
+                unexpected_folders_error_msg: None,
                 one_of_blocks: OneOfBlocks::default(),
                 optional: false,
                 sub_folders_config: HashMap::new(),
