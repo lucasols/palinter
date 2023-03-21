@@ -430,89 +430,80 @@ mod tests {
         "###);
 
         assert_debug_snapshot!(get_node_deps(&"dep2".to_string(), &get_node_edges).unwrap(), @r###"
-            DepsResult {
-                deps: {
-                    "dep3",
-                    "dep2",
-                    "dep4",
-                    "dep5",
-                    "dep1",
-                },
-                circular_deps: Some(
-                    [
-                        "|dep2| > dep3 > |dep2|",
-                        "|dep2| > dep4 > |dep2|",
-                        "|dep2| > dep4 > dep5 > dep1 > |dep2|",
-                    ],
-                ),
-            }
-            "###);
+        DepsResult {
+            deps: {
+                "dep3",
+                "dep2",
+                "dep4",
+                "dep5",
+                "dep1",
+            },
+            circular_deps: Some(
+                [
+                    "|dep2| > dep3 > |dep2|",
+                ],
+            ),
+        }
+        "###);
 
         assert_debug_snapshot!(
             get_node_deps(&"dep3".to_string(), &get_node_edges).unwrap(),
             @r###"
-            DepsResult {
-                deps: {
-                    "dep2",
-                    "dep3",
-                    "dep4",
-                    "dep5",
-                    "dep1",
-                },
-                circular_deps: Some(
-                    [
-                        "|dep3| > dep2 > |dep3|",
-                        "dep3 > |dep2| > dep4 > |dep2|",
-                        "dep3 > |dep2| > dep4 > dep5 > dep1 > |dep2|",
-                    ],
-                ),
-            }
-            "###
+        DepsResult {
+            deps: {
+                "dep2",
+                "dep3",
+                "dep4",
+                "dep5",
+                "dep1",
+            },
+            circular_deps: Some(
+                [
+                    "|dep3| > dep2 > |dep3|",
+                ],
+            ),
+        }
+        "###
         );
 
         assert_debug_snapshot!(
         get_node_deps(&"dep4".to_string(), &get_node_edges).unwrap(),
             @r###"
-            DepsResult {
-                deps: {
-                    "dep2",
-                    "dep3",
-                    "dep4",
-                    "dep5",
-                    "dep1",
-                },
-                circular_deps: Some(
-                    [
-                        "dep4 > |dep2| > dep3 > |dep2|",
-                        "|dep4| > dep2 > |dep4|",
-                        "dep4 > dep5 > dep1 > |dep2| > dep3 > |dep2|",
-                        "|dep4| > dep5 > dep1 > dep2 > |dep4|",
-                    ],
-                ),
-            }
-            "###
+        DepsResult {
+            deps: {
+                "dep2",
+                "dep3",
+                "dep4",
+                "dep5",
+                "dep1",
+            },
+            circular_deps: Some(
+                [
+                    "|dep4| > dep2 > dep3 > |dep4|",
+                ],
+            ),
+        }
+        "###
         );
 
         assert_debug_snapshot!(
             get_node_deps(&"dep5".to_string(), &get_node_edges).unwrap(),
             @r###"
-            DepsResult {
-                deps: {
-                    "dep1",
-                    "dep2",
-                    "dep3",
-                    "dep4",
-                    "dep5",
-                },
-                circular_deps: Some(
-                    [
-                        "dep5 > dep1 > |dep2| > dep3 > |dep2|",
-                        "dep5 > dep1 > |dep2| > dep4 > |dep2|",
-                        "|dep5| > dep1 > dep2 > dep4 > |dep5|",
-                    ],
-                ),
-            }
-            "###
+        DepsResult {
+            deps: {
+                "dep1",
+                "dep2",
+                "dep3",
+                "dep4",
+                "dep5",
+            },
+            circular_deps: Some(
+                [
+                    "|dep5| > dep1 > dep2 > dep3 > dep4 > |dep5|",
+                ],
+            ),
+        }
+        "###
         );
     }
 
@@ -547,86 +538,77 @@ mod tests {
         assert_debug_snapshot!(
         get_node_deps(&"dep2".to_string(), &get_node_edges).unwrap(),
         @r###"
-            DepsResult {
-                deps: {
-                    "dep3",
-                    "dep2",
-                    "dep4",
-                    "dep5",
-                },
-                circular_deps: Some(
-                    [
-                        "|dep2| > dep3 > |dep2|",
-                        "|dep2| > dep4 > |dep2|",
-                        "|dep2| > dep4 > dep5 > dep3 > |dep2|",
-                    ],
-                ),
-            }
-            "###
+        DepsResult {
+            deps: {
+                "dep3",
+                "dep2",
+                "dep4",
+                "dep5",
+            },
+            circular_deps: Some(
+                [
+                    "|dep2| > dep3 > |dep2|",
+                ],
+            ),
+        }
+        "###
         );
 
         assert_debug_snapshot!(
         get_node_deps(&"dep3".to_string(), &get_node_edges).unwrap(),
         @r###"
-            DepsResult {
-                deps: {
-                    "dep2",
-                    "dep3",
-                    "dep4",
-                    "dep5",
-                },
-                circular_deps: Some(
-                    [
-                        "|dep3| > dep2 > |dep3|",
-                        "dep3 > |dep2| > dep4 > |dep2|",
-                        "|dep3| > dep2 > dep4 > dep5 > |dep3|",
-                    ],
-                ),
-            }
-            "###
+        DepsResult {
+            deps: {
+                "dep2",
+                "dep3",
+                "dep4",
+                "dep5",
+            },
+            circular_deps: Some(
+                [
+                    "|dep3| > dep2 > |dep3|",
+                ],
+            ),
+        }
+        "###
         );
 
         assert_debug_snapshot!(
         get_node_deps(&"dep4".to_string(), &get_node_edges).unwrap(),
         @r###"
-            DepsResult {
-                deps: {
-                    "dep2",
-                    "dep3",
-                    "dep4",
-                    "dep5",
-                },
-                circular_deps: Some(
-                    [
-                        "dep4 > |dep2| > dep3 > |dep2|",
-                        "|dep4| > dep2 > |dep4|",
-                        "dep4 > dep5 > |dep3| > dep2 > |dep3|",
-                        "|dep4| > dep5 > dep3 > dep2 > |dep4|",
-                    ],
-                ),
-            }
-            "###
+        DepsResult {
+            deps: {
+                "dep2",
+                "dep3",
+                "dep4",
+                "dep5",
+            },
+            circular_deps: Some(
+                [
+                    "|dep4| > dep2 > dep3 > |dep4|",
+                ],
+            ),
+        }
+        "###
         );
 
         assert_debug_snapshot!(
         get_node_deps(&"dep5".to_string(), &get_node_edges).unwrap(),
         @r###"
-            DepsResult {
-                deps: {
-                    "dep3",
-                    "dep2",
-                    "dep4",
-                    "dep5",
-                },
-                circular_deps: Some(
-                    [
-                        "dep5 > |dep3| > dep2 > |dep3|",
-                        "dep5 > dep3 > |dep2| > dep4 > |dep2|",
-                        "|dep5| > dep3 > dep2 > dep4 > |dep5|",
-                    ],
-                ),
-            }
-            "###
+        DepsResult {
+            deps: {
+                "dep3",
+                "dep2",
+                "dep4",
+                "dep5",
+            },
+            circular_deps: Some(
+                [
+                    "|dep5| > dep3 > dep2 > dep4 > |dep5|",
+                ],
+            ),
+        }
+        "###
         );
     }
 
