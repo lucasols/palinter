@@ -42,7 +42,7 @@ pub struct TsProjectCtx {
     pub aliases: HashMap<String, String>,
     pub root_dir: String,
     pub debug_read_edges_count: usize,
-    pub file_edges_cache: HashMap<String, IndexSet<String>>,
+    pub file_edges_cache: HashMap<String, Vec<String>>,
 }
 
 fn load_file_from_cache(
@@ -111,7 +111,7 @@ fn get_resolved_path(
     let file_with_replaced_alias = replace_aliases(&ctx.aliases, path);
 
     let file_abs_path = format!(
-        "{}/{}",
+        "{}{}",
         ctx.root_dir,
         file_with_replaced_alias
             .to_str()
@@ -172,7 +172,7 @@ fn get_resolved_path(
         ));
     } else {
         ctx.resolve_cache
-            .insert(path.to_path_buf(), file_with_replaced_alias.clone());
+            .insert(path.to_path_buf(), PathBuf::from(file_abs_path));
 
         Ok(Some(file_with_replaced_alias))
     }
@@ -198,67 +198,83 @@ fn get_file_imports(
         return Ok(imports.clone());
     }
 
-    let file_content = get_file_content(resolved_path, ctx)?;
+    if let Some(file_content) = get_file_content(resolved_path, ctx)? {
+        let edges_imports = normalize_imports(
+            extract_imports_from_file_content(&file_content)?,
+            ctx,
+        )?;
 
-    let edges_imports =
-        normalize_imports(extract_imports_from_file_content(&file_content)?, ctx)?;
+        ctx.imports_cache
+            .insert(resolved_path.to_string(), edges_imports.clone());
 
-    ctx.imports_cache
-        .insert(resolved_path.to_string(), edges_imports.clone());
-
-    Ok(edges_imports)
+        Ok(edges_imports)
+    } else {
+        Ok(IndexMap::new())
+    }
 }
 
 fn get_file_edges(
-    resolved_path: &str,
+    unresolved_path: &str,
     ctx: &mut TsProjectCtx,
 ) -> Result<Vec<String>, String> {
+    let resolved_path = get_resolved_path(Path::new(unresolved_path), ctx)?;
+
+    if let Some(cached_edges) = ctx.file_edges_cache.get(unresolved_path) {
+        return Ok(cached_edges.clone());
+    }
+
     if ctx.debug_read_edges_count > 10_000 {
         panic!("Too many edges read, probably infinite loop");
     }
 
-    ctx.debug_read_edges_count += 1;
+    if let Some(resolved_path) = resolved_path {
+        ctx.debug_read_edges_count += 1;
 
-    let path = PathBuf::from(resolved_path);
-
-    if let Some(resolved_path_ext) = path.extension().and_then(|s| s.to_str()) {
-        if resolved_path_ext != "ts" && resolved_path_ext != "tsx" {
-            return Ok(vec![]);
-        }
-    }
-
-    let edges_imports = get_file_imports(resolved_path, ctx)?;
-
-    let edges = edges_imports
-        .values()
-        .map(|import: &Import| -> Result<Option<PathBuf>, String> {
-            if let Some(resolved_path) = get_resolved_path(&import.import_path, ctx)?
-            {
-                Ok(Some(resolved_path))
-            } else {
-                Ok(None)
+        if let Some(resolved_path_ext) =
+            resolved_path.extension().and_then(|s| s.to_str())
+        {
+            if resolved_path_ext != "ts" && resolved_path_ext != "tsx" {
+                return Ok(vec![]);
             }
-        })
-        .collect::<Result<Vec<Option<PathBuf>>, String>>()?
-        .into_iter()
-        .filter_map(|path| path.map(|p| p.to_str().unwrap().to_string()))
-        .collect();
+        }
 
-    Ok(edges)
+        let edges_imports = get_file_imports(resolved_path.to_str().unwrap(), ctx)?;
+
+        let edges: Vec<String> = edges_imports
+            .values()
+            .map(|import: &Import| -> Result<Option<PathBuf>, String> {
+                if let Some(resolved_path) =
+                    get_resolved_path(&import.import_path, ctx)?
+                {
+                    Ok(Some(resolved_path))
+                } else {
+                    Ok(None)
+                }
+            })
+            .collect::<Result<Vec<Option<PathBuf>>, String>>()?
+            .into_iter()
+            .filter_map(|path| path.map(|p| p.to_str().unwrap().to_string()))
+            .collect();
+
+        ctx.file_edges_cache
+            .insert(unresolved_path.to_string(), edges.clone());
+
+        Ok(edges)
+    } else {
+        ctx.file_edges_cache
+            .insert(unresolved_path.to_string(), vec![]);
+
+        Ok(vec![])
+    }
 }
 
 fn get_file_content(
     resolved_path: &str,
     cache: &mut TsProjectCtx,
-) -> Result<String, String> {
+) -> Result<Option<String>, String> {
     let related_file = load_file_from_cache(&PathBuf::from(resolved_path), cache)?;
 
-    let file_content = related_file.content.ok_or(format!(
-        "TS: Error getting file content of: {}, check if the file type is added to the config to be analyzed",
-        resolved_path
-    ))?;
-
-    Ok(file_content)
+    Ok(related_file.content)
 }
 
 fn visit_file(
@@ -303,19 +319,28 @@ fn get_file_deps_info(
     let file_content =
         get_file_content(resolved_path_string, &mut cache_mtx.lock().unwrap())?;
 
-    let exports = extract_file_content_exports(&file_content)?;
+    if let Some(file_content) = file_content {
+        let exports = extract_file_content_exports(&file_content)?;
 
-    let imports =
-        get_file_imports(resolved_path_string, &mut cache_mtx.lock().unwrap())?;
+        let imports =
+            get_file_imports(resolved_path_string, &mut cache_mtx.lock().unwrap())?;
 
-    let file_deps_info = FileDepsInfo {
-        deps: deps.iter().map(PathBuf::from).collect(),
-        exports,
-        circular_deps,
-        imports,
-    };
+        let file_deps_info = FileDepsInfo {
+            deps: deps.iter().map(PathBuf::from).collect(),
+            exports,
+            circular_deps,
+            imports,
+        };
 
-    Ok(file_deps_info)
+        Ok(file_deps_info)
+    } else {
+        Ok(FileDepsInfo {
+            deps: IndexSet::new(),
+            exports: vec![],
+            circular_deps: None,
+            imports: IndexMap::new(),
+        })
+    }
 }
 
 fn normalize_imports(
