@@ -43,6 +43,7 @@ pub struct TsProjectCtx {
     pub root_dir: String,
     pub debug_read_edges_count: usize,
     pub file_edges_cache: HashMap<String, Vec<String>>,
+    pub deps_cache: HashMap<String, IndexSet<String>>,
 }
 
 fn load_file_from_cache(
@@ -219,17 +220,17 @@ fn get_file_edges(
 ) -> Result<Vec<String>, String> {
     let resolved_path = get_resolved_path(Path::new(unresolved_path), ctx)?;
 
+    if ctx.debug_read_edges_count > 2_000_000 {
+        panic!("Too many edges read, probably infinite loop");
+    }
+
+    ctx.debug_read_edges_count += 1;
+
     if let Some(cached_edges) = ctx.file_edges_cache.get(unresolved_path) {
         return Ok(cached_edges.clone());
     }
 
-    if ctx.debug_read_edges_count > 10_000 {
-        panic!("Too many edges read, probably infinite loop");
-    }
-
     if let Some(resolved_path) = resolved_path {
-        ctx.debug_read_edges_count += 1;
-
         if let Some(resolved_path_ext) =
             resolved_path.extension().and_then(|s| s.to_str())
         {
@@ -305,25 +306,25 @@ fn get_file_deps_info(
     ctx: &mut TsProjectCtx,
     resolved_path_string: &String,
 ) -> Result<FileDepsInfo, String> {
-    let cache_mtx = Mutex::new(ctx);
+    let mut deps_cache = ctx.deps_cache.clone();
 
     let DepsResult {
         deps,
         circular_deps,
-    } = get_node_deps(resolved_path_string, &|edge_id| {
-        let ctx = &mut cache_mtx.lock().unwrap();
+    } = get_node_deps(
+        resolved_path_string,
+        &mut |edge_id| get_file_edges(edge_id, ctx),
+        &mut deps_cache,
+    )?;
 
-        get_file_edges(edge_id, ctx)
-    })?;
+    ctx.deps_cache = deps_cache;
 
-    let file_content =
-        get_file_content(resolved_path_string, &mut cache_mtx.lock().unwrap())?;
+    let file_content = get_file_content(resolved_path_string, ctx)?;
 
     if let Some(file_content) = file_content {
         let exports = extract_file_content_exports(&file_content)?;
 
-        let imports =
-            get_file_imports(resolved_path_string, &mut cache_mtx.lock().unwrap())?;
+        let imports = get_file_imports(resolved_path_string, ctx)?;
 
         let file_deps_info = FileDepsInfo {
             deps: deps.iter().map(PathBuf::from).collect(),

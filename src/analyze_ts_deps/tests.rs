@@ -70,11 +70,16 @@ fn get_project_files_deps_info_test() {
         },
     ]);
 
+    let ctx = &mut &mut TsProjectCtx {
+        root_dir: ".".to_string(),
+        ..Default::default()
+    };
+
     let result = get_used_project_files_deps_info(
         entry_points,
         flattened_root_structure,
         HashMap::from_iter(vec![(String::from("@src"), String::from("./src"))]),
-        &mut TsProjectCtx::default(),
+        ctx,
     )
     .unwrap();
 
@@ -164,13 +169,17 @@ fn project_with_circular_deps() {
         },
     ]);
 
+    let ctx = &mut &mut TsProjectCtx::default();
+
     let result = get_used_project_files_deps_info(
         entry_points,
         flattened_root_structure,
         HashMap::from_iter(vec![(String::from("@src"), String::from("./src"))]),
-        &mut TsProjectCtx::default(),
+        ctx,
     )
     .unwrap();
+
+    // dbg!(&ctx.deps_cache);
 
     assert_debug_snapshot!(BTreeMap::from_iter(result));
 }
