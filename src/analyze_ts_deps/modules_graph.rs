@@ -1,17 +1,23 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Mutex};
 
 use indexmap::IndexSet;
+use lazy_static::lazy_static;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct DepsResult {
     pub deps: IndexSet<String>,
     pub circular_deps: Option<Vec<String>>,
 }
 
+pub type DepsCache = HashMap<String, DepsResult>;
+
+lazy_static! {
+    pub static ref DEPS_CACHE: Mutex<DepsCache> = Mutex::new(HashMap::new());
+}
+
 pub fn get_node_deps<F>(
     start: &String,
     get_node_edges: &mut F,
-    deps_cache: &mut HashMap<String, IndexSet<String>>,
 ) -> Result<DepsResult, String>
 where
     F: FnMut(&str) -> Result<Vec<String>, String>,
@@ -20,12 +26,9 @@ where
     let mut circular_deps: Vec<String> = Vec::new();
     let mut path = IndexSet::new();
 
-    // if let Some(deps) = deps_cache.get(start) {
-    //     return Ok(DepsResult {
-    //         deps: deps.clone(),
-    //         circular_deps: None,
-    //     });
-    // }
+    if let Some(cached) = DEPS_CACHE.lock().unwrap().get(start) {
+        return Ok(cached.clone());
+    }
 
     dfs(
         &mut visited,
@@ -34,13 +37,19 @@ where
         get_node_edges,
         &mut circular_deps,
         &mut path,
-        deps_cache,
     )?;
 
-    Ok(DepsResult {
+    let deps_result = DepsResult {
         deps: visited,
         circular_deps: (!circular_deps.is_empty()).then_some(circular_deps),
-    })
+    };
+
+    DEPS_CACHE
+        .lock()
+        .unwrap()
+        .insert(start.to_string(), deps_result.clone());
+
+    Ok(deps_result)
 }
 
 fn dfs<F>(
@@ -50,7 +59,6 @@ fn dfs<F>(
     get_node_edges: &mut F,
     circular_deps: &mut Vec<String>,
     path: &mut IndexSet<String>,
-    deps_cache: &mut HashMap<String, IndexSet<String>>,
 ) -> Result<Option<IndexSet<String>>, String>
 where
     F: FnMut(&str) -> Result<Vec<String>, String>,
@@ -105,7 +113,6 @@ where
             get_node_edges,
             circular_deps,
             path,
-            deps_cache,
         )? {
             // deps_cache.insert(edge.to_string(), edge_deps.clone());
             // deps.extend(edge_deps);

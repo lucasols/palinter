@@ -14,7 +14,14 @@
       "type": "cargo",
       "label": "Cargo Test",
       "command": "test",
-      "args": ["--color=always", "--", "--nocapture", "--color=always", "-q"],
+      "args": [
+        "--color=always",
+        "--",
+        "--test-threads=1",
+        "--nocapture",
+        "--color=always",
+        "-q"
+      ],
       "env": {
         "DEVTEST": "true"
       },
@@ -31,6 +38,7 @@
       "args": [
         "${fileBasenameNoExtension}",
         "--",
+        "--test-threads=1",
         "--color=always",
         "--nocapture",
         "-q"
@@ -65,7 +73,7 @@
     {
       "label": "Test active file and accept snapshot",
       "type": "shell",
-      "command": "cargo test ${fileBasenameNoExtension} -- --nocapture --color=always -q || cargo insta accept",
+      "command": "cargo test ${fileBasenameNoExtension} -- --test-threads=1 --nocapture --color=always -q || cargo insta accept",
       "problemMatcher": ["$rustc"],
       "presentation": {
         "clear": true

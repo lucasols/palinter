@@ -74,3 +74,40 @@ flowchart LR
     2 --> 3
     3 --> 1
 ```
+
+# Very complex circular 10
+
+```mermaid
+graph TD
+    A[Node A] --> B[Node B]
+    B --> C[Node C]
+    C --> D[Node D]
+    D --> E[Node E]
+    E --> F[Node F]
+    F --> G[Node G]
+    G --> H[Node H]
+    H --> I[Node I]
+    I --> J[Node J]
+    J --> K[Node K]
+    K --> L[Node L]
+    L --> M[Node M]
+    M --> N[Node N]
+    N --> O[Node O]
+    O --> P[Node P]
+    P --> C
+    A --> C
+    B --> D
+    C --> E
+    D --> F
+    E --> G
+    F --> H
+    G --> I
+    H --> J
+    I --> K
+    J --> L
+    K --> M
+    L --> N
+    M --> O
+    N --> P
+    O --> B
+```

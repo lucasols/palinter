@@ -1,3 +1,5 @@
+use crate::analyze_ts_deps::_setup_test;
+
 use super::*;
 use indexmap::IndexMap;
 use insta::assert_debug_snapshot;
@@ -12,19 +14,12 @@ fn get_deps_for_each(
     nodes: Vec<&str>,
     mut get_node_edges: impl Fn(&str) -> Result<Vec<String>, String>,
 ) -> IndexMap<String, DepsResult> {
-    let mut deps_cache = HashMap::new();
-
     nodes
         .iter()
         .map(|node| {
             (
                 node.to_string(),
-                get_node_deps(
-                    &node.to_string(),
-                    &mut get_node_edges,
-                    &mut deps_cache,
-                )
-                .unwrap(),
+                get_node_deps(&node.to_string(), &mut get_node_edges).unwrap(),
             )
         })
         .collect()
@@ -32,6 +27,8 @@ fn get_deps_for_each(
 
 #[test]
 fn simple_dep_calc_1() {
+    _setup_test();
+
     let get_node_edges = |node_name: &str| -> Result<Vec<String>, String> {
         Ok(match node_name {
             "dep1" => vc(["dep2"].to_vec()),
@@ -72,6 +69,8 @@ fn simple_dep_calc_1() {
 
 #[test]
 fn simple_dep_calc_2() {
+    _setup_test();
+
     let get_node_edges = |node_name: &str| -> Result<Vec<String>, String> {
         Ok(match node_name {
             "dep1" => vc(["dep2", "dep4"].to_vec()),
@@ -126,6 +125,8 @@ fn simple_dep_calc_2() {
 
 #[test]
 fn circular_dep_calc() {
+    _setup_test();
+
     let get_node_edges = |node_name: &str| -> Result<Vec<String>, String> {
         Ok(match node_name {
             "circular" => vc(["dep1"].to_vec()),
@@ -185,6 +186,8 @@ fn circular_dep_calc() {
 
 #[test]
 fn circular_1() {
+    _setup_test();
+
     let get_node_edges = |node_name: &str| -> Result<Vec<String>, String> {
         Ok(match node_name {
             "circular" => vc(["dep1"].to_vec()),
@@ -252,6 +255,8 @@ fn circular_1() {
 
 #[test]
 fn circular_2() {
+    _setup_test();
+
     let get_node_edges = |node_name: &str| -> Result<Vec<String>, String> {
         Ok(match node_name {
             "dep1" => vc(["dep2"].to_vec()),
@@ -304,6 +309,8 @@ fn circular_2() {
 
 #[test]
 fn circular_3() {
+    _setup_test();
+
     let get_node_edges = |node_name: &str| -> Result<Vec<String>, String> {
         Ok(match node_name {
             "dep1" => vc(["dep2"].to_vec()),
@@ -399,6 +406,8 @@ fn circular_3() {
 
 #[test]
 fn circular_4() {
+    _setup_test();
+
     let get_node_edges = |node_name: &str| -> Result<Vec<String>, String> {
         Ok(match node_name {
             "dep1" => vc(["dep2"].to_vec()),
@@ -485,6 +494,8 @@ fn circular_4() {
 
 #[test]
 fn non_cyclic_graph() {
+    _setup_test();
+
     let get_node_edges = |node_name: &str| -> Result<Vec<String>, String> {
         Ok(match node_name {
             "a" => vc(["b", "c"].to_vec()),
@@ -533,6 +544,8 @@ fn non_cyclic_graph() {
 
 #[test]
 fn dag_5() {
+    _setup_test();
+
     let get_node_edges = |node_name: &str| -> Result<Vec<String>, String> {
         Ok(match node_name {
             "dropdown" => vc(["popover", "typings", "uOCO", "uDVU"].to_vec()),
@@ -602,6 +615,8 @@ fn dag_5() {
 
 #[test]
 fn simple_6() {
+    _setup_test();
+
     let get_node_edges = |node_name: &str| -> Result<Vec<String>, String> {
         Ok(match node_name {
             "dep1" => vc(["dep2", "dep4"].to_vec()),
@@ -651,6 +666,8 @@ fn simple_6() {
 
 #[test]
 fn simple_7() {
+    _setup_test();
+
     let get_node_edges = |node_name: &str| -> Result<Vec<String>, String> {
         Ok(match node_name {
             "dep1" => vc(["dep2", "dep4"].to_vec()),
@@ -704,6 +721,8 @@ fn simple_7() {
 
 #[test]
 fn circular_8() {
+    _setup_test();
+
     let get_node_edges = |node_name: &str| -> Result<Vec<String>, String> {
         Ok(match node_name {
             "circular" => vc(["dep1"].to_vec()),
@@ -780,6 +799,8 @@ fn circular_8() {
 
 #[test]
 fn circular_9() {
+    _setup_test();
+
     let get_node_edges = |node_name: &str| -> Result<Vec<String>, String> {
         Ok(match node_name {
             "A" => vc(["B", "C"].to_vec()),

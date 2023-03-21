@@ -1,0 +1,202 @@
+---
+source: src/analyze_ts_deps/tests.rs
+expression: "BTreeMap::from_iter(result)"
+---
+{
+    "./src/1.ts": FileDepsInfo {
+        deps: {
+            "./src/2.ts",
+            "./src/3.ts",
+            "./src/1.ts",
+        },
+        circular_deps: Some(
+            [
+                "|./src/1.ts| > ./src/2.ts > ./src/3.ts > |./src/1.ts|",
+            ],
+        ),
+        imports: {
+            "./src/2.ts": Import {
+                import_path: "@src/2.ts",
+                line: 1,
+                values: SideEffect,
+            },
+        },
+        exports: [],
+    },
+    "./src/2.ts": FileDepsInfo {
+        deps: {
+            "./src/3.ts",
+            "./src/1.ts",
+            "./src/2.ts",
+        },
+        circular_deps: Some(
+            [
+                "|./src/2.ts| > ./src/3.ts > ./src/1.ts > |./src/2.ts|",
+            ],
+        ),
+        imports: {
+            "./src/3.ts": Import {
+                import_path: "@src/3.ts",
+                line: 1,
+                values: SideEffect,
+            },
+        },
+        exports: [],
+    },
+    "./src/3.ts": FileDepsInfo {
+        deps: {
+            "./src/1.ts",
+            "./src/2.ts",
+            "./src/3.ts",
+        },
+        circular_deps: Some(
+            [
+                "|./src/3.ts| > ./src/1.ts > ./src/2.ts > |./src/3.ts|",
+            ],
+        ),
+        imports: {
+            "./src/1.ts": Import {
+                import_path: "@src/1.ts",
+                line: 1,
+                values: SideEffect,
+            },
+        },
+        exports: [],
+    },
+    "./src/b.ts": FileDepsInfo {
+        deps: {
+            "./src/d.ts",
+            "./src/1.ts",
+            "./src/2.ts",
+            "./src/3.ts",
+            "./src/e.ts",
+            "./src/f.ts",
+            "./src/b.ts",
+        },
+        circular_deps: Some(
+            [
+                "|./src/b.ts| > ./src/d.ts > ./src/1.ts > ./src/2.ts > ./src/3.ts > ./src/e.ts > ./src/f.ts > |./src/b.ts|",
+            ],
+        ),
+        imports: {
+            "./src/d.ts": Import {
+                import_path: "@src/d.ts",
+                line: 1,
+                values: SideEffect,
+            },
+            "./src/e.ts": Import {
+                import_path: "@src/e.ts",
+                line: 2,
+                values: SideEffect,
+            },
+        },
+        exports: [],
+    },
+    "./src/c.ts": FileDepsInfo {
+        deps: {
+            "./src/d.ts",
+            "./src/1.ts",
+            "./src/2.ts",
+            "./src/3.ts",
+        },
+        circular_deps: None,
+        imports: {
+            "./src/d.ts": Import {
+                import_path: "@src/d.ts",
+                line: 1,
+                values: SideEffect,
+            },
+        },
+        exports: [],
+    },
+    "./src/d.ts": FileDepsInfo {
+        deps: {
+            "./src/1.ts",
+            "./src/2.ts",
+            "./src/3.ts",
+        },
+        circular_deps: None,
+        imports: {
+            "./src/1.ts": Import {
+                import_path: "@src/1.ts",
+                line: 1,
+                values: SideEffect,
+            },
+        },
+        exports: [],
+    },
+    "./src/e.ts": FileDepsInfo {
+        deps: {
+            "./src/f.ts",
+            "./src/b.ts",
+            "./src/d.ts",
+            "./src/1.ts",
+            "./src/2.ts",
+            "./src/3.ts",
+            "./src/e.ts",
+        },
+        circular_deps: Some(
+            [
+                "|./src/e.ts| > ./src/f.ts > ./src/b.ts > ./src/d.ts > ./src/1.ts > ./src/2.ts > ./src/3.ts > |./src/e.ts|",
+            ],
+        ),
+        imports: {
+            "./src/f.ts": Import {
+                import_path: "@src/f.ts",
+                line: 1,
+                values: SideEffect,
+            },
+        },
+        exports: [],
+    },
+    "./src/f.ts": FileDepsInfo {
+        deps: {
+            "./src/b.ts",
+            "./src/d.ts",
+            "./src/1.ts",
+            "./src/2.ts",
+            "./src/3.ts",
+            "./src/e.ts",
+            "./src/f.ts",
+        },
+        circular_deps: Some(
+            [
+                "|./src/f.ts| > ./src/b.ts > ./src/d.ts > ./src/1.ts > ./src/2.ts > ./src/3.ts > ./src/e.ts > |./src/f.ts|",
+            ],
+        ),
+        imports: {
+            "./src/b.ts": Import {
+                import_path: "@src/b.ts",
+                line: 1,
+                values: SideEffect,
+            },
+        },
+        exports: [],
+    },
+    "./src/index.ts": FileDepsInfo {
+        deps: {
+            "./src/b.ts",
+            "./src/d.ts",
+            "./src/1.ts",
+            "./src/2.ts",
+            "./src/3.ts",
+            "./src/e.ts",
+            "./src/f.ts",
+            "./src/c.ts",
+        },
+        circular_deps: None,
+        imports: {
+            "./src/b.ts": Import {
+                import_path: "@src/b.ts",
+                line: 1,
+                values: SideEffect,
+            },
+            "./src/c.ts": Import {
+                import_path: "@src/c.ts",
+                line: 2,
+                values: SideEffect,
+            },
+        },
+        exports: [],
+    },
+}

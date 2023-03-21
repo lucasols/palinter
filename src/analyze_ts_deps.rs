@@ -1,12 +1,12 @@
 use std::{
     collections::HashMap,
-    fmt::format,
     fs::read_to_string,
     path::{Path, PathBuf},
     sync::Mutex,
 };
 
 use indexmap::{IndexMap, IndexSet};
+use lazy_static::lazy_static;
 
 use crate::{
     internal_config::Config,
@@ -19,7 +19,7 @@ use self::{
     extract_file_content_imports::{
         extract_imports_from_file_content, Import, ImportType,
     },
-    modules_graph::{get_node_deps, DepsResult},
+    modules_graph::{get_node_deps, DepsResult, DEPS_CACHE},
 };
 mod extract_file_content_exports;
 mod extract_file_content_imports;
@@ -43,7 +43,12 @@ pub struct TsProjectCtx {
     pub root_dir: String,
     pub debug_read_edges_count: usize,
     pub file_edges_cache: HashMap<String, Vec<String>>,
-    pub deps_cache: HashMap<String, IndexSet<String>>,
+}
+
+lazy_static! {}
+
+pub fn _setup_test() {
+    DEPS_CACHE.lock().unwrap().clear();
 }
 
 fn load_file_from_cache(
@@ -281,21 +286,21 @@ fn get_file_content(
 fn visit_file(
     resolved_path: &Path,
     result: &mut HashMap<String, FileDepsInfo>,
-    cache: &mut TsProjectCtx,
+    ctx: &mut TsProjectCtx,
 ) -> Result<(), String> {
     let resolved_path_string = resolved_path.to_str().unwrap().to_string();
 
-    let file_deps_info = get_file_deps_info(cache, &resolved_path_string)?;
+    let file_deps_info = get_file_deps_info(ctx, &resolved_path_string)?;
 
     result.insert(resolved_path_string.clone(), file_deps_info);
 
-    let edges = get_file_edges(&resolved_path_string, cache)?;
+    let edges = get_file_edges(&resolved_path_string, ctx)?;
 
     for edge in edges {
         let edge_path = PathBuf::from(edge.clone());
 
         if !result.contains_key(&edge) {
-            visit_file(&edge_path, result, cache)?;
+            visit_file(&edge_path, result, ctx)?;
         }
     }
 
@@ -306,18 +311,12 @@ fn get_file_deps_info(
     ctx: &mut TsProjectCtx,
     resolved_path_string: &String,
 ) -> Result<FileDepsInfo, String> {
-    let mut deps_cache = ctx.deps_cache.clone();
-
     let DepsResult {
         deps,
         circular_deps,
-    } = get_node_deps(
-        resolved_path_string,
-        &mut |edge_id| get_file_edges(edge_id, ctx),
-        &mut deps_cache,
-    )?;
-
-    ctx.deps_cache = deps_cache;
+    } = get_node_deps(resolved_path_string, &mut |edge_id| {
+        get_file_edges(edge_id, ctx)
+    })?;
 
     let file_content = get_file_content(resolved_path_string, ctx)?;
 

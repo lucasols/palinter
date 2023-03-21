@@ -37,6 +37,8 @@ fn create_flatten_root_structure(
 
 #[test]
 fn get_project_files_deps_info_test() {
+    _setup_test();
+
     let entry_points = vec![PathBuf::from("@src/index.ts")];
 
     let flattened_root_structure = create_flatten_root_structure(vec![
@@ -88,6 +90,8 @@ fn get_project_files_deps_info_test() {
 
 #[test]
 fn get_project_files_deps_info_test_2() {
+    _setup_test();
+
     let entry_points = vec![PathBuf::from("@src/index.ts")];
 
     let flattened_root_structure = create_flatten_root_structure(vec![
@@ -139,6 +143,8 @@ fn get_project_files_deps_info_test_2() {
 
 #[test]
 fn project_with_circular_deps() {
+    _setup_test();
+
     let entry_points = vec![PathBuf::from("@src/index.ts")];
 
     let flattened_root_structure = create_flatten_root_structure(vec![
@@ -180,6 +186,94 @@ fn project_with_circular_deps() {
     .unwrap();
 
     // dbg!(&ctx.deps_cache);
+
+    assert_debug_snapshot!(BTreeMap::from_iter(result));
+}
+
+fn get_file(name: &str, files: &[&str]) -> SimplifiedFile {
+    let content = files
+        .iter()
+        .map(|file| format!("import '@src/{}.ts';", file))
+        .collect::<Vec<String>>()
+        .join("\n");
+
+    SimplifiedFile {
+        path: PathBuf::from(format!("./src/{}.ts", name)),
+        content,
+    }
+}
+
+#[test]
+fn project_with_circular_deps_2() {
+    _setup_test();
+
+    let entry_points = vec![PathBuf::from("@src/index.ts")];
+
+    let flattened_root_structure = create_flatten_root_structure(vec![
+        get_file("index", &["b", "c"]),
+        get_file("c", &["d"]),
+        get_file("b", &["d", "e"]),
+        get_file("d", &["1"]),
+        get_file("e", &["f"]),
+        get_file("f", &["b"]),
+        get_file("1", &["2"]),
+        get_file("2", &["3"]),
+        get_file("3", &["1"]),
+    ]);
+
+    let ctx = &mut &mut TsProjectCtx {
+        root_dir: ".".to_string(),
+        ..Default::default()
+    };
+
+    let result = get_used_project_files_deps_info(
+        entry_points,
+        flattened_root_structure,
+        HashMap::from_iter(vec![(String::from("@src"), String::from("./src"))]),
+        ctx,
+    )
+    .unwrap();
+
+    assert_debug_snapshot!(BTreeMap::from_iter(result));
+}
+
+#[test]
+fn project_with_circular_deps_3() {
+    _setup_test();
+
+    let entry_points = vec![PathBuf::from("@src/a.ts")];
+
+    let flattened_root_structure = create_flatten_root_structure(vec![
+        get_file("a", &["b", "c", "p"]),
+        get_file("b", &["c", "d"]),
+        get_file("c", &["b", "d", "e"]),
+        get_file("d", &["b", "c", "e", "f"]),
+        get_file("e", &["c", "d", "f", "g"]),
+        get_file("f", &["d", "e", "g", "h"]),
+        get_file("g", &["e", "f", "h", "i"]),
+        get_file("h", &["f", "g", "i", "j"]),
+        get_file("i", &["g", "h", "j", "k"]),
+        get_file("j", &["h", "i", "k", "l"]),
+        get_file("k", &["i", "j", "l", "m"]),
+        get_file("l", &["j", "k", "m", "n"]),
+        get_file("m", &["k", "l", "n", "o"]),
+        get_file("n", &["l", "m", "o", "p"]),
+        get_file("o", &["m", "n", "p", "b"]),
+        get_file("p", &["n", "o", "c"]),
+    ]);
+
+    let ctx = &mut &mut TsProjectCtx {
+        root_dir: ".".to_string(),
+        ..Default::default()
+    };
+
+    let result = get_used_project_files_deps_info(
+        entry_points,
+        flattened_root_structure,
+        HashMap::from_iter(vec![(String::from("@src"), String::from("./src"))]),
+        ctx,
+    )
+    .unwrap();
 
     assert_debug_snapshot!(BTreeMap::from_iter(result));
 }

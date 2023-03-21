@@ -4,13 +4,13 @@ use serde::Deserialize;
 use std::{
     collections::{BTreeMap, HashMap},
     hash::Hash,
-    path::{PathBuf, Path},
+    path::{Path, PathBuf},
 };
 
 use super::*;
 
 use crate::{
-    analyze_ts_deps::{get_used_project_files_deps_info_from_cfg, TsProjectCtx},
+    analyze_ts_deps::{get_used_project_files_deps_info_from_cfg, TsProjectCtx, _setup_test},
     internal_config::{get_config, OneOfBlocks},
     load_folder_structure,
     parse_config_file::{parse_config_string, ParseFrom},
@@ -359,6 +359,7 @@ fn test_cases() {
                                 .enumerate()
                             {
                                 colored::control::set_override(false);
+                                _setup_test();
 
                                 let mut ts_project_ctx = TsProjectCtx::default();
 
