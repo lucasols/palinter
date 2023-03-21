@@ -14,7 +14,7 @@ Ok(
                     extension: Some(
                         "ts",
                     ),
-                    path: "./not_ignore.ts",
+                    relative_path: "./not_ignore.ts",
                 },
             ),
         ],

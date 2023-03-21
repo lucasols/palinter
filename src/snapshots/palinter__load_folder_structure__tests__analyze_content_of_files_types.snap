@@ -1,6 +1,5 @@
 ---
 source: src/load_folder_structure.rs
-assertion_line: 223
 expression: folder
 ---
 Ok(
@@ -21,7 +20,7 @@ Ok(
                                 extension: Some(
                                     "js",
                                 ),
-                                path: "./dist/test.js",
+                                relative_path: "./dist/test.js",
                             },
                         ),
                     ],
@@ -41,7 +40,7 @@ Ok(
                                 extension: Some(
                                     "js",
                                 ),
-                                path: "./folder/test.js",
+                                relative_path: "./folder/test.js",
                             },
                         ),
                     ],
@@ -55,7 +54,7 @@ Ok(
                     extension: Some(
                         "md",
                     ),
-                    path: "./test.md",
+                    relative_path: "./test.md",
                 },
             ),
         ],

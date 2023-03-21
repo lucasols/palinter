@@ -45,6 +45,15 @@
       "group": "test"
     },
     {
+      "label": "Cargo clippy",
+      "type": "cargo",
+      "command": "clippy",
+      "problemMatcher": ["$rustc"],
+      "presentation": {
+        "clear": true
+      }
+    },
+    {
       "label": "Cargo Accept Snapshot",
       "type": "shell",
       "command": "cargo insta accept",

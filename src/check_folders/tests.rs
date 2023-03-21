@@ -4,7 +4,7 @@ use serde::Deserialize;
 use std::{
     collections::{BTreeMap, HashMap},
     hash::Hash,
-    path::PathBuf,
+    path::{PathBuf, Path},
 };
 
 use super::*;
@@ -100,7 +100,7 @@ fn convert_from_parsed_folder_to_project(
                     name_with_ext: child_string.clone(),
                     content: Some(file_content.to_owned()),
                     extension: Some(extension),
-                    path: format!("{}/{}", path, child_string),
+                    relative_path: format!("{}/{}", path, child_string),
                 })
             }
             ParsedStructureChild::Folder(folder) => {
@@ -366,6 +366,7 @@ fn test_cases() {
                                     match get_used_project_files_deps_info_from_cfg(
                                         config,
                                         &project.structure,
+                                        Path::new("."),
                                         &mut ts_project_ctx,
                                     ) {
                                         Ok(used_files_deps_info) => {

@@ -11,7 +11,7 @@ pub fn check_ts_not_have_unused_exports(
     file: &File,
     used_files_deps_info: &UsedFilesDepsInfo,
 ) -> Result<(), String> {
-    let deps_info = used_files_deps_info.used_files.get(&file.path);
+    let deps_info = used_files_deps_info.used_files.get(&file.relative_path);
 
     if let Some(deps_info) = deps_info {
         let mut unused_exports = deps_info.exports.clone();
@@ -21,11 +21,11 @@ pub fn check_ts_not_have_unused_exports(
                 break;
             }
 
-            if other_used_file == &file.path {
+            if other_used_file == &file.relative_path {
                 continue;
             }
 
-            if let Some(related_import) = other_deps_info.imports.get(&file.path) {
+            if let Some(related_import) = other_deps_info.imports.get(&file.relative_path) {
                 match &related_import.values {
                     ImportType::All | ImportType::Dynamic => {
                         unused_exports = vec![];
@@ -64,7 +64,7 @@ pub fn check_ts_not_have_circular_deps(
     used_files_deps_info: &mut UsedFilesDepsInfo,
 ) -> Result<(), String> {
     let deps_info = get_or_insert_file_dep_info(
-        &PathBuf::from(file.clone().path),
+        &PathBuf::from(file.clone().relative_path),
         used_files_deps_info,
     )?;
 

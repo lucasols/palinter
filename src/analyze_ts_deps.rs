@@ -1,5 +1,6 @@
 use std::{
     collections::HashMap,
+    fmt::format,
     fs::read_to_string,
     path::{Path, PathBuf},
     sync::Mutex,
@@ -39,6 +40,9 @@ pub struct TsProjectCtx {
     pub resolve_cache: HashMap<PathBuf, PathBuf>,
     pub imports_cache: HashMap<String, IndexMap<String, Import>>,
     pub aliases: HashMap<String, String>,
+    pub root_dir: String,
+    pub debug_read_edges_count: usize,
+    pub file_edges_cache: HashMap<String, IndexSet<String>>,
 }
 
 fn load_file_from_cache(
@@ -106,9 +110,21 @@ fn get_resolved_path(
 
     let file_with_replaced_alias = replace_aliases(&ctx.aliases, path);
 
-    let file_extension = file_with_replaced_alias.extension();
+    let file_abs_path = format!(
+        "{}/{}",
+        ctx.root_dir,
+        file_with_replaced_alias
+            .to_str()
+            .unwrap()
+            .trim_start_matches('.')
+    );
 
-    if file_extension.is_none() {
+    let file_exists = ctx
+        .files_cache
+        .contains_key(file_with_replaced_alias.to_str().unwrap())
+        || PathBuf::from(file_abs_path.clone()).exists();
+
+    if !file_exists {
         let file_name_start_with_uppercase = file_with_replaced_alias
             .file_name()
             .unwrap()
@@ -126,7 +142,19 @@ fn get_resolved_path(
         };
 
         for ext_to_try in &test_extensions {
-            let new_path = file_with_replaced_alias.with_extension(ext_to_try);
+            let cache_name = format!(
+                "{}.{}",
+                file_with_replaced_alias.to_str().unwrap(),
+                ext_to_try
+            );
+
+            let file_is_in_cache = ctx.files_cache.contains_key(&cache_name);
+
+            let new_path = if file_is_in_cache {
+                PathBuf::from(cache_name)
+            } else {
+                PathBuf::from(format!("{}.{}", file_abs_path, ext_to_try))
+            };
 
             let new_file = load_file_from_cache(&new_path, ctx);
 
@@ -185,6 +213,20 @@ fn get_file_edges(
     resolved_path: &str,
     ctx: &mut TsProjectCtx,
 ) -> Result<Vec<String>, String> {
+    if ctx.debug_read_edges_count > 10_000 {
+        panic!("Too many edges read, probably infinite loop");
+    }
+
+    ctx.debug_read_edges_count += 1;
+
+    let path = PathBuf::from(resolved_path);
+
+    if let Some(resolved_path_ext) = path.extension().and_then(|s| s.to_str()) {
+        if resolved_path_ext != "ts" && resolved_path_ext != "tsx" {
+            return Ok(vec![]);
+        }
+    }
+
     let edges_imports = get_file_imports(resolved_path, ctx)?;
 
     let edges = edges_imports
@@ -253,7 +295,9 @@ fn get_file_deps_info(
         deps,
         circular_deps,
     } = get_node_deps(resolved_path_string, &|edge_id| {
-        get_file_edges(edge_id, &mut cache_mtx.lock().unwrap())
+        let ctx = &mut cache_mtx.lock().unwrap();
+
+        get_file_edges(edge_id, ctx)
     })?;
 
     let file_content =
@@ -330,25 +374,33 @@ fn pb_to_string(import_path: PathBuf) -> String {
 }
 
 pub fn load_file_from_path(path: &PathBuf) -> Result<File, String> {
-    let file_content = match read_to_string(path) {
-        Ok(content) => content,
-        Err(err) => {
-            return Err(format!(
-                "TS: Error reading file: {}, Error: {}",
-                path.to_str().unwrap_or("invalid path"),
-                err
-            ))
+    let file_content = if path
+        .extension()
+        .map(|ext| ext == "ts" || ext == "tsx")
+        .unwrap_or(false)
+    {
+        match read_to_string(path) {
+            Ok(content) => Some(content),
+            Err(err) => {
+                return Err(format!(
+                    "TS: Error reading file: {}, Error: {}",
+                    path.to_str().unwrap_or("invalid path"),
+                    err
+                ))
+            }
         }
+    } else {
+        None
     };
 
     let file = File {
         basename: path.file_stem().unwrap().to_str().unwrap().to_string(),
         name_with_ext: path.file_name().unwrap().to_str().unwrap().to_string(),
-        content: Some(file_content),
+        content: file_content,
         extension: path
             .extension()
             .map(|ext| ext.to_str().unwrap().to_string()),
-        path: path.to_str().unwrap().to_string(),
+        relative_path: path.to_str().unwrap().to_string(),
     };
 
     Ok(file)
@@ -383,6 +435,7 @@ pub struct UsedFilesDepsInfo<'a> {
 pub fn get_used_project_files_deps_info_from_cfg<'a>(
     config: &'a Config,
     root_structure: &'a Folder,
+    root_path: &'a Path,
     ts_ctx: &'a mut TsProjectCtx,
 ) -> Result<UsedFilesDepsInfo<'a>, String> {
     let unused_exports_entry_points = config
@@ -402,6 +455,8 @@ pub fn get_used_project_files_deps_info_from_cfg<'a>(
             ctx: ts_ctx,
         });
     }
+
+    ts_ctx.root_dir = root_path.to_str().unwrap().to_string();
 
     let flattened_root_structure = if !unused_exports_entry_points.is_empty() {
         get_flattened_files_structure(root_structure)

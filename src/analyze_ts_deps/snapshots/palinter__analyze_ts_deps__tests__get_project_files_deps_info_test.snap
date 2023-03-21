@@ -1,6 +1,6 @@
 ---
 source: src/analyze_ts_deps/tests.rs
-assertion_line: 83
+assertion_line: 81
 expression: "BTreeMap::from_iter(result)"
 ---
 {
@@ -22,6 +22,7 @@ expression: "BTreeMap::from_iter(result)"
     "./src/fileB.ts": FileDepsInfo {
         deps: {
             "./src/fileA.ts",
+            "./src/img.svg",
         },
         circular_deps: None,
         imports: {
@@ -44,13 +45,25 @@ expression: "BTreeMap::from_iter(result)"
                     ],
                 ),
             },
+            "./src/img.svg": Import {
+                import_path: "@src/img.svg",
+                line: 5,
+                values: SideEffect,
+            },
         },
+        exports: [],
+    },
+    "./src/img.svg": FileDepsInfo {
+        deps: {},
+        circular_deps: None,
+        imports: {},
         exports: [],
     },
     "./src/index.ts": FileDepsInfo {
         deps: {
             "./src/fileB.ts",
             "./src/fileA.ts",
+            "./src/img.svg",
         },
         circular_deps: None,
         imports: {

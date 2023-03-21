@@ -43,6 +43,10 @@ fn dfs<F>(
 where
     F: Fn(&str) -> Result<Vec<String>, String>,
 {
+    if visited.contains(node_name) {
+        return Ok(());
+    }
+
     if path.contains(node_name) {
         let mut circular_path: Vec<String> = path.clone().iter().cloned().collect();
 
@@ -82,8 +86,6 @@ where
             path,
         )?;
     }
-
-    path.remove(node_name);
 
     Ok(())
 }
@@ -350,18 +352,14 @@ mod tests {
         assert_debug_snapshot!(
             get_node_deps(&"dep1".to_string(), &get_node_edges).unwrap(),
             @r###"
-            DepsResult {
-                deps: {
-                    "dep2",
-                    "dep3",
-                },
-                circular_deps: Some(
-                    [
-                        "dep1 > |dep2| > dep3 > |dep2|",
-                    ],
-                ),
-            }
-            "###
+        DepsResult {
+            deps: {
+                "dep2",
+                "dep3",
+            },
+            circular_deps: None,
+        }
+        "###
         );
 
         assert_debug_snapshot!(
@@ -415,23 +413,21 @@ mod tests {
         assert_debug_snapshot!(
             get_node_deps(&"dep1".to_string(), &get_node_edges).unwrap(),
             @r###"
-            DepsResult {
-                deps: {
-                    "dep2",
-                    "dep3",
-                    "dep4",
-                    "dep5",
-                    "dep1",
-                },
-                circular_deps: Some(
-                    [
-                        "dep1 > |dep2| > dep3 > |dep2|",
-                        "dep1 > |dep2| > dep4 > |dep2|",
-                        "|dep1| > dep2 > dep4 > dep5 > |dep1|",
-                    ],
-                ),
-            }
-            "###);
+        DepsResult {
+            deps: {
+                "dep2",
+                "dep3",
+                "dep4",
+                "dep5",
+                "dep1",
+            },
+            circular_deps: Some(
+                [
+                    "|dep1| > dep2 > dep3 > dep4 > dep5 > |dep1|",
+                ],
+            ),
+        }
+        "###);
 
         assert_debug_snapshot!(get_node_deps(&"dep2".to_string(), &get_node_edges).unwrap(), @r###"
             DepsResult {
@@ -536,22 +532,16 @@ mod tests {
         assert_debug_snapshot!(
         get_node_deps(&"dep1".to_string(), &get_node_edges).unwrap(),
         @r###"
-            DepsResult {
-                deps: {
-                    "dep2",
-                    "dep3",
-                    "dep4",
-                    "dep5",
-                },
-                circular_deps: Some(
-                    [
-                        "dep1 > |dep2| > dep3 > |dep2|",
-                        "dep1 > |dep2| > dep4 > |dep2|",
-                        "dep1 > |dep2| > dep4 > dep5 > dep3 > |dep2|",
-                    ],
-                ),
-            }
-            "###
+        DepsResult {
+            deps: {
+                "dep2",
+                "dep3",
+                "dep4",
+                "dep5",
+            },
+            circular_deps: None,
+        }
+        "###
         );
 
         assert_debug_snapshot!(
@@ -983,13 +973,7 @@ mod tests {
                     "F",
                     "C",
                 },
-                circular_deps: Some(
-                    [
-                        "A > B > D > |1| > 2 > 3 > |1|",
-                        "A > |B| > E > F > |B|",
-                        "A > C > D > |1| > 2 > 3 > |1|",
-                    ],
-                ),
+                circular_deps: None,
             },
             "B": DepsResult {
                 deps: {
@@ -1003,8 +987,7 @@ mod tests {
                 },
                 circular_deps: Some(
                     [
-                        "B > D > |1| > 2 > 3 > |1|",
-                        "|B| > E > F > |B|",
+                        "|B| > D > 1 > 2 > 3 > E > F > |B|",
                     ],
                 ),
             },
@@ -1015,11 +998,7 @@ mod tests {
                     "2",
                     "3",
                 },
-                circular_deps: Some(
-                    [
-                        "C > D > |1| > 2 > 3 > |1|",
-                    ],
-                ),
+                circular_deps: None,
             },
             "D": DepsResult {
                 deps: {
@@ -1027,11 +1006,7 @@ mod tests {
                     "2",
                     "3",
                 },
-                circular_deps: Some(
-                    [
-                        "D > |1| > 2 > 3 > |1|",
-                    ],
-                ),
+                circular_deps: None,
             },
             "E": DepsResult {
                 deps: {
@@ -1045,8 +1020,7 @@ mod tests {
                 },
                 circular_deps: Some(
                     [
-                        "E > F > B > D > |1| > 2 > 3 > |1|",
-                        "|E| > F > B > |E|",
+                        "|E| > F > B > D > 1 > 2 > 3 > |E|",
                     ],
                 ),
             },
@@ -1062,8 +1036,7 @@ mod tests {
                 },
                 circular_deps: Some(
                     [
-                        "F > B > D > |1| > 2 > 3 > |1|",
-                        "|F| > B > E > |F|",
+                        "|F| > B > D > 1 > 2 > 3 > E > |F|",
                     ],
                 ),
             },

@@ -25,7 +25,7 @@ fn create_flatten_root_structure(
                 .to_string(),
             content: Some(file.content),
             extension: None,
-            path: file.path.to_str().unwrap().to_string(),
+            relative_path: file.path.to_str().unwrap().to_string(),
         };
 
         flatten_root_structure
@@ -51,6 +51,7 @@ fn get_project_files_deps_info_test() {
                     import { a } from '@src/fileA';
                     import { b } from '@src/fileA';
                     import { test } from 'testLib';
+                    import '@src/img.svg';
                     "#,
             ),
         },
@@ -62,6 +63,10 @@ fn get_project_files_deps_info_test() {
                     export const b = 2;
                     "#,
             ),
+        },
+        SimplifiedFile {
+            path: PathBuf::from("./src/img.svg"),
+            content: "".to_string(),
         },
     ]);
 

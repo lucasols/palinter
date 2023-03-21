@@ -13,7 +13,7 @@ pub struct File {
     pub name_with_ext: String,
     pub content: Option<String>,
     pub extension: Option<String>,
-    pub path: String,
+    pub relative_path: String,
 }
 
 #[derive(Debug, PartialEq)]
@@ -92,7 +92,7 @@ pub fn load_folder_structure(
                     .to_string(),
                 content: get_file_content(config, &extension, path.clone()),
                 extension,
-                path: format!("./{}", relative_path.to_str().unwrap()),
+                relative_path: format!("./{}", relative_path.to_str().unwrap()),
             };
 
             childs.push(FolderChild::FileChild(file));
@@ -138,7 +138,7 @@ pub fn get_flattened_files_structure(folder: &Folder) -> HashMap<String, File> {
     for child in &folder.childs {
         match child {
             FolderChild::FileChild(file) => {
-                result.insert(file.clone().path, file.clone());
+                result.insert(file.clone().relative_path, file.clone());
             }
             FolderChild::Folder(folder) => {
                 result.extend(get_flattened_files_structure(folder));

@@ -1,0 +1,41 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug jestor test",
+      "cargo": {
+        "args": ["build", "--bin=palinter", "--package=palinter"],
+        "filter": {
+          "name": "palinter",
+          "kind": "bin"
+        }
+      },
+      "args": [
+        "--config",
+        "projects_test/jestor_store_folder.yaml",
+        "--root",
+        "../jestor/web-app"
+      ],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug unit tests in executable 'palinter'",
+      "cargo": {
+        "args": ["test", "--no-run", "--bin=palinter", "--package=palinter"],
+        "filter": {
+          "name": "palinter",
+          "kind": "bin"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}

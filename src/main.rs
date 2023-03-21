@@ -65,6 +65,7 @@ fn lint(confg_path: PathBuf, root: PathBuf) {
     let mut used_files_deps_info = match get_used_project_files_deps_info_from_cfg(
         &config,
         &root_structure,
+        &root,
         &mut ts_ctx,
     ) {
         Ok(used_files_deps_info) => used_files_deps_info,

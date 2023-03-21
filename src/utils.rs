@@ -50,9 +50,9 @@ pub fn remove_comments_from_code(code: &str) -> String {
     .to_string()
 }
 
-pub fn clone_extend_vec<T: Clone>(vec: &Vec<T>, extend_with: &Vec<T>) -> Vec<T> {
-    let mut new_vec = vec.clone();
-    new_vec.extend(extend_with.clone());
+pub fn clone_extend_vec<T: Clone>(vec: &[T], extend_with: &[T]) -> Vec<T> {
+    let mut new_vec = vec.to_vec();
+    new_vec.extend(extend_with.to_vec());
     new_vec
 }
 

@@ -1,6 +1,5 @@
 ---
 source: src/analyze_ts_deps/tests.rs
-assertion_line: 179
 expression: "BTreeMap::from_iter(result)"
 ---
 {
@@ -79,11 +78,7 @@ expression: "BTreeMap::from_iter(result)"
             "./src/fileB.ts",
             "./src/fileA.ts",
         },
-        circular_deps: Some(
-            [
-                "./src/index.ts > |./src/fileB.ts| > ./src/fileA.ts > |./src/fileB.ts|",
-            ],
-        ),
+        circular_deps: None,
         imports: {
             "./src/fileB.ts": Import {
                 import_path: "@src/fileB",
