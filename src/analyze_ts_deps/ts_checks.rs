@@ -1,22 +1,22 @@
-use std::{collections::HashMap, path::PathBuf};
+use std::path::PathBuf;
 
 use crate::load_folder_structure::File;
 
 use super::{
     extract_file_content_imports::ImportType, get_or_insert_file_dep_info,
-    FileDepsInfo, TsProjectCtx,
+    UsedFilesDepsInfo,
 };
 
 pub fn check_ts_not_have_unused_exports(
     file: &File,
-    used_files_deps_info: &HashMap<String, FileDepsInfo>,
+    used_files_deps_info: &UsedFilesDepsInfo,
 ) -> Result<(), String> {
-    let deps_info = used_files_deps_info.get(&file.path);
+    let deps_info = used_files_deps_info.used_files.get(&file.path);
 
     if let Some(deps_info) = deps_info {
         let mut unused_exports = deps_info.exports.clone();
 
-        for (other_used_file, other_deps_info) in used_files_deps_info {
+        for (other_used_file, other_deps_info) in &used_files_deps_info.used_files {
             if unused_exports.is_empty() {
                 break;
             }
@@ -61,7 +61,7 @@ pub fn check_ts_not_have_unused_exports(
 
 pub fn check_ts_not_have_circular_deps(
     file: &File,
-    used_files_deps_info: &HashMap<String, FileDepsInfo>,
+    used_files_deps_info: &mut UsedFilesDepsInfo,
 ) -> Result<(), String> {
     let deps_info = get_or_insert_file_dep_info(
         &PathBuf::from(file.clone().path),

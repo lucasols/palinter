@@ -1,7 +1,11 @@
 use colored::Colorize;
 use regex::Regex;
 use serde::Deserialize;
-use std::{collections::BTreeMap, hash::Hash, path::PathBuf};
+use std::{
+    collections::{BTreeMap, HashMap},
+    hash::Hash,
+    path::PathBuf,
+};
 
 use super::*;
 
@@ -356,11 +360,13 @@ fn test_cases() {
                             {
                                 colored::control::set_override(false);
 
-                                let used_files_deps_info =
+                                let mut ts_project_ctx = TsProjectCtx::default();
+
+                                let mut used_files_deps_info =
                                     match get_used_project_files_deps_info_from_cfg(
                                         config,
                                         &project.structure,
-                                        &mut TsProjectCtx::default(),
+                                        &mut ts_project_ctx,
                                     ) {
                                         Ok(used_files_deps_info) => {
                                             used_files_deps_info
@@ -380,7 +386,7 @@ fn test_cases() {
                                 let result = check_root_folder(
                                     config,
                                     &project.structure,
-                                    &used_files_deps_info,
+                                    &mut used_files_deps_info,
                                 );
 
                                 colored::control::unset_override();

@@ -38,6 +38,7 @@ pub struct TsProjectCtx {
     pub files_cache: HashMap<String, File>,
     pub resolve_cache: HashMap<PathBuf, PathBuf>,
     pub imports_cache: HashMap<String, IndexMap<String, Import>>,
+    pub aliases: HashMap<String, String>,
 }
 
 fn load_file_from_cache(
@@ -63,33 +64,47 @@ fn load_file_from_cache(
 }
 
 fn get_or_insert_file_dep_info(
-    file_path: &PathBuf,
-    used_files_deps_info: &HashMap<String, FileDepsInfo>,
+    file_path: &Path,
+    used_files_deps_info: &mut UsedFilesDepsInfo,
 ) -> Result<FileDepsInfo, String> {
-    let from_cache = used_files_deps_info
+    match used_files_deps_info
+        .used_files
         .get(file_path.to_str().unwrap())
-        .unwrap();
+    {
+        Some(deps_info) => Ok(deps_info.clone()),
+        None => {
+            let file_deps_info = get_file_deps_info(
+                used_files_deps_info.ctx,
+                &file_path.to_str().unwrap().to_string(),
+            )?;
 
-    Ok(from_cache.clone())
+            used_files_deps_info.used_files.insert(
+                file_path.to_str().unwrap().to_string(),
+                file_deps_info.clone(),
+            );
+
+            Ok(file_deps_info)
+        }
+    }
 }
 
 fn get_resolved_path(
     path: &Path,
-    aliases: &HashMap<String, String>,
-    cache: &mut TsProjectCtx,
+    ctx: &mut TsProjectCtx,
 ) -> Result<Option<PathBuf>, String> {
-    if !aliases
+    if !ctx
+        .aliases
         .iter()
         .any(|(alias, replace)| path.starts_with(alias) || path.starts_with(replace))
     {
         return Ok(None);
     }
 
-    if let Some(resolved_path) = cache.resolve_cache.get(path) {
+    if let Some(resolved_path) = ctx.resolve_cache.get(path) {
         return Ok(Some(resolved_path.clone()));
     }
 
-    let file_with_replaced_alias = replace_aliases(aliases, path);
+    let file_with_replaced_alias = replace_aliases(&ctx.aliases, path);
 
     let file_extension = file_with_replaced_alias.extension();
 
@@ -113,11 +128,10 @@ fn get_resolved_path(
         for ext_to_try in &test_extensions {
             let new_path = file_with_replaced_alias.with_extension(ext_to_try);
 
-            let new_file = load_file_from_cache(&new_path, cache);
+            let new_file = load_file_from_cache(&new_path, ctx);
 
             if new_file.is_ok() {
-                cache
-                    .resolve_cache
+                ctx.resolve_cache
                     .insert(path.to_path_buf(), new_path.clone());
 
                 return Ok(Some(new_path));
@@ -129,8 +143,7 @@ fn get_resolved_path(
             file_with_replaced_alias
         ));
     } else {
-        cache
-            .resolve_cache
+        ctx.resolve_cache
             .insert(path.to_path_buf(), file_with_replaced_alias.clone());
 
         Ok(Some(file_with_replaced_alias))
@@ -149,25 +162,20 @@ fn replace_aliases(aliases: &HashMap<String, String>, path: &Path) -> PathBuf {
 
 fn get_file_imports(
     resolved_path: &str,
-    aliases: &HashMap<String, String>,
-    cache: &mut TsProjectCtx,
+    ctx: &mut TsProjectCtx,
 ) -> Result<IndexMap<String, Import>, String> {
-    let from_cache = cache.imports_cache.get(resolved_path);
+    let from_cache = ctx.imports_cache.get(resolved_path);
 
     if let Some(imports) = from_cache {
         return Ok(imports.clone());
     }
 
-    let file_content = get_file_content(resolved_path, cache)?;
+    let file_content = get_file_content(resolved_path, ctx)?;
 
-    let edges_imports = normalize_imports(
-        extract_imports_from_file_content(&file_content)?,
-        aliases,
-        cache,
-    )?;
+    let edges_imports =
+        normalize_imports(extract_imports_from_file_content(&file_content)?, ctx)?;
 
-    cache
-        .imports_cache
+    ctx.imports_cache
         .insert(resolved_path.to_string(), edges_imports.clone());
 
     Ok(edges_imports)
@@ -175,16 +183,14 @@ fn get_file_imports(
 
 fn get_file_edges(
     resolved_path: &str,
-    aliases: &HashMap<String, String>,
-    cache: &mut TsProjectCtx,
+    ctx: &mut TsProjectCtx,
 ) -> Result<Vec<String>, String> {
-    let edges_imports = get_file_imports(resolved_path, aliases, cache)?;
+    let edges_imports = get_file_imports(resolved_path, ctx)?;
 
     let edges = edges_imports
         .values()
         .map(|import: &Import| -> Result<Option<PathBuf>, String> {
-            if let Some(resolved_path) =
-                get_resolved_path(&import.import_path, aliases, cache)?
+            if let Some(resolved_path) = get_resolved_path(&import.import_path, ctx)?
             {
                 Ok(Some(resolved_path))
             } else {
@@ -216,30 +222,47 @@ fn get_file_content(
 fn visit_file(
     resolved_path: &Path,
     result: &mut HashMap<String, FileDepsInfo>,
-    aliases: &HashMap<String, String>,
     cache: &mut TsProjectCtx,
 ) -> Result<(), String> {
     let resolved_path_string = resolved_path.to_str().unwrap().to_string();
 
-    let cache_mtx = Mutex::new(cache);
+    let file_deps_info = get_file_deps_info(cache, &resolved_path_string)?;
+
+    result.insert(resolved_path_string.clone(), file_deps_info);
+
+    let edges = get_file_edges(&resolved_path_string, cache)?;
+
+    for edge in edges {
+        let edge_path = PathBuf::from(edge.clone());
+
+        if !result.contains_key(&edge) {
+            visit_file(&edge_path, result, cache)?;
+        }
+    }
+
+    Ok(())
+}
+
+fn get_file_deps_info(
+    ctx: &mut TsProjectCtx,
+    resolved_path_string: &String,
+) -> Result<FileDepsInfo, String> {
+    let cache_mtx = Mutex::new(ctx);
 
     let DepsResult {
         deps,
         circular_deps,
-    } = get_node_deps(&resolved_path_string, &|edge_id| {
-        get_file_edges(edge_id, aliases, &mut cache_mtx.lock().unwrap())
+    } = get_node_deps(resolved_path_string, &|edge_id| {
+        get_file_edges(edge_id, &mut cache_mtx.lock().unwrap())
     })?;
 
     let file_content =
-        get_file_content(&resolved_path_string, &mut cache_mtx.lock().unwrap())?;
+        get_file_content(resolved_path_string, &mut cache_mtx.lock().unwrap())?;
 
     let exports = extract_file_content_exports(&file_content)?;
 
-    let imports = get_file_imports(
-        &resolved_path_string,
-        aliases,
-        &mut cache_mtx.lock().unwrap(),
-    )?;
+    let imports =
+        get_file_imports(resolved_path_string, &mut cache_mtx.lock().unwrap())?;
 
     let file_deps_info = FileDepsInfo {
         deps: deps.iter().map(PathBuf::from).collect(),
@@ -248,35 +271,17 @@ fn visit_file(
         imports,
     };
 
-    result.insert(resolved_path_string.clone(), file_deps_info);
-
-    let edges = get_file_edges(
-        &resolved_path_string,
-        aliases,
-        &mut cache_mtx.lock().unwrap(),
-    )?;
-
-    for edge in edges {
-        let edge_path = PathBuf::from(edge.clone());
-
-        if !result.contains_key(&edge) {
-            visit_file(&edge_path, result, aliases, &mut cache_mtx.lock().unwrap())?;
-        }
-    }
-
-    Ok(())
+    Ok(file_deps_info)
 }
 
 fn normalize_imports(
     imports: Vec<Import>,
-    aliases: &HashMap<String, String>,
-    cache: &mut TsProjectCtx,
+    ctx: &mut TsProjectCtx,
 ) -> Result<IndexMap<String, Import>, String> {
     let mut normalized_imports: IndexMap<String, Import> = IndexMap::new();
 
     for import in imports {
-        let resolved_import_name =
-            get_resolved_path(&import.import_path, aliases, cache)?;
+        let resolved_import_name = get_resolved_path(&import.import_path, ctx)?;
 
         let use_name =
             pb_to_string(resolved_import_name.unwrap_or(import.import_path.clone()));
@@ -352,27 +357,34 @@ pub fn load_file_from_path(path: &PathBuf) -> Result<File, String> {
 fn get_used_project_files_deps_info(
     entry_points: Vec<PathBuf>,
     flattened_root_structure: HashMap<String, File>,
-    aliases: &HashMap<String, String>,
+    aliases: HashMap<String, String>,
     ctx: &mut TsProjectCtx,
 ) -> Result<HashMap<String, FileDepsInfo>, String> {
     let mut result: HashMap<String, FileDepsInfo> = HashMap::new();
 
     ctx.files_cache.extend(flattened_root_structure);
 
+    ctx.aliases = aliases;
+
     for entry in entry_points {
-        if let Some(resolved_path) = get_resolved_path(&entry, aliases, ctx)? {
-            visit_file(&resolved_path, &mut result, aliases, ctx)?;
+        if let Some(resolved_path) = get_resolved_path(&entry, ctx)? {
+            visit_file(&resolved_path, &mut result, ctx)?;
         }
     }
 
     Ok(result)
 }
 
-pub fn get_used_project_files_deps_info_from_cfg(
-    config: &Config,
-    root_structure: &Folder,
-    cache: &mut TsProjectCtx,
-) -> Result<HashMap<String, FileDepsInfo>, String> {
+pub struct UsedFilesDepsInfo<'a> {
+    used_files: HashMap<String, FileDepsInfo>,
+    ctx: &'a mut TsProjectCtx,
+}
+
+pub fn get_used_project_files_deps_info_from_cfg<'a>(
+    config: &'a Config,
+    root_structure: &'a Folder,
+    ts_ctx: &'a mut TsProjectCtx,
+) -> Result<UsedFilesDepsInfo<'a>, String> {
     let unused_exports_entry_points = config
         .clone()
         .ts_config
@@ -385,7 +397,10 @@ pub fn get_used_project_files_deps_info_from_cfg(
         .unwrap_or_default();
 
     if unused_exports_entry_points.is_empty() {
-        return Ok(HashMap::default());
+        return Ok(UsedFilesDepsInfo {
+            used_files: HashMap::default(),
+            ctx: ts_ctx,
+        });
     }
 
     let flattened_root_structure = if !unused_exports_entry_points.is_empty() {
@@ -394,16 +409,21 @@ pub fn get_used_project_files_deps_info_from_cfg(
         HashMap::default()
     };
 
-    get_used_project_files_deps_info(
+    let used_files = get_used_project_files_deps_info(
         unused_exports_entry_points,
         flattened_root_structure,
-        &config
+        config
             .ts_config
             .as_ref()
             .map(|c| c.aliases.clone())
             .unwrap_or_default(),
-        cache,
-    )
+        ts_ctx,
+    )?;
+
+    Ok(UsedFilesDepsInfo {
+        used_files,
+        ctx: ts_ctx,
+    })
 }
 
 #[cfg(test)]

@@ -60,10 +60,12 @@ fn lint(confg_path: PathBuf, root: PathBuf) {
         }
     };
 
-    let used_files_deps_info = match get_used_project_files_deps_info_from_cfg(
+    let mut ts_ctx = TsProjectCtx::default();
+
+    let mut used_files_deps_info = match get_used_project_files_deps_info_from_cfg(
         &config,
         &root_structure,
-        &mut TsProjectCtx::default(),
+        &mut ts_ctx,
     ) {
         Ok(used_files_deps_info) => used_files_deps_info,
         Err(err) => {
@@ -72,7 +74,7 @@ fn lint(confg_path: PathBuf, root: PathBuf) {
         }
     };
 
-    match check_root_folder(&config, &root_structure, &used_files_deps_info) {
+    match check_root_folder(&config, &root_structure, &mut used_files_deps_info) {
         Ok(_) => {}
         Err(err) => {
             println!(

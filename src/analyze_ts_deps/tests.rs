@@ -68,7 +68,7 @@ fn get_project_files_deps_info_test() {
     let result = get_used_project_files_deps_info(
         entry_points,
         flattened_root_structure,
-        &HashMap::from_iter(vec![(String::from("@src"), String::from("./src"))]),
+        HashMap::from_iter(vec![(String::from("@src"), String::from("./src"))]),
         &mut TsProjectCtx::default(),
     )
     .unwrap();
@@ -119,7 +119,7 @@ fn get_project_files_deps_info_test_2() {
     let result = get_used_project_files_deps_info(
         entry_points,
         flattened_root_structure,
-        &HashMap::from_iter(vec![(String::from("@src"), String::from("./src"))]),
+        HashMap::from_iter(vec![(String::from("@src"), String::from("./src"))]),
         &mut TsProjectCtx::default(),
     )
     .unwrap();
@@ -162,7 +162,7 @@ fn project_with_circular_deps() {
     let result = get_used_project_files_deps_info(
         entry_points,
         flattened_root_structure,
-        &HashMap::from_iter(vec![(String::from("@src"), String::from("./src"))]),
+        HashMap::from_iter(vec![(String::from("@src"), String::from("./src"))]),
         &mut TsProjectCtx::default(),
     )
     .unwrap();

@@ -14,14 +14,7 @@
       "type": "cargo",
       "label": "Cargo Test",
       "command": "test",
-      "args": [
-        "--color=always",
-        "--",
-        "--nocapture",
-        "--color=always",
-        "-q",
-        "--test-threads=1"
-      ],
+      "args": ["--color=always", "--", "--nocapture", "--color=always", "-q"],
       "env": {
         "DEVTEST": "true"
       },

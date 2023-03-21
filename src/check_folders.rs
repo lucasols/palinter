@@ -1,12 +1,12 @@
 use colored::Colorize;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 use crate::{
     analyze_ts_deps::{
         ts_checks::{
             check_ts_not_have_circular_deps, check_ts_not_have_unused_exports,
         },
-        FileDepsInfo, TsProjectCtx,
+        UsedFilesDepsInfo,
     },
     internal_config::{
         AnyNoneOr, AnyOr, Config, FileConditions, FileExpect, FileRule,
@@ -91,7 +91,7 @@ fn file_pass_expected(
     expected: &AnyNoneOr<Vec<FileExpect>>,
     folder: &Folder,
     conditions_result: &ConditionsResult,
-    used_files_deps_info: &HashMap<String, FileDepsInfo>,
+    used_files_deps_info: &mut UsedFilesDepsInfo,
 ) -> Result<(), Vec<String>> {
     if let AnyNoneOr::None = expected {
         return Err(vec!["File is not expected".to_string()]);
@@ -396,7 +396,7 @@ fn check_folder_childs(
     folder_path: String,
     inherited_files_rules: Vec<InheritedFileRule>,
     inherited_folders_rules: Vec<InheritedFolderRule>,
-    used_files_deps_info: &HashMap<String, FileDepsInfo>,
+    used_files_deps_info: &mut UsedFilesDepsInfo,
 ) -> Result<(), Vec<String>> {
     let mut errors: Vec<String> = Vec::new();
 
@@ -669,7 +669,7 @@ fn check_folder_childs(
 pub fn check_root_folder(
     config: &Config,
     folder: &Folder,
-    used_files_deps_info: &HashMap<String, FileDepsInfo>,
+    used_files_deps_info: &mut UsedFilesDepsInfo,
 ) -> Result<(), Vec<String>> {
     check_folder_childs(
         folder,
