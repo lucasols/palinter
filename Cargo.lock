@@ -334,6 +334,7 @@ dependencies = [
  "colored",
  "convert_case",
  "globset",
+ "indexmap",
  "insta",
  "lazy_static",
  "pretty_assertions",

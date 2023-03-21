@@ -2,7 +2,12 @@ use colored::Colorize;
 use std::collections::{HashMap, HashSet};
 
 use crate::{
-    analyze_ts_deps::{ts_checks::check_ts_not_have_unused_exports, FileDepsInfo},
+    analyze_ts_deps::{
+        ts_checks::{
+            check_ts_not_have_circular_deps, check_ts_not_have_unused_exports,
+        },
+        FileDepsInfo, TsProjectCtx,
+    },
     internal_config::{
         AnyNoneOr, AnyOr, Config, FileConditions, FileExpect, FileRule,
         FolderConditions, FolderConfig, FolderExpect, FolderRule,
@@ -199,10 +204,15 @@ fn file_pass_expected(
                 if ts_expect.not_have_unused_exports {
                     pass_some_expect = true;
                     check_result(
-                        check_ts_not_have_unused_exports(
-                            file,
-                            used_files_deps_info,
-                        ),
+                        check_ts_not_have_unused_exports(file, used_files_deps_info),
+                        &expect.error_msg,
+                    );
+                }
+
+                if ts_expect.not_have_circular_deps {
+                    pass_some_expect = true;
+                    check_result(
+                        check_ts_not_have_circular_deps(file, used_files_deps_info),
                         &expect.error_msg,
                     );
                 }

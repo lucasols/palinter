@@ -7,7 +7,7 @@ use std::{
 
 use crate::internal_config::Config;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct File {
     pub basename: String,
     pub name_with_ext: String,

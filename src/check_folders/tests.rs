@@ -6,7 +6,7 @@ use std::{collections::BTreeMap, hash::Hash, path::PathBuf};
 use super::*;
 
 use crate::{
-    analyze_ts_deps::get_used_project_files_deps_info_from_cfg,
+    analyze_ts_deps::{get_used_project_files_deps_info_from_cfg, TsProjectCtx},
     internal_config::{get_config, OneOfBlocks},
     load_folder_structure,
     parse_config_file::{parse_config_string, ParseFrom},
@@ -360,6 +360,7 @@ fn test_cases() {
                                     match get_used_project_files_deps_info_from_cfg(
                                         config,
                                         &project.structure,
+                                        &mut TsProjectCtx::default(),
                                     ) {
                                         Ok(used_files_deps_info) => {
                                             used_files_deps_info

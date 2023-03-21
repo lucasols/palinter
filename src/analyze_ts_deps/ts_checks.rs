@@ -1,8 +1,11 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, path::PathBuf};
 
 use crate::load_folder_structure::File;
 
-use super::{extract_file_content_imports::ImportType, FileDepsInfo};
+use super::{
+    extract_file_content_imports::ImportType, get_or_insert_file_dep_info,
+    FileDepsInfo, TsProjectCtx,
+};
 
 pub fn check_ts_not_have_unused_exports(
     file: &File,
@@ -53,5 +56,24 @@ pub fn check_ts_not_have_unused_exports(
         }
     } else {
         Err("File is not being used in the project".to_string())
+    }
+}
+
+pub fn check_ts_not_have_circular_deps(
+    file: &File,
+    used_files_deps_info: &HashMap<String, FileDepsInfo>,
+) -> Result<(), String> {
+    let deps_info = get_or_insert_file_dep_info(
+        &PathBuf::from(file.clone().path),
+        used_files_deps_info,
+    )?;
+
+    if let Some(circular_deps) = &deps_info.circular_deps {
+        Err(format!(
+            "File has circular dependencies: {}",
+            circular_deps.join(" , ")
+        ))
+    } else {
+        Ok(())
     }
 }

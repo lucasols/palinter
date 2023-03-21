@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use crate::utils::{get_code_from_line, remove_comments_from_code};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum ImportType {
     Named(Vec<String>),
     All,
@@ -12,7 +12,7 @@ pub enum ImportType {
     SideEffect,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Import {
     pub import_path: PathBuf,
     pub line: usize,

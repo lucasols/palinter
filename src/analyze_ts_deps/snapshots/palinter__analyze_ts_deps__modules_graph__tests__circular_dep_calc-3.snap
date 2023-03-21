@@ -1,0 +1,16 @@
+---
+source: src/analyze_ts_deps/modules_graph.rs
+expression: "get_node_deps(&\"dep2\".to_string(), &get_node_edges)"
+---
+DepsResult {
+    deps: {
+        "circular",
+        "dep1",
+        "dep2",
+    },
+    circular_deps: Some(
+        [
+            "dep2 > circular > dep1 > dep2",
+        ],
+    ),
+}

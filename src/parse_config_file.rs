@@ -26,6 +26,7 @@ pub struct ParsedFileConditions {
 #[derive(Deserialize, Debug, Clone)]
 pub struct ParsedTsFileExpect {
     pub not_have_unused_exports: Option<bool>,
+    pub not_have_circular_deps: Option<bool>,
 }
 
 #[derive(Deserialize, Debug, Clone)]

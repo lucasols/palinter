@@ -34,3 +34,6 @@ jestor_test:
 
 flamegraph:
 	cargo flamegraph -- --config projects_test/jestor_store_folder.yaml --root ../jestor/web-app
+
+delete_unused_snapshots:
+	cargo insta test --unreferenced=delete

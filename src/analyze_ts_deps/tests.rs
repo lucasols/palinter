@@ -15,13 +15,7 @@ fn create_flatten_root_structure(
 
     for file in files {
         let file_to_add = File {
-            basename: file
-                .path
-                .file_stem()
-                .unwrap()
-                .to_str()
-                .unwrap()
-                .to_string(),
+            basename: file.path.file_stem().unwrap().to_str().unwrap().to_string(),
             name_with_ext: file
                 .path
                 .file_name()
@@ -75,6 +69,7 @@ fn get_project_files_deps_info_test() {
         entry_points,
         flattened_root_structure,
         &HashMap::from_iter(vec![(String::from("@src"), String::from("./src"))]),
+        &mut TsProjectCtx::default(),
     )
     .unwrap();
 
@@ -125,6 +120,7 @@ fn get_project_files_deps_info_test_2() {
         entry_points,
         flattened_root_structure,
         &HashMap::from_iter(vec![(String::from("@src"), String::from("./src"))]),
+        &mut TsProjectCtx::default(),
     )
     .unwrap();
 
@@ -167,6 +163,7 @@ fn project_with_circular_deps() {
         entry_points,
         flattened_root_structure,
         &HashMap::from_iter(vec![(String::from("@src"), String::from("./src"))]),
+        &mut TsProjectCtx::default(),
     )
     .unwrap();
 

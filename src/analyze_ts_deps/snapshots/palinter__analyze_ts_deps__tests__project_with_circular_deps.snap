@@ -1,13 +1,19 @@
 ---
 source: src/analyze_ts_deps/tests.rs
+assertion_line: 179
 expression: "BTreeMap::from_iter(result)"
 ---
 {
     "./src/fileA.ts": FileDepsInfo {
         deps: {
             "./src/fileB.ts",
+            "./src/fileA.ts",
         },
-        has_circular_deps: false,
+        circular_deps: Some(
+            [
+                "|./src/fileA.ts| > ./src/fileB.ts > |./src/fileA.ts|",
+            ],
+        ),
         imports: {
             "./src/fileB.ts": Import {
                 import_path: "@src/fileB",
@@ -35,7 +41,11 @@ expression: "BTreeMap::from_iter(result)"
             "./src/fileA.ts",
             "./src/fileB.ts",
         },
-        has_circular_deps: true,
+        circular_deps: Some(
+            [
+                "|./src/fileB.ts| > ./src/fileA.ts > |./src/fileB.ts|",
+            ],
+        ),
         imports: {
             "./src/fileA.ts": Import {
                 import_path: "@src/fileA",
@@ -66,10 +76,14 @@ expression: "BTreeMap::from_iter(result)"
     },
     "./src/index.ts": FileDepsInfo {
         deps: {
-            "./src/fileA.ts",
             "./src/fileB.ts",
+            "./src/fileA.ts",
         },
-        has_circular_deps: false,
+        circular_deps: Some(
+            [
+                "./src/index.ts > |./src/fileB.ts| > ./src/fileA.ts > |./src/fileB.ts|",
+            ],
+        ),
         imports: {
             "./src/fileB.ts": Import {
                 import_path: "@src/fileB",

@@ -57,6 +57,7 @@ pub struct ContentMatches {
 #[derive(Debug, Clone)]
 pub struct TsFileExpect {
     pub not_have_unused_exports: bool,
+    pub not_have_circular_deps: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -844,6 +845,11 @@ fn get_file_expect(
                     config_path,
                     &ts.not_have_unused_exports,
                     "ts.not_have_unused_exports",
+                )?,
+                not_have_circular_deps: get_true_flag(
+                    config_path,
+                    &ts.not_have_circular_deps,
+                    "ts.not_have_circular_deps",
                 )?,
             }),
             None => None,

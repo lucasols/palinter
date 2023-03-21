@@ -1,5 +1,6 @@
 ---
 source: src/analyze_ts_deps/tests.rs
+assertion_line: 135
 expression: "BTreeMap::from_iter(result)"
 ---
 {
@@ -7,7 +8,7 @@ expression: "BTreeMap::from_iter(result)"
         deps: {
             "./src/fileC.ts",
         },
-        has_circular_deps: false,
+        circular_deps: None,
         imports: {
             "./src/fileC.ts": Import {
                 import_path: "@src/fileC",
@@ -25,7 +26,7 @@ expression: "BTreeMap::from_iter(result)"
         deps: {
             "./src/fileC.ts",
         },
-        has_circular_deps: false,
+        circular_deps: None,
         imports: {
             "./src/fileC.ts": Import {
                 import_path: "@src/fileC",
@@ -41,7 +42,7 @@ expression: "BTreeMap::from_iter(result)"
     },
     "./src/fileC.ts": FileDepsInfo {
         deps: {},
-        has_circular_deps: false,
+        circular_deps: None,
         imports: {},
         exports: [
             Export {
@@ -53,10 +54,10 @@ expression: "BTreeMap::from_iter(result)"
     "./src/index.ts": FileDepsInfo {
         deps: {
             "./src/fileA.ts",
-            "./src/fileB.ts",
             "./src/fileC.ts",
+            "./src/fileB.ts",
         },
-        has_circular_deps: false,
+        circular_deps: None,
         imports: {
             "./src/fileA.ts": Import {
                 import_path: "@src/fileA",

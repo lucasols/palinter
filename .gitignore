@@ -6,3 +6,4 @@ jestor_*.yaml
 npm/node_modules
 npm/bin
 flamegraph.svg
+.quokka.ts

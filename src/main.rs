@@ -13,7 +13,9 @@ use internal_config::get_config;
 use load_folder_structure::load_folder_structure;
 use parse_config_file::parse_config_file;
 
-use crate::analyze_ts_deps::get_used_project_files_deps_info_from_cfg;
+use crate::analyze_ts_deps::{
+    get_used_project_files_deps_info_from_cfg, TsProjectCtx,
+};
 
 #[derive(Parser)]
 struct Cli {
@@ -58,14 +60,17 @@ fn lint(confg_path: PathBuf, root: PathBuf) {
         }
     };
 
-    let used_files_deps_info =
-        match get_used_project_files_deps_info_from_cfg(&config, &root_structure) {
-            Ok(used_files_deps_info) => used_files_deps_info,
-            Err(err) => {
-                println!("❌ Error getting used files deps info: {}", err);
-                std::process::exit(1);
-            }
-        };
+    let used_files_deps_info = match get_used_project_files_deps_info_from_cfg(
+        &config,
+        &root_structure,
+        &mut TsProjectCtx::default(),
+    ) {
+        Ok(used_files_deps_info) => used_files_deps_info,
+        Err(err) => {
+            println!("❌ Error getting used files deps info: {}", err);
+            std::process::exit(1);
+        }
+    };
 
     match check_root_folder(&config, &root_structure, &used_files_deps_info) {
         Ok(_) => {}
