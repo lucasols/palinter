@@ -1,4 +1,5 @@
 build:
+	cargo test --color=always -- --test-threads=1 --nocapture --color=always -q
 	TARGET_CC=x86_64-linux-musl-gcc \
 	cargo build --release \
 		--target x86_64-unknown-linux-gnu \
