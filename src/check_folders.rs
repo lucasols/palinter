@@ -679,9 +679,19 @@ fn check_folder_childs(
                 let sub_folder_inherited_folders_rules =
                     [inherited_folders_rules.clone(), parent_folder_rules].concat();
 
+                let new_sub_folder_cfg =
+                    sub_folder_cfg.map(|sub_folder_cfg| FolderConfig {
+                        append_error_msg: sub_folder_cfg
+                            .append_error_msg
+                            .clone()
+                            .or(folder_config
+                                .and_then(|cfg| cfg.append_error_msg.clone())),
+                        ..sub_folder_cfg.clone()
+                    });
+
                 if let Err(extra_errors) = check_folder_childs(
                     sub_folder,
-                    sub_folder_cfg,
+                    new_sub_folder_cfg.as_ref(),
                     parent_path,
                     sub_folder_inherited_files_rules,
                     sub_folder_inherited_folders_rules,
