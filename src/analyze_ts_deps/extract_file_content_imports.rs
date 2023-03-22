@@ -640,6 +640,19 @@ import { strictAssertIsNotNullish } from '@utils/typeAssertions';
                 ),
             },
             Import {
+                import_path: "@src/stores/chat/chatsList",
+                line: 7,
+                values: Named(
+                    [
+                        "ChatConversation",
+                        "chatsList",
+                        "conversationListMetaId",
+                        "conversationSchema",
+                        "convertFromApiConversation",
+                    ],
+                ),
+            },
+            Import {
                 import_path: "@src/utils/betaFeatures",
                 line: 14,
                 values: Named(
