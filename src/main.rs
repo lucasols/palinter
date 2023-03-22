@@ -6,7 +6,7 @@ mod parse_config_file;
 mod test_utils;
 mod utils;
 
-use std::path::PathBuf;
+use std::{path::PathBuf, process};
 
 use analyze_ts_deps::circular_deps::get_detailed_file_circular_deps_result;
 use check_folders::check_root_folder;
@@ -107,27 +107,26 @@ fn lint(config: Config, root: PathBuf) {
     let root_structure = match load_folder_structure(&root, &config, &root, true) {
         Ok(root_structure) => root_structure,
         Err(err) => {
-            println!("❌ Error loading folder structure: {}", err);
-            std::process::exit(1);
+            eprintln!("❌ Error loading folder structure: {}", err);
+            process::exit(1);
         }
     };
 
     if let Err(err) =
         load_used_project_files_deps_info_from_cfg(&config, &root_structure, &root)
     {
-        println!("❌ Error getting used files deps info: {}", err);
+        eprintln!("❌ Error getting used files deps info: {}", err);
         std::process::exit(1);
     };
 
     if let Err(err) = check_root_folder(&config, &root_structure) {
-        println!(
+        eprintln!(
             "❌ Errors found in the project:\n\n{}\n\n",
             err.join("\n\n")
         );
         std::process::exit(1);
     }
 
-    println!("The project architecture is valid!");
+    println!("✨ The project architecture is valid!");
     println!("Time: {:.3}s", measure_time.elapsed().as_secs_f32());
-    std::process::exit(0);
 }

@@ -1,4 +1,5 @@
 use crate::{internal_config::Config, load_folder_structure};
+use colored::Colorize;
 
 use super::{
     get_file_edges, get_resolved_path, load_used_project_files_deps_info_from_cfg,
@@ -58,10 +59,32 @@ pub fn get_detailed_file_circular_deps_result(
 
         cdeps.truncate(5);
 
-        println!("Circular deps found: {:#?}", cdeps);
+        println!("🔁 Circular deps found:");
+
+        for dep in &cdeps {
+            let parts = dep.split(" > ").collect::<Vec<&str>>();
+
+            for (i, part) in parts.iter().enumerate() {
+                let part_to_use = if part.starts_with('|') {
+                    part.bright_yellow().to_string()
+                } else {
+                    part.to_string()
+                };
+
+                if i == 0 {
+                    println!("\n{} {}", ">>".dimmed(), part_to_use);
+                } else {
+                    println!("  {}{}", " ".repeat(i * 2), part_to_use);
+                }
+            }
+        }
 
         if cdeps.len() < original_len {
-            println!("... and {} more", original_len - cdeps.len());
+            println!(
+                "{}",
+                format!("\n... and {} more", original_len - cdeps.len())
+                    .bright_yellow()
+            );
         }
         Ok(())
     } else {

@@ -35,9 +35,9 @@ structure:
       export const b = 2;
 
 expected_errors:
-  - "File ./src/fileA.ts:\n • File has circular dependencies: ./src/fileA.ts"
-  - "File ./src/fileB.ts:\n • File has circular dependencies: ./src/fileA.ts"
-  - "File ./src/index.ts:\n • File has circular dependencies: ./src/fileA.ts"
+  - "File ./src/fileA.ts:\n • File has circular dependencies: ./src/fileA.ts (run cmd `palinter circular-deps [file]` to get more info)"
+  - "File ./src/fileB.ts:\n • File has circular dependencies: ./src/fileA.ts (run cmd `palinter circular-deps [file]` to get more info)"
+  - "File ./src/index.ts:\n • File has circular dependencies: ./src/fileA.ts (run cmd `palinter circular-deps [file]` to get more info)"
 ```
 
 ```yaml
@@ -58,6 +58,6 @@ structure:
       export const b = 2;
 
 expected_errors:
-  - "File ./src/fileB.ts:\n • File has circular dependencies: ./src/fileA.ts"
-  - "File ./src/fileA.ts:\n • File has circular dependencies: ./src/fileA.ts"
+  - "File ./src/fileB.ts:\n • File has circular dependencies: ./src/fileA.ts (run cmd `palinter circular-deps [file]` to get more info)"
+  - "File ./src/fileA.ts:\n • File has circular dependencies: ./src/fileA.ts (run cmd `palinter circular-deps [file]` to get more info)"
 ```

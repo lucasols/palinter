@@ -87,6 +87,24 @@
       "presentation": {
         "clear": true
       }
+    },
+    {
+      "label": "Publish patch",
+      "type": "shell",
+      "command": "make publish_patch",
+      "problemMatcher": ["$rustc"],
+      "presentation": {
+        "clear": true
+      }
+    },
+    {
+      "label": "Publish minor",
+      "type": "shell",
+      "command": "make publish_minor",
+      "problemMatcher": ["$rustc"],
+      "presentation": {
+        "clear": true
+      }
     }
   ]
 }
