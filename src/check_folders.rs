@@ -3,7 +3,8 @@ use std::collections::HashSet;
 
 use crate::{
     analyze_ts_deps::ts_checks::{
-        check_ts_not_have_circular_deps, check_ts_not_have_unused_exports,
+        check_ts_not_have_circular_deps, check_ts_not_have_deps_from,
+        check_ts_not_have_deps_outside, check_ts_not_have_unused_exports,
     },
     internal_config::{
         AnyNoneOr, AnyOr, Config, FileConditions, FileExpect, FileRule,
@@ -13,10 +14,10 @@ use crate::{
 };
 
 use self::checks::{
-    check_content, check_content_not_matches, check_negated_path_pattern,
-    check_negated_root_files_has_pattern, check_path_pattern,
-    check_root_files_find_pattern, check_root_files_has_pattern, extension_is,
-    has_sibling_file, name_case_is, path_pattern_match, Capture, check_folder_min_childs,
+    check_content, check_content_not_matches, check_folder_min_childs,
+    check_negated_path_pattern, check_negated_root_files_has_pattern,
+    check_path_pattern, check_root_files_find_pattern, check_root_files_has_pattern,
+    extension_is, has_sibling_file, name_case_is, path_pattern_match, Capture,
 };
 
 #[derive(Debug, Default)]
@@ -83,7 +84,7 @@ fn append_expect_error(
     }
 }
 
-fn file_pass_expected(
+fn check_file_expect(
     file: &File,
     expected: &AnyNoneOr<Vec<FileExpect>>,
     folder: &Folder,
@@ -209,6 +210,22 @@ fn file_pass_expected(
                     pass_some_expect = true;
                     check_result(
                         check_ts_not_have_circular_deps(file),
+                        &expect.error_msg,
+                    );
+                }
+
+                if let Some(disallow) = &ts_expect.not_have_deps_from {
+                    pass_some_expect = true;
+                    check_result(
+                        check_ts_not_have_deps_from(file, disallow),
+                        &expect.error_msg,
+                    );
+                }
+
+                if let Some(allowed) = &ts_expect.not_have_deps_outside {
+                    pass_some_expect = true;
+                    check_result(
+                        check_ts_not_have_deps_outside(file, allowed),
                         &expect.error_msg,
                     );
                 }
@@ -447,7 +464,7 @@ fn check_folder_childs(
                             file_touched = true;
                         }
 
-                        if let Err(expect_errors) = file_pass_expected(
+                        if let Err(expect_errors) = check_file_expect(
                             file,
                             &rule.expect,
                             folder,
@@ -493,7 +510,7 @@ fn check_folder_childs(
                                     file_touched = true;
                                 }
 
-                                if file_pass_expected(
+                                if check_file_expect(
                                     file,
                                     &rule.expect,
                                     folder,

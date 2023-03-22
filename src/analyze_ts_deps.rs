@@ -21,11 +21,11 @@ use self::{
     },
     modules_graph::{get_node_deps, DepsResult, DEPS_CACHE},
 };
+pub mod circular_deps;
 mod extract_file_content_exports;
 mod extract_file_content_imports;
 mod modules_graph;
 pub mod ts_checks;
-pub mod circular_deps;
 
 #[derive(Debug, Clone, Default)]
 pub struct FileDepsInfo {
@@ -40,7 +40,8 @@ lazy_static! {
         Mutex::new(HashMap::new());
     static ref IMPORTS_CACHE: Mutex<HashMap<String, IndexMap<String, Import>>> =
         Mutex::new(HashMap::new());
-    pub static ref ALIASES: Mutex<HashMap<String, String>> = Mutex::new(HashMap::new());
+    pub static ref ALIASES: Mutex<HashMap<String, String>> =
+        Mutex::new(HashMap::new());
     static ref ROOT_DIR: Mutex<String> = Mutex::new(String::from("."));
     static ref DEBUG_READ_EDGES_COUNT: Mutex<usize> = Mutex::new(0);
     static ref FILE_EDGES_CACHE: Mutex<HashMap<String, Vec<String>>> =
@@ -121,7 +122,8 @@ fn get_resolved_path(path: &Path) -> Result<Option<PathBuf>, String> {
         return Ok(Some(resolved_path.clone()));
     }
 
-    let file_with_replaced_alias = replace_aliases(&ALIASES.lock().unwrap(), path);
+    let file_with_replaced_alias =
+        PathBuf::from(replace_aliases(&path.to_str().unwrap().to_string()));
 
     let file_abs_path = format!(
         "{}{}",
@@ -197,14 +199,24 @@ fn get_resolved_path(path: &Path) -> Result<Option<PathBuf>, String> {
     }
 }
 
-fn replace_aliases(aliases: &HashMap<String, String>, path: &Path) -> PathBuf {
-    for (alias, real_path) in aliases {
+fn replace_aliases(path: &String) -> String {
+    for (alias, real_path) in ALIASES.lock().unwrap().iter() {
         if path.starts_with(alias) {
-            return PathBuf::from(path.to_str().unwrap().replace(alias, real_path));
+            return path.replace(alias, real_path);
         }
     }
 
-    path.to_path_buf()
+    path.to_string()
+}
+
+fn add_aliases(path: &String) -> String {
+    for (alias, real_path) in ALIASES.lock().unwrap().iter() {
+        if path.starts_with(real_path) {
+            return path.replace(real_path, alias);
+        }
+    }
+
+    path.to_string()
 }
 
 fn get_file_imports(

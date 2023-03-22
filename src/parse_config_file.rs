@@ -27,6 +27,8 @@ pub struct ParsedFileConditions {
 pub struct ParsedTsFileExpect {
     pub not_have_unused_exports: Option<bool>,
     pub not_have_circular_deps: Option<bool>,
+    pub not_have_deps_from: Option<SingleOrMultiple<String>>,
+    pub not_have_deps_outside: Option<SingleOrMultiple<String>>,
 }
 
 #[derive(Deserialize, Debug, Clone)]

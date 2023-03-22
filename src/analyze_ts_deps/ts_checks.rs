@@ -1,10 +1,12 @@
 use colored::Colorize;
+use globset::Glob;
 use std::path::PathBuf;
 
-use crate::load_folder_structure::File;
+use crate::{analyze_ts_deps::replace_aliases, load_folder_structure::File};
 
 use super::{
-    extract_file_content_imports::ImportType, get_file_deps_result, USED_FILES,
+    add_aliases, extract_file_content_imports::ImportType, get_file_deps_result,
+    USED_FILES,
 };
 
 pub fn check_ts_not_have_unused_exports(file: &File) -> Result<(), String> {
@@ -83,4 +85,68 @@ pub fn check_ts_not_have_circular_deps(file: &File) -> Result<(), String> {
     } else {
         Ok(())
     }
+}
+
+pub fn check_ts_not_have_deps_from(
+    file: &File,
+    disallow: &[String],
+) -> Result<(), String> {
+    let deps_info =
+        get_file_deps_result(&PathBuf::from(file.clone().relative_path))?;
+
+    let mut builder = globset::GlobSetBuilder::new();
+
+    for pattern in disallow {
+        builder.add(Glob::new(replace_aliases(pattern).as_str()).unwrap());
+    }
+
+    let disable_imports_set = builder.build().unwrap();
+
+    let mut dep_path: Vec<String> = vec![];
+
+    for dep in &deps_info.deps {
+        dep_path.push(add_aliases(dep));
+
+        if disable_imports_set.is_match(dep) {
+            return Err(format!(
+                "disallowed dependencies from folders '{}' found: {}",
+                disallow.join(", "),
+                dep_path.join(" > ")
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+pub fn check_ts_not_have_deps_outside(
+    file: &File,
+    allowed: &[String],
+) -> Result<(), String> {
+    let deps_info =
+        get_file_deps_result(&PathBuf::from(file.clone().relative_path))?;
+
+    let mut builder = globset::GlobSetBuilder::new();
+
+    for pattern in allowed {
+        builder.add(Glob::new(replace_aliases(pattern).as_str()).unwrap());
+    }
+
+    let allowed_imports_set = builder.build().unwrap();
+
+    let mut dep_path: Vec<String> = vec![];
+
+    for dep in &deps_info.deps {
+        dep_path.push(add_aliases(dep));
+
+        if !allowed_imports_set.is_match(dep) {
+            return Err(format!(
+                "disallowed dependencies outside folders '{}' found: {}",
+                allowed.join(", "),
+                dep_path.join(" > ")
+            ));
+        }
+    }
+
+    Ok(())
 }

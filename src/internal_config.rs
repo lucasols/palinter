@@ -58,6 +58,8 @@ pub struct ContentMatches {
 pub struct TsFileExpect {
     pub not_have_unused_exports: bool,
     pub not_have_circular_deps: bool,
+    pub not_have_deps_from: Option<Vec<String>>,
+    pub not_have_deps_outside: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone)]
@@ -855,6 +857,12 @@ fn get_file_expect(
                     &ts.not_have_circular_deps,
                     "ts.not_have_circular_deps",
                 )?,
+                not_have_deps_from: normalize_single_or_multiple_option(
+                    &ts.not_have_deps_from,
+                ),
+                not_have_deps_outside: normalize_single_or_multiple_option(
+                    &ts.not_have_deps_outside,
+                ),
             }),
             None => None,
         },
@@ -1059,8 +1067,12 @@ pub fn normalize_folder_config(
                 sub_folders_config,
                 folder_rules,
                 one_of_blocks,
-                unexpected_files_error_msg: config.unexpected_files_error_msg.clone(),
-                unexpected_folders_error_msg: config.unexpected_folders_error_msg.clone(),
+                unexpected_files_error_msg: config
+                    .unexpected_files_error_msg
+                    .clone(),
+                unexpected_folders_error_msg: config
+                    .unexpected_folders_error_msg
+                    .clone(),
                 allow_unexpected_files: config
                     .allow_unexpected_files
                     .unwrap_or(default_allow_unexpected_files_or_folders),
