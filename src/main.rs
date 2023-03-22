@@ -10,7 +10,7 @@ use std::path::PathBuf;
 
 use analyze_ts_deps::circular_deps::get_detailed_file_circular_deps_result;
 use check_folders::check_root_folder;
-use clap::{arg, command, value_parser, Command, Parser};
+use clap::{arg, command, value_parser, Command};
 use internal_config::{get_config, Config};
 use load_folder_structure::load_folder_structure;
 use parse_config_file::parse_config_file;

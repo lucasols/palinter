@@ -19,8 +19,14 @@ fn get_deps_for_each(
         .map(|node| {
             (
                 node.to_string(),
-                get_node_deps(&node.to_string(), &mut get_node_edges, Some(1000))
-                    .unwrap(),
+                get_node_deps(
+                    &node.to_string(),
+                    &mut get_node_edges,
+                    Some(1000),
+                    false,
+                    false,
+                )
+                .unwrap(),
             )
         })
         .collect()
