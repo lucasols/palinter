@@ -3,5 +3,10 @@
     "**/target": true
   },
   "editor.indentSize": "tabSize",
-  "editor.tabSize": 4
+  "[rust]": {
+    "editor.tabSize": 4
+  },
+  "[markdown]": {
+    "editor.tabSize": 2
+  }
 }

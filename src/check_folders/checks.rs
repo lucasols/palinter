@@ -70,7 +70,10 @@ pub struct Capture {
     pub value: String,
 }
 
-pub fn path_pattern_match(str: &str, pattern: &String) -> Result<Vec<Capture>, String> {
+pub fn path_pattern_match(
+    str: &str,
+    pattern: &String,
+) -> Result<Vec<Capture>, String> {
     // TODO: move this to config
     let regex = get_regex_from_path_pattern(pattern.clone())?;
 
@@ -158,7 +161,8 @@ pub fn has_sibling_file(
     folder: &Folder,
     condition_captures: &[Capture],
 ) -> Result<(), String> {
-    let (pattern, regex) = normalize_check_pattern(condition_captures, sibling_file_pattern);
+    let (pattern, regex) =
+        normalize_check_pattern(condition_captures, sibling_file_pattern);
 
     for child in &folder.childs {
         if let FolderChild::FileChild(file) = child {
@@ -174,8 +178,12 @@ pub fn has_sibling_file(
     ))
 }
 
-fn normalize_check_pattern(captures: &[Capture], check_pattern: &String) -> (String, Regex) {
-    let pattern = replace_with_captures(check_pattern, captures, ContextVars::default());
+fn normalize_check_pattern(
+    captures: &[Capture],
+    check_pattern: &String,
+) -> (String, Regex) {
+    let pattern =
+        replace_with_captures(check_pattern, captures, ContextVars::default());
 
     let regex = if pattern.starts_with("regex:") {
         Regex::new(pattern.strip_prefix("regex:").unwrap_or("")).unwrap()
@@ -191,7 +199,11 @@ pub fn check_path_pattern(
     path_pattern: &String,
     condition_captures: &[Capture],
 ) -> Result<(), String> {
-    let pattern = replace_with_captures(path_pattern, condition_captures, ContextVars::default());
+    let pattern = replace_with_captures(
+        path_pattern,
+        condition_captures,
+        ContextVars::default(),
+    );
 
     let regex = get_regex_from_path_pattern(pattern.clone())?;
 
@@ -230,7 +242,8 @@ pub fn check_content(
     let mut matched = false;
 
     let not_found_msg =
-        "configured `content_matches` patterns not found in the file content".to_string();
+        "configured `content_matches` patterns not found in the file content"
+            .to_string();
 
     for content_match in content_matches {
         match content_match.matches.clone() {
@@ -238,9 +251,11 @@ pub fn check_content(
                 let mut num_of_matches = 0;
 
                 for pattern in matches {
-                    let (_, regex) = normalize_check_pattern(condition_captures, &pattern);
+                    let (_, regex) =
+                        normalize_check_pattern(condition_captures, &pattern);
 
-                    let pattern_matches = regex.captures_iter(content.as_str()).count();
+                    let pattern_matches =
+                        regex.captures_iter(content.as_str()).count();
 
                     num_of_matches += pattern_matches;
                 }
@@ -271,9 +286,11 @@ pub fn check_content(
             }
             crate::internal_config::Matches::All(matches) => {
                 for pattern in matches {
-                    let (_, regex) = normalize_check_pattern(condition_captures, &pattern);
+                    let (_, regex) =
+                        normalize_check_pattern(condition_captures, &pattern);
 
-                    let pattern_matches = regex.captures_iter(content.as_str()).count();
+                    let pattern_matches =
+                        regex.captures_iter(content.as_str()).count();
 
                     if pattern_matches == 0 {
                         if !some {
@@ -398,7 +415,8 @@ pub fn check_negated_root_files_has_pattern(
     has_pattern: &String,
     condition_captures: &[Capture],
 ) -> Result<(), String> {
-    let matches = check_root_files_has_pattern(folder, has_pattern, condition_captures);
+    let matches =
+        check_root_files_has_pattern(folder, has_pattern, condition_captures);
 
     if let Ok(pattern) = matches {
         return Err(format!(
@@ -428,6 +446,22 @@ pub fn check_content_not_matches(
                 pattern
             ));
         }
+    }
+
+    Ok(())
+}
+
+pub fn check_folder_min_childs(
+    folder: &Folder,
+    min_childs: usize,
+) -> Result<(), String> {
+    let num_of_childs = folder.childs.len();
+
+    if num_of_childs < min_childs {
+        return Err(format!(
+            "should have at least {} childs, found {}",
+            min_childs, num_of_childs
+        ));
     }
 
     Ok(())

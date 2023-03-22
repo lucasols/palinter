@@ -16,7 +16,7 @@ use self::checks::{
     check_content, check_content_not_matches, check_negated_path_pattern,
     check_negated_root_files_has_pattern, check_path_pattern,
     check_root_files_find_pattern, check_root_files_has_pattern, extension_is,
-    has_sibling_file, name_case_is, path_pattern_match, Capture,
+    has_sibling_file, name_case_is, path_pattern_match, Capture, check_folder_min_childs,
 };
 
 #[derive(Debug, Default)]
@@ -273,7 +273,7 @@ fn folder_matches_condition(
     }
 }
 
-fn folder_pass_expected(
+fn check_folder_expected(
     folder: &Folder,
     expected: &AnyNoneOr<Vec<FolderExpect>>,
     conditions_result: &ConditionsResult,
@@ -338,6 +338,14 @@ fn folder_pass_expected(
                             root_files_has_not,
                             &conditions_result.captures,
                         ),
+                        &expect.error_msg,
+                    )?;
+                }
+
+                if let Some(min_childs) = &expect.have_min_childs {
+                    pass_some_expect = true;
+                    append_expect_error(
+                        check_folder_min_childs(folder, *min_childs),
                         &expect.error_msg,
                     )?;
                 }
@@ -540,7 +548,7 @@ fn check_folder_childs(
                             folder_touched = true;
                         }
 
-                        if let Err(error) = folder_pass_expected(
+                        if let Err(error) = check_folder_expected(
                             sub_folder,
                             &rule.expect,
                             &conditions_result,

@@ -65,6 +65,7 @@ pub struct ParsedFolderExpect {
     pub name_is_not: Option<String>,
     pub root_files_has: Option<String>,
     pub root_files_has_not: Option<String>,
+    pub have_min_childs: Option<usize>,
 
     pub error_msg: Option<String>,
 

@@ -97,6 +97,7 @@ pub struct FolderExpect {
     pub name_is_not: Option<String>,
     pub root_files_has: Option<String>,
     pub root_files_has_not: Option<String>,
+    pub have_min_childs: Option<usize>,
 
     pub error_msg: Option<String>,
 }
@@ -798,6 +799,7 @@ fn get_folder_expect(
         name_is_not: parsed_expected.name_is_not,
         root_files_has: parsed_expected.root_files_has,
         root_files_has_not: parsed_expected.root_files_has_not,
+        have_min_childs: parsed_expected.have_min_childs,
     })
 }
 
