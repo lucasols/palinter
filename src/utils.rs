@@ -27,7 +27,6 @@ pub fn get_code_from_line(lines_iter: &Lines, line: usize) -> String {
             !l.starts_with("function")
                 && !l.starts_with("const")
                 && !l.starts_with("let")
-                && !l.starts_with("export")
         })
         .collect::<Vec<&str>>()
         .join("\n")
