@@ -72,11 +72,7 @@ fn append_expect_error(
         Ok(_) => Ok(()),
         Err(error) => {
             if let Some(expect_error_msg) = expect_error_msg {
-                Err(format!(
-                    "{}{}",
-                    expect_error_msg,
-                    format!(" | {}", error).dimmed()
-                ))
+                Err(format!("{}\n   | {}", expect_error_msg, error.dimmed()))
             } else {
                 Err(error)
             }
@@ -422,7 +418,7 @@ fn check_folder_childs(
 
     let append_error = folder_config
         .and_then(|fc| fc.append_error_msg.clone())
-        .map(|append_err| format!(" | {}", &append_err))
+        .map(|append_err| format!("\n   | {}", &append_err.dimmed()))
         .unwrap_or_default();
 
     let allow_unconfigured_folders = folder_config.map_or(false, |folder_config| {
@@ -480,7 +476,7 @@ fn check_folder_childs(
                                     "{}{}{}",
                                     file_error_prefix,
                                     if let Some(custom_error) = &rule.error_msg {
-                                        format!("{} | {}", custom_error, error)
+                                        format!("{}\n   | {}", custom_error, error)
                                     } else {
                                         error
                                     },
@@ -549,7 +545,7 @@ fn check_folder_childs(
                                 .unexpected_files_error_msg
                                 .as_ref()
                                 .or(cfg.unexpected_error_msg.as_ref()))
-                            .map(|msg| format!(" | {}", msg))
+                            .map(|msg| format!("\n   | {}", msg))
                             .unwrap_or_default(),
                         append_error
                     ));
@@ -585,7 +581,7 @@ fn check_folder_childs(
                                 "{}{}{}",
                                 folder_error_prefix,
                                 if let Some(custom_error) = &rule.error_msg {
-                                    format!("{} | {}", custom_error, error)
+                                    format!("{}\n   | {}", custom_error, error)
                                 } else {
                                     error
                                 },
@@ -635,7 +631,7 @@ fn check_folder_childs(
                                 .unexpected_folders_error_msg
                                 .as_ref()
                                 .or(cfg.unexpected_error_msg.as_ref()))
-                            .map(|msg| format!(" | {}", msg))
+                            .map(|msg| format!("\n   | {}", msg))
                             .unwrap_or_default(),
                         append_error
                     ));
