@@ -23,11 +23,16 @@ pub fn get_code_from_line(lines_iter: &Lines, line: usize) -> String {
     lines_iter
         .clone()
         .skip(line - 1)
-        .take_while(|l| {
-            !l.starts_with("function")
-                && !l.starts_with("const")
-                && !l.starts_with("let")
+        .enumerate()
+        .take_while(|(i, l)| {
+            i == &0
+                || !l.starts_with("function")
+                    && !l.starts_with("const")
+                    && !l.starts_with("let")
+                    && !l.starts_with("export")
+                    && !l.starts_with("import")
         })
+        .map(|(_, l)| l)
         .collect::<Vec<&str>>()
         .join("\n")
         .trim()
