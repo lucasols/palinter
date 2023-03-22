@@ -30,6 +30,14 @@
           has_extension: svg
         expect:
           name_case_is: kebab-case
+
+    /sub:
+      optional: true
+      rules:
+        - if_file:
+            has_extension: ts
+          expect:
+            name_case_is: kebab-case
 ```
 
 # Projects
@@ -86,7 +94,11 @@ structure:
     /subfolder:
       kebab-case.svg: ''
 
+    /sub:
+      kebab_case.ts: ''
+
 expected_errors:
+  - "File ./kebab-case/sub/kebab_case.ts:\n • should be named in kebab-case | check docs"
   - Folder /subfolder is not expected in folder ./kebab-case | Unexpected file/folder | check docs
   - File unexpected.ts is not expected in folder ./kebab-case | Unexpected file/folder | check docs
 ```
