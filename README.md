@@ -7,3 +7,5 @@ A powerfull linter for projects architecture written in rust.
 # How to use
 
 TODO :)
+
+Check the test_cases folder for examples for now

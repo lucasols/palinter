@@ -109,7 +109,7 @@ pub fn check_ts_not_have_deps_from(
 
         if disable_imports_set.is_match(dep) {
             return Err(format!(
-                "disallowed dependencies from folders '{}' found: {}",
+                "disallowed dependencies from '{}' found: {}",
                 disallow.join(", "),
                 dep_path.join(" > ")
             ));
@@ -141,10 +141,43 @@ pub fn check_ts_not_have_deps_outside(
 
         if !allowed_imports_set.is_match(dep) {
             return Err(format!(
-                "disallowed dependencies outside folders '{}' found: {}",
+                "disallowed dependencies outside '{}' found: {}",
                 allowed.join(", "),
                 dep_path.join(" > ")
             ));
+        }
+    }
+
+    Ok(())
+}
+
+pub fn check_ts_not_have_used_exports_outside(
+    file: &File,
+    allowed: &[String],
+) -> Result<(), String> {
+    let used_files = USED_FILES.lock().unwrap();
+
+    let mut builder = globset::GlobSetBuilder::new();
+
+    for pattern in allowed {
+        builder.add(Glob::new(replace_aliases(pattern).as_str()).unwrap());
+    }
+
+    let allowed_to_use_exports_set = builder.build().unwrap();
+
+    for (other_used_file, other_deps_info) in used_files.iter() {
+        if other_used_file == &file.relative_path {
+            continue;
+        }
+
+        if other_deps_info.imports.contains_key(&file.relative_path)
+            && !allowed_to_use_exports_set.is_match(other_used_file)
+        {
+            return Err(format!(
+                    "disallowed used exports in file '{}', this file can only be imported from '{}'",
+                    add_aliases(other_used_file),
+                    allowed.join(", ")
+                ));
         }
     }
 

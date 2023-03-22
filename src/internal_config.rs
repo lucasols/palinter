@@ -60,6 +60,7 @@ pub struct TsFileExpect {
     pub not_have_circular_deps: bool,
     pub not_have_deps_from: Option<Vec<String>>,
     pub not_have_deps_outside: Option<Vec<String>>,
+    pub not_have_exports_used_outside: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone)]
@@ -864,6 +865,9 @@ fn get_file_expect(
                 ),
                 not_have_deps_outside: normalize_single_or_multiple_option(
                     &ts.not_have_deps_outside,
+                ),
+                not_have_exports_used_outside: normalize_single_or_multiple_option(
+                    &ts.not_have_exports_used_outside,
                 ),
             }),
             None => None,

@@ -62,6 +62,6 @@ structure:
         export const c = c;
 
 expected_errors:
-  - "File ./src/ok/fileA.ts:\n • disallowed dependencies from folders '@src/tests/*' found: @src/ok/fileB.ts > @src/tests/fileC.ts"
-  - "File ./src/ok/fileB.ts:\n • disallowed dependencies from folders '@src/tests/*' found: @src/tests/fileC.ts"
+  - "File ./src/ok/fileA.ts:\n • disallowed dependencies from '@src/tests/*' found: @src/ok/fileB.ts > @src/tests/fileC.ts"
+  - "File ./src/ok/fileB.ts:\n • disallowed dependencies from '@src/tests/*' found: @src/tests/fileC.ts"
 ```
