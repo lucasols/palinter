@@ -78,7 +78,11 @@ expression: "BTreeMap::from_iter(result)"
             "./src/fileB.ts",
             "./src/fileA.ts",
         },
-        circular_deps: None,
+        circular_deps: Some(
+            [
+                "./src/index.ts > |./src/fileB.ts| > ./src/fileA.ts > |./src/fileB.ts|",
+            ],
+        ),
         imports: {
             "./src/fileB.ts": Import {
                 import_path: "@src/fileB",

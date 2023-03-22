@@ -2,7 +2,6 @@ use std::{
     collections::HashMap,
     fs::read_to_string,
     path::{Path, PathBuf},
-    sync::Mutex,
 };
 
 use indexmap::{IndexMap, IndexSet};
@@ -314,9 +313,11 @@ fn get_file_deps_info(
     let DepsResult {
         deps,
         circular_deps,
-    } = get_node_deps(resolved_path_string, &mut |edge_id| {
-        get_file_edges(edge_id, ctx)
-    })?;
+    } = get_node_deps(
+        resolved_path_string,
+        &mut |edge_id| get_file_edges(edge_id, ctx),
+        None,
+    )?;
 
     let file_content = get_file_content(resolved_path_string, ctx)?;
 

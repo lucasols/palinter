@@ -277,3 +277,32 @@ fn project_with_circular_deps_3() {
 
     assert_debug_snapshot!(BTreeMap::from_iter(result));
 }
+
+#[test]
+fn project_with_circular_deps_4() {
+    _setup_test();
+
+    let entry_points = vec![PathBuf::from("@src/a.ts")];
+
+    let flattened_root_structure = create_flatten_root_structure(vec![
+        get_file("a", &["b", "c"]),
+        get_file("b", &["c", "d"]),
+        get_file("c", &["b", "d"]),
+        get_file("d", &[]),
+    ]);
+
+    let ctx = &mut &mut TsProjectCtx {
+        root_dir: ".".to_string(),
+        ..Default::default()
+    };
+
+    let result = get_used_project_files_deps_info(
+        entry_points,
+        flattened_root_structure,
+        HashMap::from_iter(vec![(String::from("@src"), String::from("./src"))]),
+        ctx,
+    )
+    .unwrap();
+
+    assert_debug_snapshot!(BTreeMap::from_iter(result));
+}

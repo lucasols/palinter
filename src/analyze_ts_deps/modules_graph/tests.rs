@@ -19,7 +19,8 @@ fn get_deps_for_each(
         .map(|node| {
             (
                 node.to_string(),
-                get_node_deps(&node.to_string(), &mut get_node_edges).unwrap(),
+                get_node_deps(&node.to_string(), &mut get_node_edges, Some(1000))
+                    .unwrap(),
             )
         })
         .collect()
@@ -44,26 +45,26 @@ fn simple_dep_calc_1() {
             get_node_edges,
         ),
         @r###"
-        {
-            "dep1": DepsResult {
-                deps: {
-                    "dep2",
-                    "dep3",
-                },
-                circular_deps: None,
+    {
+        "dep1": DepsResult {
+            deps: {
+                "dep2",
+                "dep3",
             },
-            "dep2": DepsResult {
-                deps: {
-                    "dep3",
-                },
-                circular_deps: None,
+            circular_deps: None,
+        },
+        "dep2": DepsResult {
+            deps: {
+                "dep3",
             },
-            "dep3": DepsResult {
-                deps: {},
-                circular_deps: None,
-            },
-        }
-        "###
+            circular_deps: None,
+        },
+        "dep3": DepsResult {
+            deps: {},
+            circular_deps: None,
+        },
+    }
+    "###
     )
 }
 
@@ -272,38 +273,42 @@ fn circular_2() {
             get_node_edges,
         ),
         @r###"
-        {
-            "dep1": DepsResult {
-                deps: {
-                    "dep2",
-                    "dep3",
-                },
-                circular_deps: None,
+    {
+        "dep1": DepsResult {
+            deps: {
+                "dep2",
+                "dep3",
             },
-            "dep2": DepsResult {
-                deps: {
-                    "dep3",
-                    "dep2",
-                },
-                circular_deps: Some(
-                    [
-                        "|dep2| > dep3 > |dep2|",
-                    ],
-                ),
+            circular_deps: Some(
+                [
+                    "dep1 > |dep2| > dep3 > |dep2|",
+                ],
+            ),
+        },
+        "dep2": DepsResult {
+            deps: {
+                "dep3",
+                "dep2",
             },
-            "dep3": DepsResult {
-                deps: {
-                    "dep2",
-                    "dep3",
-                },
-                circular_deps: Some(
-                    [
-                        "|dep3| > dep2 > |dep3|",
-                    ],
-                ),
+            circular_deps: Some(
+                [
+                    "|dep2| > dep3 > |dep2|",
+                ],
+            ),
+        },
+        "dep3": DepsResult {
+            deps: {
+                "dep2",
+                "dep3",
             },
-        }
-        "###
+            circular_deps: Some(
+                [
+                    "|dep3| > dep2 > |dep3|",
+                ],
+            ),
+        },
+    }
+    "###
     );
 }
 
@@ -328,79 +333,88 @@ fn circular_3() {
             get_node_edges,
         ),
         @r###"
-        {
-            "dep1": DepsResult {
-                deps: {
-                    "dep2",
-                    "dep3",
-                    "dep4",
-                    "dep5",
-                    "dep1",
-                },
-                circular_deps: Some(
-                    [
-                        "|dep1| > dep2 > dep3 > dep4 > dep5 > |dep1|",
-                    ],
-                ),
+    {
+        "dep1": DepsResult {
+            deps: {
+                "dep2",
+                "dep3",
+                "dep4",
+                "dep5",
+                "dep1",
             },
-            "dep2": DepsResult {
-                deps: {
-                    "dep3",
-                    "dep2",
-                    "dep4",
-                    "dep5",
-                    "dep1",
-                },
-                circular_deps: Some(
-                    [
-                        "|dep2| > dep3 > |dep2|",
-                    ],
-                ),
+            circular_deps: Some(
+                [
+                    "dep1 > |dep2| > dep3 > |dep2|",
+                    "dep1 > |dep2| > dep4 > |dep2|",
+                    "|dep1| > dep2 > dep4 > dep5 > |dep1|",
+                ],
+            ),
+        },
+        "dep2": DepsResult {
+            deps: {
+                "dep3",
+                "dep2",
+                "dep4",
+                "dep5",
+                "dep1",
             },
-            "dep3": DepsResult {
-                deps: {
-                    "dep2",
-                    "dep3",
-                    "dep4",
-                    "dep5",
-                    "dep1",
-                },
-                circular_deps: Some(
-                    [
-                        "|dep3| > dep2 > |dep3|",
-                    ],
-                ),
+            circular_deps: Some(
+                [
+                    "|dep2| > dep3 > |dep2|",
+                    "|dep2| > dep4 > |dep2|",
+                    "|dep2| > dep4 > dep5 > dep1 > |dep2|",
+                ],
+            ),
+        },
+        "dep3": DepsResult {
+            deps: {
+                "dep2",
+                "dep3",
+                "dep4",
+                "dep5",
+                "dep1",
             },
-            "dep4": DepsResult {
-                deps: {
-                    "dep2",
-                    "dep3",
-                    "dep4",
-                    "dep5",
-                    "dep1",
-                },
-                circular_deps: Some(
-                    [
-                        "|dep4| > dep2 > dep3 > |dep4|",
-                    ],
-                ),
+            circular_deps: Some(
+                [
+                    "|dep3| > dep2 > |dep3|",
+                    "dep3 > |dep2| > dep4 > |dep2|",
+                    "dep3 > |dep2| > dep4 > dep5 > dep1 > |dep2|",
+                ],
+            ),
+        },
+        "dep4": DepsResult {
+            deps: {
+                "dep2",
+                "dep3",
+                "dep4",
+                "dep5",
+                "dep1",
             },
-            "dep5": DepsResult {
-                deps: {
-                    "dep1",
-                    "dep2",
-                    "dep3",
-                    "dep4",
-                    "dep5",
-                },
-                circular_deps: Some(
-                    [
-                        "|dep5| > dep1 > dep2 > dep3 > dep4 > |dep5|",
-                    ],
-                ),
+            circular_deps: Some(
+                [
+                    "dep4 > |dep2| > dep3 > |dep2|",
+                    "|dep4| > dep2 > |dep4|",
+                ],
+            ),
+        },
+        "dep5": DepsResult {
+            deps: {
+                "dep1",
+                "dep2",
+                "dep3",
+                "dep4",
+                "dep5",
             },
-        }
-        "###
+            circular_deps: Some(
+                [
+                    "dep5 > dep1 > |dep2| > dep3 > |dep2|",
+                    "dep5 > dep1 > |dep2| > dep4 > |dep2|",
+                    "|dep5| > dep1 > dep2 > dep4 > |dep5|",
+                ],
+            ),
+        },
+    }
+    "###
     );
 }
 
@@ -425,70 +439,79 @@ fn circular_4() {
             get_node_edges,
         ),
         @r###"
-        {
-            "dep1": DepsResult {
-                deps: {
-                    "dep2",
-                    "dep3",
-                    "dep4",
-                    "dep5",
-                },
-                circular_deps: None,
+    {
+        "dep1": DepsResult {
+            deps: {
+                "dep2",
+                "dep3",
+                "dep4",
+                "dep5",
             },
-            "dep2": DepsResult {
-                deps: {
-                    "dep3",
-                    "dep2",
-                    "dep4",
-                    "dep5",
-                },
-                circular_deps: Some(
-                    [
-                        "|dep2| > dep3 > |dep2|",
-                    ],
-                ),
+            circular_deps: Some(
+                [
+                    "dep1 > |dep2| > dep3 > |dep2|",
+                    "dep1 > |dep2| > dep4 > |dep2|",
+                ],
+            ),
+        },
+        "dep2": DepsResult {
+            deps: {
+                "dep3",
+                "dep2",
+                "dep4",
+                "dep5",
             },
-            "dep3": DepsResult {
-                deps: {
-                    "dep2",
-                    "dep3",
-                    "dep4",
-                    "dep5",
-                },
-                circular_deps: Some(
-                    [
-                        "|dep3| > dep2 > |dep3|",
-                    ],
-                ),
+            circular_deps: Some(
+                [
+                    "|dep2| > dep3 > |dep2|",
+                    "|dep2| > dep4 > |dep2|",
+                ],
+            ),
+        },
+        "dep3": DepsResult {
+            deps: {
+                "dep2",
+                "dep3",
+                "dep4",
+                "dep5",
             },
-            "dep4": DepsResult {
-                deps: {
-                    "dep2",
-                    "dep3",
-                    "dep4",
-                    "dep5",
-                },
-                circular_deps: Some(
-                    [
-                        "|dep4| > dep2 > dep3 > |dep4|",
-                    ],
-                ),
+            circular_deps: Some(
+                [
+                    "|dep3| > dep2 > |dep3|",
+                    "dep3 > |dep2| > dep4 > |dep2|",
+                ],
+            ),
+        },
+        "dep4": DepsResult {
+            deps: {
+                "dep2",
+                "dep3",
+                "dep4",
+                "dep5",
             },
-            "dep5": DepsResult {
-                deps: {
-                    "dep3",
-                    "dep2",
-                    "dep4",
-                    "dep5",
-                },
-                circular_deps: Some(
-                    [
-                        "|dep5| > dep3 > dep2 > dep4 > |dep5|",
-                    ],
-                ),
+            circular_deps: Some(
+                [
+                    "dep4 > |dep2| > dep3 > |dep2|",
+                    "|dep4| > dep2 > |dep4|",
+                ],
+            ),
+        },
+        "dep5": DepsResult {
+            deps: {
+                "dep3",
+                "dep2",
+                "dep4",
+                "dep5",
             },
-        }
-        "###
+            circular_deps: Some(
+                [
+                    "dep5 > |dep3| > dep2 > |dep3|",
+                    "dep5 > dep3 > |dep2| > dep4 > |dep2|",
+                ],
+            ),
+        },
+    }
+    "###
     );
 }
 
@@ -565,51 +588,51 @@ fn dag_5() {
             get_node_edges
         ),
         @r###"
-        {
-            "dropdown": DepsResult {
-                deps: {
-                    "popover",
-                    "portalLayer",
-                    "typings",
-                    "uOCO",
-                    "uDVU",
-                    "useTimout",
-                },
-                circular_deps: None,
+    {
+        "dropdown": DepsResult {
+            deps: {
+                "popover",
+                "portalLayer",
+                "typings",
+                "uOCO",
+                "uDVU",
+                "useTimout",
             },
-            "popover": DepsResult {
-                deps: {
-                    "portalLayer",
-                },
-                circular_deps: None,
+            circular_deps: None,
+        },
+        "popover": DepsResult {
+            deps: {
+                "portalLayer",
             },
-            "portalLayer": DepsResult {
-                deps: {},
-                circular_deps: None,
+            circular_deps: None,
+        },
+        "portalLayer": DepsResult {
+            deps: {},
+            circular_deps: None,
+        },
+        "typings": DepsResult {
+            deps: {},
+            circular_deps: None,
+        },
+        "uOCO": DepsResult {
+            deps: {},
+            circular_deps: None,
+        },
+        "uDVU": DepsResult {
+            deps: {
+                "useTimout",
+                "typings",
             },
-            "typings": DepsResult {
-                deps: {},
-                circular_deps: None,
+            circular_deps: None,
+        },
+        "useTimout": DepsResult {
+            deps: {
+                "typings",
             },
-            "uOCO": DepsResult {
-                deps: {},
-                circular_deps: None,
-            },
-            "uDVU": DepsResult {
-                deps: {
-                    "useTimout",
-                    "typings",
-                },
-                circular_deps: None,
-            },
-            "useTimout": DepsResult {
-                deps: {
-                    "typings",
-                },
-                circular_deps: None,
-            },
-        }
-        "###
+            circular_deps: None,
+        },
+    }
+    "###
     );
 }
 
@@ -633,34 +656,34 @@ fn simple_6() {
             get_node_edges
         ),
         @r###"
-        {
-            "dep1": DepsResult {
-                deps: {
-                    "dep2",
-                    "dep3",
-                    "dep4",
-                },
-                circular_deps: None,
+    {
+        "dep1": DepsResult {
+            deps: {
+                "dep2",
+                "dep3",
+                "dep4",
             },
-            "dep2": DepsResult {
-                deps: {
-                    "dep3",
-                },
-                circular_deps: None,
+            circular_deps: None,
+        },
+        "dep2": DepsResult {
+            deps: {
+                "dep3",
             },
-            "dep3": DepsResult {
-                deps: {},
-                circular_deps: None,
+            circular_deps: None,
+        },
+        "dep3": DepsResult {
+            deps: {},
+            circular_deps: None,
+        },
+        "dep4": DepsResult {
+            deps: {
+                "dep2",
+                "dep3",
             },
-            "dep4": DepsResult {
-                deps: {
-                    "dep2",
-                    "dep3",
-                },
-                circular_deps: None,
-            },
-        }
-        "###
+            circular_deps: None,
+        },
+    }
+    "###
     );
 }
 
@@ -822,121 +845,259 @@ fn circular_9() {
             get_node_edges
         ),
         @r###"
-        {
-            "A": DepsResult {
-                deps: {
-                    "B",
-                    "D",
-                    "1",
-                    "2",
-                    "3",
-                    "E",
-                    "F",
-                    "C",
-                },
-                circular_deps: None,
+    {
+        "A": DepsResult {
+            deps: {
+                "B",
+                "D",
+                "1",
+                "2",
+                "3",
+                "E",
+                "F",
+                "C",
             },
-            "B": DepsResult {
-                deps: {
-                    "D",
-                    "1",
-                    "2",
-                    "3",
-                    "E",
-                    "F",
-                    "B",
-                },
-                circular_deps: Some(
-                    [
-                        "|B| > D > 1 > 2 > 3 > E > F > |B|",
-                    ],
-                ),
+            circular_deps: Some(
+                [
+                    "A > B > D > |1| > 2 > 3 > |1|",
+                    "A > |B| > E > F > |B|",
+                ],
+            ),
+        },
+        "B": DepsResult {
+            deps: {
+                "D",
+                "1",
+                "2",
+                "3",
+                "E",
+                "F",
+                "B",
             },
-            "C": DepsResult {
-                deps: {
-                    "D",
-                    "1",
-                    "2",
-                    "3",
-                },
-                circular_deps: None,
+            circular_deps: Some(
+                [
+                    "B > D > |1| > 2 > 3 > |1|",
+                    "|B| > E > F > |B|",
+                ],
+            ),
+        },
+        "C": DepsResult {
+            deps: {
+                "D",
+                "1",
+                "2",
+                "3",
             },
-            "D": DepsResult {
-                deps: {
-                    "1",
-                    "2",
-                    "3",
-                },
-                circular_deps: None,
+            circular_deps: Some(
+                [
+                    "C > D > |1| > 2 > 3 > |1|",
+                ],
+            ),
+        },
+        "D": DepsResult {
+            deps: {
+                "1",
+                "2",
+                "3",
             },
-            "E": DepsResult {
-                deps: {
-                    "F",
-                    "B",
-                    "D",
-                    "1",
-                    "2",
-                    "3",
-                    "E",
-                },
-                circular_deps: Some(
-                    [
-                        "|E| > F > B > D > 1 > 2 > 3 > |E|",
-                    ],
-                ),
+            circular_deps: Some(
+                [
+                    "D > |1| > 2 > 3 > |1|",
+                ],
+            ),
+        },
+        "E": DepsResult {
+            deps: {
+                "F",
+                "B",
+                "D",
+                "1",
+                "2",
+                "3",
+                "E",
             },
-            "F": DepsResult {
-                deps: {
-                    "B",
-                    "D",
-                    "1",
-                    "2",
-                    "3",
-                    "E",
-                    "F",
-                },
-                circular_deps: Some(
-                    [
-                        "|F| > B > D > 1 > 2 > 3 > E > |F|",
-                    ],
-                ),
+            circular_deps: Some(
+                [
+                    "E > F > B > D > |1| > 2 > 3 > |1|",
+                    "|E| > F > B > |E|",
+                ],
+            ),
+        },
+        "F": DepsResult {
+            deps: {
+                "B",
+                "D",
+                "1",
+                "2",
+                "3",
+                "E",
+                "F",
             },
-            "1": DepsResult {
-                deps: {
-                    "2",
-                    "3",
-                    "1",
-                },
-                circular_deps: Some(
-                    [
-                        "|1| > 2 > 3 > |1|",
-                    ],
-                ),
+            circular_deps: Some(
+                [
+                    "F > B > D > |1| > 2 > 3 > |1|",
+                    "|F| > B > E > |F|",
+                ],
+            ),
+        },
+        "1": DepsResult {
+            deps: {
+                "2",
+                "3",
+                "1",
             },
-            "2": DepsResult {
-                deps: {
-                    "3",
-                    "1",
-                    "2",
-                },
-                circular_deps: Some(
-                    [
-                        "|2| > 3 > 1 > |2|",
-                    ],
-                ),
+            circular_deps: Some(
+                [
+                    "|1| > 2 > 3 > |1|",
+                ],
+            ),
+        },
+        "2": DepsResult {
+            deps: {
+                "3",
+                "1",
+                "2",
             },
-            "3": DepsResult {
-                deps: {
-                    "1",
-                    "2",
-                    "3",
-                },
-                circular_deps: Some(
-                    [
-                        "|3| > 1 > 2 > |3|",
-                    ],
-                ),
+            circular_deps: Some(
+                [
+                    "|2| > 3 > 1 > |2|",
+                ],
+            ),
+        },
+        "3": DepsResult {
+            deps: {
+                "1",
+                "2",
+                "3",
             },
-        }
-        "###);
+            circular_deps: Some(
+                [
+                    "|3| > 1 > 2 > |3|",
+                ],
+            ),
+        },
+    }
+    "###);
+}
+
+#[test]
+fn circular_11() {
+    _setup_test();
+
+    let get_node_edges = |node_name: &str| -> Result<Vec<String>, String> {
+        Ok(match node_name {
+            "A" => vc(["B", "C"].to_vec()),
+            "B" => vc(["D", "E"].to_vec()),
+            "C" => vc(["1", "3"].to_vec()),
+            "D" => EMPTY,
+            "E" => vc(["F"].to_vec()),
+            "F" => vc(["E"].to_vec()),
+            "3" => EMPTY,
+            "1" => vc(["2"].to_vec()),
+            "2" => vc(["1"].to_vec()),
+            _ => EMPTY,
+        })
+    };
+
+    assert_debug_snapshot!(get_deps_for_each(
+        ["A", "B", "C", "D", "E", "F", "1", "2", "3"].to_vec(),
+        get_node_edges
+    ), @r###"
+    {
+        "A": DepsResult {
+            deps: {
+                "B",
+                "D",
+                "E",
+                "F",
+                "C",
+                "1",
+                "2",
+                "3",
+            },
+            circular_deps: Some(
+                [
+                    "A > B > |E| > F > |E|",
+                    "A > C > |1| > 2 > |1|",
+                ],
+            ),
+        },
+        "B": DepsResult {
+            deps: {
+                "D",
+                "E",
+                "F",
+            },
+            circular_deps: Some(
+                [
+                    "B > |E| > F > |E|",
+                ],
+            ),
+        },
+        "C": DepsResult {
+            deps: {
+                "1",
+                "2",
+                "3",
+            },
+            circular_deps: Some(
+                [
+                    "C > |1| > 2 > |1|",
+                ],
+            ),
+        },
+        "D": DepsResult {
+            deps: {},
+            circular_deps: None,
+        },
+        "E": DepsResult {
+            deps: {
+                "F",
+                "E",
+            },
+            circular_deps: Some(
+                [
+                    "|E| > F > |E|",
+                ],
+            ),
+        },
+        "F": DepsResult {
+            deps: {
+                "E",
+                "F",
+            },
+            circular_deps: Some(
+                [
+                    "|F| > E > |F|",
+                ],
+            ),
+        },
+        "1": DepsResult {
+            deps: {
+                "2",
+                "1",
+            },
+            circular_deps: Some(
+                [
+                    "|1| > 2 > |1|",
+                ],
+            ),
+        },
+        "2": DepsResult {
+            deps: {
+                "1",
+                "2",
+            },
+            circular_deps: Some(
+                [
+                    "|2| > 1 > |2|",
+                ],
+            ),
+        },
+        "3": DepsResult {
+            deps: {},
+            circular_deps: None,
+        },
+    }
+    "###);
 }

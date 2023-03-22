@@ -75,7 +75,8 @@ expression: "BTreeMap::from_iter(result)"
         },
         circular_deps: Some(
             [
-                "|./src/b.ts| > ./src/d.ts > ./src/1.ts > ./src/2.ts > ./src/3.ts > ./src/e.ts > ./src/f.ts > |./src/b.ts|",
+                "./src/b.ts > ./src/d.ts > |./src/1.ts| > ./src/2.ts > ./src/3.ts > |./src/1.ts|",
+                "|./src/b.ts| > ./src/e.ts > ./src/f.ts > |./src/b.ts|",
             ],
         ),
         imports: {
@@ -99,7 +100,11 @@ expression: "BTreeMap::from_iter(result)"
             "./src/2.ts",
             "./src/3.ts",
         },
-        circular_deps: None,
+        circular_deps: Some(
+            [
+                "./src/c.ts > ./src/d.ts > |./src/1.ts| > ./src/2.ts > ./src/3.ts > |./src/1.ts|",
+            ],
+        ),
         imports: {
             "./src/d.ts": Import {
                 import_path: "@src/d.ts",
@@ -115,7 +120,11 @@ expression: "BTreeMap::from_iter(result)"
             "./src/2.ts",
             "./src/3.ts",
         },
-        circular_deps: None,
+        circular_deps: Some(
+            [
+                "./src/d.ts > |./src/1.ts| > ./src/2.ts > ./src/3.ts > |./src/1.ts|",
+            ],
+        ),
         imports: {
             "./src/1.ts": Import {
                 import_path: "@src/1.ts",
@@ -137,7 +146,8 @@ expression: "BTreeMap::from_iter(result)"
         },
         circular_deps: Some(
             [
-                "|./src/e.ts| > ./src/f.ts > ./src/b.ts > ./src/d.ts > ./src/1.ts > ./src/2.ts > ./src/3.ts > |./src/e.ts|",
+                "./src/e.ts > ./src/f.ts > ./src/b.ts > ./src/d.ts > |./src/1.ts| > ./src/2.ts > ./src/3.ts > |./src/1.ts|",
+                "|./src/e.ts| > ./src/f.ts > ./src/b.ts > |./src/e.ts|",
             ],
         ),
         imports: {
@@ -161,7 +171,8 @@ expression: "BTreeMap::from_iter(result)"
         },
         circular_deps: Some(
             [
-                "|./src/f.ts| > ./src/b.ts > ./src/d.ts > ./src/1.ts > ./src/2.ts > ./src/3.ts > ./src/e.ts > |./src/f.ts|",
+                "./src/f.ts > ./src/b.ts > ./src/d.ts > |./src/1.ts| > ./src/2.ts > ./src/3.ts > |./src/1.ts|",
+                "|./src/f.ts| > ./src/b.ts > ./src/e.ts > |./src/f.ts|",
             ],
         ),
         imports: {
@@ -184,7 +195,12 @@ expression: "BTreeMap::from_iter(result)"
             "./src/f.ts",
             "./src/c.ts",
         },
-        circular_deps: None,
+        circular_deps: Some(
+            [
+                "./src/index.ts > ./src/b.ts > ./src/d.ts > |./src/1.ts| > ./src/2.ts > ./src/3.ts > |./src/1.ts|",
+                "./src/index.ts > |./src/b.ts| > ./src/e.ts > ./src/f.ts > |./src/b.ts|",
+            ],
+        ),
         imports: {
             "./src/b.ts": Import {
                 import_path: "@src/b.ts",

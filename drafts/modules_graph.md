@@ -79,35 +79,40 @@ flowchart LR
 
 ```mermaid
 graph TD
-    A[Node A] --> B[Node B]
-    B --> C[Node C]
-    C --> D[Node D]
-    D --> E[Node E]
-    E --> F[Node F]
-    F --> G[Node G]
-    G --> H[Node H]
-    H --> I[Node I]
-    I --> J[Node J]
-    J --> K[Node K]
-    K --> L[Node L]
-    L --> M[Node M]
-    M --> N[Node N]
-    N --> O[Node O]
-    O --> P[Node P]
-    P --> C
-    A --> C
-    B --> D
-    C --> E
-    D --> F
-    E --> G
-    F --> H
-    G --> I
-    H --> J
-    I --> K
-    J --> L
-    K --> M
-    L --> N
-    M --> O
-    N --> P
-    O --> B
+    a --> b & c & p
+    b --> c & d
+    c --> b & d & e
+    d --> b & c & e & f
+    e --> c & d & f & g
+    f --> d & e & g & h
+    g --> e & f & h & i
+    h --> f & g & i & j
+    i --> g & h & j & k
+    j --> h & i & k & l
+    k --> i & j & l & m
+    l --> j & k & m & n
+    m --> k & l & n & o
+    n --> l & m & o & p
+    o --> m & n & p & b
+    p --> n & o & c
+```
+
+# Very complex circular 13
+
+```mermaid
+graph TD
+    a --> b & c
+    b --> c & d
+    c --> b & d
+```
+
+# circular_11
+
+```mermaid
+graph LR
+    A --> B & C
+    B --> D & E
+    C --> 1 & 3
+    E --> F --> E
+    1 --> 2 --> 1
 ```
