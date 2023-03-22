@@ -1,9 +1,10 @@
 ---
 source: src/analyze_ts_deps/tests.rs
-expression: "BTreeMap::from_iter(result)"
+assertion_line: 223
+expression: results
 ---
 {
-    "./src/1.ts": FileDepsInfo {
+    "./src/1.ts": DepsResult {
         deps: {
             "./src/2.ts",
             "./src/3.ts",
@@ -14,16 +15,8 @@ expression: "BTreeMap::from_iter(result)"
                 "|./src/1.ts| > ./src/2.ts > ./src/3.ts > |./src/1.ts|",
             ],
         ),
-        imports: {
-            "./src/2.ts": Import {
-                import_path: "@src/2.ts",
-                line: 1,
-                values: SideEffect,
-            },
-        },
-        exports: [],
     },
-    "./src/2.ts": FileDepsInfo {
+    "./src/2.ts": DepsResult {
         deps: {
             "./src/3.ts",
             "./src/1.ts",
@@ -34,16 +27,8 @@ expression: "BTreeMap::from_iter(result)"
                 "|./src/2.ts| > ./src/3.ts > ./src/1.ts > |./src/2.ts|",
             ],
         ),
-        imports: {
-            "./src/3.ts": Import {
-                import_path: "@src/3.ts",
-                line: 1,
-                values: SideEffect,
-            },
-        },
-        exports: [],
     },
-    "./src/3.ts": FileDepsInfo {
+    "./src/3.ts": DepsResult {
         deps: {
             "./src/1.ts",
             "./src/2.ts",
@@ -54,16 +39,8 @@ expression: "BTreeMap::from_iter(result)"
                 "|./src/3.ts| > ./src/1.ts > ./src/2.ts > |./src/3.ts|",
             ],
         ),
-        imports: {
-            "./src/1.ts": Import {
-                import_path: "@src/1.ts",
-                line: 1,
-                values: SideEffect,
-            },
-        },
-        exports: [],
     },
-    "./src/b.ts": FileDepsInfo {
+    "./src/b.ts": DepsResult {
         deps: {
             "./src/d.ts",
             "./src/1.ts",
@@ -79,21 +56,8 @@ expression: "BTreeMap::from_iter(result)"
                 "|./src/b.ts| > ./src/e.ts > ./src/f.ts > |./src/b.ts|",
             ],
         ),
-        imports: {
-            "./src/d.ts": Import {
-                import_path: "@src/d.ts",
-                line: 1,
-                values: SideEffect,
-            },
-            "./src/e.ts": Import {
-                import_path: "@src/e.ts",
-                line: 2,
-                values: SideEffect,
-            },
-        },
-        exports: [],
     },
-    "./src/c.ts": FileDepsInfo {
+    "./src/c.ts": DepsResult {
         deps: {
             "./src/d.ts",
             "./src/1.ts",
@@ -105,16 +69,8 @@ expression: "BTreeMap::from_iter(result)"
                 "./src/c.ts > ./src/d.ts > |./src/1.ts| > ./src/2.ts > ./src/3.ts > |./src/1.ts|",
             ],
         ),
-        imports: {
-            "./src/d.ts": Import {
-                import_path: "@src/d.ts",
-                line: 1,
-                values: SideEffect,
-            },
-        },
-        exports: [],
     },
-    "./src/d.ts": FileDepsInfo {
+    "./src/d.ts": DepsResult {
         deps: {
             "./src/1.ts",
             "./src/2.ts",
@@ -125,16 +81,8 @@ expression: "BTreeMap::from_iter(result)"
                 "./src/d.ts > |./src/1.ts| > ./src/2.ts > ./src/3.ts > |./src/1.ts|",
             ],
         ),
-        imports: {
-            "./src/1.ts": Import {
-                import_path: "@src/1.ts",
-                line: 1,
-                values: SideEffect,
-            },
-        },
-        exports: [],
     },
-    "./src/e.ts": FileDepsInfo {
+    "./src/e.ts": DepsResult {
         deps: {
             "./src/f.ts",
             "./src/b.ts",
@@ -150,16 +98,8 @@ expression: "BTreeMap::from_iter(result)"
                 "|./src/e.ts| > ./src/f.ts > ./src/b.ts > |./src/e.ts|",
             ],
         ),
-        imports: {
-            "./src/f.ts": Import {
-                import_path: "@src/f.ts",
-                line: 1,
-                values: SideEffect,
-            },
-        },
-        exports: [],
     },
-    "./src/f.ts": FileDepsInfo {
+    "./src/f.ts": DepsResult {
         deps: {
             "./src/b.ts",
             "./src/d.ts",
@@ -175,16 +115,8 @@ expression: "BTreeMap::from_iter(result)"
                 "|./src/f.ts| > ./src/b.ts > ./src/e.ts > |./src/f.ts|",
             ],
         ),
-        imports: {
-            "./src/b.ts": Import {
-                import_path: "@src/b.ts",
-                line: 1,
-                values: SideEffect,
-            },
-        },
-        exports: [],
     },
-    "./src/index.ts": FileDepsInfo {
+    "./src/index.ts": DepsResult {
         deps: {
             "./src/b.ts",
             "./src/d.ts",
@@ -201,18 +133,5 @@ expression: "BTreeMap::from_iter(result)"
                 "./src/index.ts > |./src/b.ts| > ./src/e.ts > ./src/f.ts > |./src/b.ts|",
             ],
         ),
-        imports: {
-            "./src/b.ts": Import {
-                import_path: "@src/b.ts",
-                line: 1,
-                values: SideEffect,
-            },
-            "./src/c.ts": Import {
-                import_path: "@src/c.ts",
-                line: 2,
-                values: SideEffect,
-            },
-        },
-        exports: [],
     },
 }

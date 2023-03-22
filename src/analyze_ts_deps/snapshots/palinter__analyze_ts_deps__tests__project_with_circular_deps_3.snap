@@ -1,9 +1,10 @@
 ---
 source: src/analyze_ts_deps/tests.rs
-expression: "BTreeMap::from_iter(result)"
+assertion_line: 252
+expression: results
 ---
 {
-    "./src/a.ts": FileDepsInfo {
+    "./src/a.ts": DepsResult {
         deps: {
             "./src/b.ts",
             "./src/c.ts",
@@ -24,56 +25,10 @@ expression: "BTreeMap::from_iter(result)"
         circular_deps: Some(
             [
                 "./src/a.ts > |./src/b.ts| > ./src/c.ts > |./src/b.ts|",
-                "./src/a.ts > |./src/b.ts| > ./src/c.ts > ./src/d.ts > |./src/b.ts|",
-                "./src/a.ts > ./src/b.ts > |./src/c.ts| > ./src/d.ts > |./src/c.ts|",
-                "./src/a.ts > ./src/b.ts > |./src/c.ts| > ./src/d.ts > ./src/e.ts > |./src/c.ts|",
-                "./src/a.ts > ./src/b.ts > ./src/c.ts > |./src/d.ts| > ./src/e.ts > |./src/d.ts|",
-                "./src/a.ts > ./src/b.ts > ./src/c.ts > |./src/d.ts| > ./src/e.ts > ./src/f.ts > |./src/d.ts|",
-                "./src/a.ts > ./src/b.ts > ./src/c.ts > ./src/d.ts > |./src/e.ts| > ./src/f.ts > |./src/e.ts|",
-                "./src/a.ts > ./src/b.ts > ./src/c.ts > ./src/d.ts > |./src/e.ts| > ./src/f.ts > ./src/g.ts > |./src/e.ts|",
-                "./src/a.ts > ./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > |./src/f.ts| > ./src/g.ts > |./src/f.ts|",
-                "./src/a.ts > ./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > |./src/f.ts| > ./src/g.ts > ./src/h.ts > |./src/f.ts|",
-                "./src/a.ts > ./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > |./src/g.ts| > ./src/h.ts > |./src/g.ts|",
-                "./src/a.ts > ./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > |./src/g.ts| > ./src/h.ts > ./src/i.ts > |./src/g.ts|",
-                "./src/a.ts > ./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > |./src/h.ts| > ./src/i.ts > |./src/h.ts|",
-                "./src/a.ts > ./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > |./src/h.ts| > ./src/i.ts > ./src/j.ts > |./src/h.ts|",
-                "./src/a.ts > ./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > |./src/i.ts| > ./src/j.ts > |./src/i.ts|",
-                "./src/a.ts > ./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > |./src/i.ts| > ./src/j.ts > ./src/k.ts > |./src/i.ts|",
-                "./src/a.ts > ./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > |./src/j.ts| > ./src/k.ts > |./src/j.ts|",
-                "./src/a.ts > ./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > |./src/j.ts| > ./src/k.ts > ./src/l.ts > |./src/j.ts|",
-                "./src/a.ts > ./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > |./src/k.ts| > ./src/l.ts > |./src/k.ts|",
-                "./src/a.ts > ./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > |./src/k.ts| > ./src/l.ts > ./src/m.ts > |./src/k.ts|",
-                "./src/a.ts > ./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > ./src/k.ts > |./src/l.ts| > ./src/m.ts > |./src/l.ts|",
-                "./src/a.ts > ./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > ./src/k.ts > |./src/l.ts| > ./src/m.ts > ./src/n.ts > |./src/l.ts|",
-                "./src/a.ts > ./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > ./src/k.ts > ./src/l.ts > |./src/m.ts| > ./src/n.ts > |./src/m.ts|",
-                "./src/a.ts > ./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > ./src/k.ts > ./src/l.ts > |./src/m.ts| > ./src/n.ts > ./src/o.ts > |./src/m.ts|",
-                "./src/a.ts > ./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > ./src/k.ts > ./src/l.ts > ./src/m.ts > |./src/n.ts| > ./src/o.ts > |./src/n.ts|",
-                "./src/a.ts > ./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > ./src/k.ts > ./src/l.ts > ./src/m.ts > |./src/n.ts| > ./src/o.ts > ./src/p.ts > |./src/n.ts|",
-                "./src/a.ts > ./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > ./src/k.ts > ./src/l.ts > ./src/m.ts > ./src/n.ts > |./src/o.ts| > ./src/p.ts > |./src/o.ts|",
-                "./src/a.ts > ./src/b.ts > |./src/c.ts| > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > ./src/k.ts > ./src/l.ts > ./src/m.ts > ./src/n.ts > ./src/o.ts > ./src/p.ts > |./src/c.ts|",
-                "./src/a.ts > |./src/b.ts| > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > ./src/k.ts > ./src/l.ts > ./src/m.ts > ./src/n.ts > ./src/o.ts > |./src/b.ts|",
             ],
         ),
-        imports: {
-            "./src/b.ts": Import {
-                import_path: "@src/b.ts",
-                line: 1,
-                values: SideEffect,
-            },
-            "./src/c.ts": Import {
-                import_path: "@src/c.ts",
-                line: 2,
-                values: SideEffect,
-            },
-            "./src/p.ts": Import {
-                import_path: "@src/p.ts",
-                line: 3,
-                values: SideEffect,
-            },
-        },
-        exports: [],
     },
-    "./src/b.ts": FileDepsInfo {
+    "./src/b.ts": DepsResult {
         deps: {
             "./src/c.ts",
             "./src/b.ts",
@@ -94,51 +49,10 @@ expression: "BTreeMap::from_iter(result)"
         circular_deps: Some(
             [
                 "|./src/b.ts| > ./src/c.ts > |./src/b.ts|",
-                "|./src/b.ts| > ./src/c.ts > ./src/d.ts > |./src/b.ts|",
-                "./src/b.ts > |./src/c.ts| > ./src/d.ts > |./src/c.ts|",
-                "./src/b.ts > |./src/c.ts| > ./src/d.ts > ./src/e.ts > |./src/c.ts|",
-                "./src/b.ts > ./src/c.ts > |./src/d.ts| > ./src/e.ts > |./src/d.ts|",
-                "./src/b.ts > ./src/c.ts > |./src/d.ts| > ./src/e.ts > ./src/f.ts > |./src/d.ts|",
-                "./src/b.ts > ./src/c.ts > ./src/d.ts > |./src/e.ts| > ./src/f.ts > |./src/e.ts|",
-                "./src/b.ts > ./src/c.ts > ./src/d.ts > |./src/e.ts| > ./src/f.ts > ./src/g.ts > |./src/e.ts|",
-                "./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > |./src/f.ts| > ./src/g.ts > |./src/f.ts|",
-                "./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > |./src/f.ts| > ./src/g.ts > ./src/h.ts > |./src/f.ts|",
-                "./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > |./src/g.ts| > ./src/h.ts > |./src/g.ts|",
-                "./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > |./src/g.ts| > ./src/h.ts > ./src/i.ts > |./src/g.ts|",
-                "./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > |./src/h.ts| > ./src/i.ts > |./src/h.ts|",
-                "./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > |./src/h.ts| > ./src/i.ts > ./src/j.ts > |./src/h.ts|",
-                "./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > |./src/i.ts| > ./src/j.ts > |./src/i.ts|",
-                "./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > |./src/i.ts| > ./src/j.ts > ./src/k.ts > |./src/i.ts|",
-                "./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > |./src/j.ts| > ./src/k.ts > |./src/j.ts|",
-                "./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > |./src/j.ts| > ./src/k.ts > ./src/l.ts > |./src/j.ts|",
-                "./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > |./src/k.ts| > ./src/l.ts > |./src/k.ts|",
-                "./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > |./src/k.ts| > ./src/l.ts > ./src/m.ts > |./src/k.ts|",
-                "./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > ./src/k.ts > |./src/l.ts| > ./src/m.ts > |./src/l.ts|",
-                "./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > ./src/k.ts > |./src/l.ts| > ./src/m.ts > ./src/n.ts > |./src/l.ts|",
-                "./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > ./src/k.ts > ./src/l.ts > |./src/m.ts| > ./src/n.ts > |./src/m.ts|",
-                "./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > ./src/k.ts > ./src/l.ts > |./src/m.ts| > ./src/n.ts > ./src/o.ts > |./src/m.ts|",
-                "./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > ./src/k.ts > ./src/l.ts > ./src/m.ts > |./src/n.ts| > ./src/o.ts > |./src/n.ts|",
-                "./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > ./src/k.ts > ./src/l.ts > ./src/m.ts > |./src/n.ts| > ./src/o.ts > ./src/p.ts > |./src/n.ts|",
-                "./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > ./src/k.ts > ./src/l.ts > ./src/m.ts > ./src/n.ts > |./src/o.ts| > ./src/p.ts > |./src/o.ts|",
-                "./src/b.ts > |./src/c.ts| > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > ./src/k.ts > ./src/l.ts > ./src/m.ts > ./src/n.ts > ./src/o.ts > ./src/p.ts > |./src/c.ts|",
-                "|./src/b.ts| > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > ./src/k.ts > ./src/l.ts > ./src/m.ts > ./src/n.ts > ./src/o.ts > |./src/b.ts|",
             ],
         ),
-        imports: {
-            "./src/c.ts": Import {
-                import_path: "@src/c.ts",
-                line: 1,
-                values: SideEffect,
-            },
-            "./src/d.ts": Import {
-                import_path: "@src/d.ts",
-                line: 2,
-                values: SideEffect,
-            },
-        },
-        exports: [],
     },
-    "./src/c.ts": FileDepsInfo {
+    "./src/c.ts": DepsResult {
         deps: {
             "./src/b.ts",
             "./src/c.ts",
@@ -159,28 +73,13 @@ expression: "BTreeMap::from_iter(result)"
         circular_deps: Some(
             [
                 "|./src/c.ts| > ./src/b.ts > |./src/c.ts|",
+                "./src/c.ts > |./src/b.ts| > ./src/d.ts > |./src/b.ts|",
+                "|./src/c.ts| > ./src/b.ts > ./src/d.ts > |./src/c.ts|",
+                "|./src/c.ts| > ./src/b.ts > ./src/d.ts > ./src/e.ts > |./src/c.ts|",
             ],
         ),
-        imports: {
-            "./src/b.ts": Import {
-                import_path: "@src/b.ts",
-                line: 1,
-                values: SideEffect,
-            },
-            "./src/d.ts": Import {
-                import_path: "@src/d.ts",
-                line: 2,
-                values: SideEffect,
-            },
-            "./src/e.ts": Import {
-                import_path: "@src/e.ts",
-                line: 3,
-                values: SideEffect,
-            },
-        },
-        exports: [],
     },
-    "./src/d.ts": FileDepsInfo {
+    "./src/d.ts": DepsResult {
         deps: {
             "./src/b.ts",
             "./src/c.ts",
@@ -201,34 +100,10 @@ expression: "BTreeMap::from_iter(result)"
         circular_deps: Some(
             [
                 "./src/d.ts > |./src/b.ts| > ./src/c.ts > |./src/b.ts|",
-                "|./src/d.ts| > ./src/b.ts > ./src/c.ts > |./src/d.ts|",
             ],
         ),
-        imports: {
-            "./src/b.ts": Import {
-                import_path: "@src/b.ts",
-                line: 1,
-                values: SideEffect,
-            },
-            "./src/c.ts": Import {
-                import_path: "@src/c.ts",
-                line: 2,
-                values: SideEffect,
-            },
-            "./src/e.ts": Import {
-                import_path: "@src/e.ts",
-                line: 3,
-                values: SideEffect,
-            },
-            "./src/f.ts": Import {
-                import_path: "@src/f.ts",
-                line: 4,
-                values: SideEffect,
-            },
-        },
-        exports: [],
     },
-    "./src/e.ts": FileDepsInfo {
+    "./src/e.ts": DepsResult {
         deps: {
             "./src/c.ts",
             "./src/b.ts",
@@ -249,33 +124,38 @@ expression: "BTreeMap::from_iter(result)"
         circular_deps: Some(
             [
                 "./src/e.ts > |./src/c.ts| > ./src/b.ts > |./src/c.ts|",
+                "./src/e.ts > ./src/c.ts > |./src/b.ts| > ./src/d.ts > |./src/b.ts|",
+                "./src/e.ts > |./src/c.ts| > ./src/b.ts > ./src/d.ts > |./src/c.ts|",
+                "|./src/e.ts| > ./src/c.ts > ./src/b.ts > ./src/d.ts > |./src/e.ts|",
+                "./src/e.ts > ./src/c.ts > ./src/b.ts > |./src/d.ts| > ./src/f.ts > |./src/d.ts|",
+                "|./src/e.ts| > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > |./src/e.ts|",
+                "|./src/e.ts| > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > ./src/g.ts > |./src/e.ts|",
+                "./src/e.ts > ./src/c.ts > ./src/b.ts > ./src/d.ts > |./src/f.ts| > ./src/g.ts > |./src/f.ts|",
+                "./src/e.ts > ./src/c.ts > ./src/b.ts > ./src/d.ts > |./src/f.ts| > ./src/g.ts > ./src/h.ts > |./src/f.ts|",
+                "./src/e.ts > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > |./src/g.ts| > ./src/h.ts > |./src/g.ts|",
+                "./src/e.ts > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > |./src/g.ts| > ./src/h.ts > ./src/i.ts > |./src/g.ts|",
+                "./src/e.ts > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > ./src/g.ts > |./src/h.ts| > ./src/i.ts > |./src/h.ts|",
+                "./src/e.ts > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > ./src/g.ts > |./src/h.ts| > ./src/i.ts > ./src/j.ts > |./src/h.ts|",
+                "./src/e.ts > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > |./src/i.ts| > ./src/j.ts > |./src/i.ts|",
+                "./src/e.ts > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > |./src/i.ts| > ./src/j.ts > ./src/k.ts > |./src/i.ts|",
+                "./src/e.ts > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > |./src/j.ts| > ./src/k.ts > |./src/j.ts|",
+                "./src/e.ts > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > |./src/j.ts| > ./src/k.ts > ./src/l.ts > |./src/j.ts|",
+                "./src/e.ts > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > |./src/k.ts| > ./src/l.ts > |./src/k.ts|",
+                "./src/e.ts > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > |./src/k.ts| > ./src/l.ts > ./src/m.ts > |./src/k.ts|",
+                "./src/e.ts > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > ./src/k.ts > |./src/l.ts| > ./src/m.ts > |./src/l.ts|",
+                "./src/e.ts > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > ./src/k.ts > |./src/l.ts| > ./src/m.ts > ./src/n.ts > |./src/l.ts|",
+                "./src/e.ts > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > ./src/k.ts > ./src/l.ts > |./src/m.ts| > ./src/n.ts > |./src/m.ts|",
+                "./src/e.ts > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > ./src/k.ts > ./src/l.ts > |./src/m.ts| > ./src/n.ts > ./src/o.ts > |./src/m.ts|",
+                "./src/e.ts > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > ./src/k.ts > ./src/l.ts > ./src/m.ts > |./src/n.ts| > ./src/o.ts > |./src/n.ts|",
+                "./src/e.ts > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > ./src/k.ts > ./src/l.ts > ./src/m.ts > |./src/n.ts| > ./src/o.ts > ./src/p.ts > |./src/n.ts|",
+                "./src/e.ts > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > ./src/k.ts > ./src/l.ts > ./src/m.ts > ./src/n.ts > |./src/o.ts| > ./src/p.ts > |./src/o.ts|",
+                "./src/e.ts > |./src/c.ts| > ./src/b.ts > ./src/d.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > ./src/k.ts > ./src/l.ts > ./src/m.ts > ./src/n.ts > ./src/o.ts > ./src/p.ts > |./src/c.ts|",
+                "./src/e.ts > ./src/c.ts > |./src/b.ts| > ./src/d.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > ./src/k.ts > ./src/l.ts > ./src/m.ts > ./src/n.ts > ./src/o.ts > |./src/b.ts|",
+                "|./src/e.ts| > ./src/c.ts > |./src/e.ts|",
             ],
         ),
-        imports: {
-            "./src/c.ts": Import {
-                import_path: "@src/c.ts",
-                line: 1,
-                values: SideEffect,
-            },
-            "./src/d.ts": Import {
-                import_path: "@src/d.ts",
-                line: 2,
-                values: SideEffect,
-            },
-            "./src/f.ts": Import {
-                import_path: "@src/f.ts",
-                line: 3,
-                values: SideEffect,
-            },
-            "./src/g.ts": Import {
-                import_path: "@src/g.ts",
-                line: 4,
-                values: SideEffect,
-            },
-        },
-        exports: [],
     },
-    "./src/f.ts": FileDepsInfo {
+    "./src/f.ts": DepsResult {
         deps: {
             "./src/d.ts",
             "./src/b.ts",
@@ -296,34 +176,11 @@ expression: "BTreeMap::from_iter(result)"
         circular_deps: Some(
             [
                 "./src/f.ts > ./src/d.ts > |./src/b.ts| > ./src/c.ts > |./src/b.ts|",
-                "./src/f.ts > |./src/d.ts| > ./src/b.ts > ./src/c.ts > |./src/d.ts|",
+                "|./src/f.ts| > ./src/d.ts > |./src/f.ts|",
             ],
         ),
-        imports: {
-            "./src/d.ts": Import {
-                import_path: "@src/d.ts",
-                line: 1,
-                values: SideEffect,
-            },
-            "./src/e.ts": Import {
-                import_path: "@src/e.ts",
-                line: 2,
-                values: SideEffect,
-            },
-            "./src/g.ts": Import {
-                import_path: "@src/g.ts",
-                line: 3,
-                values: SideEffect,
-            },
-            "./src/h.ts": Import {
-                import_path: "@src/h.ts",
-                line: 4,
-                values: SideEffect,
-            },
-        },
-        exports: [],
     },
-    "./src/g.ts": FileDepsInfo {
+    "./src/g.ts": DepsResult {
         deps: {
             "./src/e.ts",
             "./src/c.ts",
@@ -344,33 +201,17 @@ expression: "BTreeMap::from_iter(result)"
         circular_deps: Some(
             [
                 "./src/g.ts > ./src/e.ts > |./src/c.ts| > ./src/b.ts > |./src/c.ts|",
+                "./src/g.ts > ./src/e.ts > ./src/c.ts > |./src/b.ts| > ./src/d.ts > |./src/b.ts|",
+                "./src/g.ts > ./src/e.ts > |./src/c.ts| > ./src/b.ts > ./src/d.ts > |./src/c.ts|",
+                "./src/g.ts > |./src/e.ts| > ./src/c.ts > ./src/b.ts > ./src/d.ts > |./src/e.ts|",
+                "./src/g.ts > ./src/e.ts > ./src/c.ts > ./src/b.ts > |./src/d.ts| > ./src/f.ts > |./src/d.ts|",
+                "./src/g.ts > |./src/e.ts| > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > |./src/e.ts|",
+                "|./src/g.ts| > ./src/e.ts > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > |./src/g.ts|",
+                "./src/g.ts > |./src/e.ts| > ./src/c.ts > |./src/e.ts|",
             ],
         ),
-        imports: {
-            "./src/e.ts": Import {
-                import_path: "@src/e.ts",
-                line: 1,
-                values: SideEffect,
-            },
-            "./src/f.ts": Import {
-                import_path: "@src/f.ts",
-                line: 2,
-                values: SideEffect,
-            },
-            "./src/h.ts": Import {
-                import_path: "@src/h.ts",
-                line: 3,
-                values: SideEffect,
-            },
-            "./src/i.ts": Import {
-                import_path: "@src/i.ts",
-                line: 4,
-                values: SideEffect,
-            },
-        },
-        exports: [],
     },
-    "./src/h.ts": FileDepsInfo {
+    "./src/h.ts": DepsResult {
         deps: {
             "./src/f.ts",
             "./src/d.ts",
@@ -391,34 +232,11 @@ expression: "BTreeMap::from_iter(result)"
         circular_deps: Some(
             [
                 "./src/h.ts > ./src/f.ts > ./src/d.ts > |./src/b.ts| > ./src/c.ts > |./src/b.ts|",
-                "./src/h.ts > ./src/f.ts > |./src/d.ts| > ./src/b.ts > ./src/c.ts > |./src/d.ts|",
+                "./src/h.ts > |./src/f.ts| > ./src/d.ts > |./src/f.ts|",
             ],
         ),
-        imports: {
-            "./src/f.ts": Import {
-                import_path: "@src/f.ts",
-                line: 1,
-                values: SideEffect,
-            },
-            "./src/g.ts": Import {
-                import_path: "@src/g.ts",
-                line: 2,
-                values: SideEffect,
-            },
-            "./src/i.ts": Import {
-                import_path: "@src/i.ts",
-                line: 3,
-                values: SideEffect,
-            },
-            "./src/j.ts": Import {
-                import_path: "@src/j.ts",
-                line: 4,
-                values: SideEffect,
-            },
-        },
-        exports: [],
     },
-    "./src/i.ts": FileDepsInfo {
+    "./src/i.ts": DepsResult {
         deps: {
             "./src/g.ts",
             "./src/e.ts",
@@ -439,33 +257,18 @@ expression: "BTreeMap::from_iter(result)"
         circular_deps: Some(
             [
                 "./src/i.ts > ./src/g.ts > ./src/e.ts > |./src/c.ts| > ./src/b.ts > |./src/c.ts|",
+                "./src/i.ts > ./src/g.ts > ./src/e.ts > ./src/c.ts > |./src/b.ts| > ./src/d.ts > |./src/b.ts|",
+                "./src/i.ts > ./src/g.ts > ./src/e.ts > |./src/c.ts| > ./src/b.ts > ./src/d.ts > |./src/c.ts|",
+                "./src/i.ts > ./src/g.ts > |./src/e.ts| > ./src/c.ts > ./src/b.ts > ./src/d.ts > |./src/e.ts|",
+                "./src/i.ts > ./src/g.ts > ./src/e.ts > ./src/c.ts > ./src/b.ts > |./src/d.ts| > ./src/f.ts > |./src/d.ts|",
+                "./src/i.ts > ./src/g.ts > |./src/e.ts| > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > |./src/e.ts|",
+                "./src/i.ts > |./src/g.ts| > ./src/e.ts > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > |./src/g.ts|",
+                "./src/i.ts > ./src/g.ts > |./src/e.ts| > ./src/c.ts > |./src/e.ts|",
+                "|./src/i.ts| > ./src/g.ts > |./src/i.ts|",
             ],
         ),
-        imports: {
-            "./src/g.ts": Import {
-                import_path: "@src/g.ts",
-                line: 1,
-                values: SideEffect,
-            },
-            "./src/h.ts": Import {
-                import_path: "@src/h.ts",
-                line: 2,
-                values: SideEffect,
-            },
-            "./src/j.ts": Import {
-                import_path: "@src/j.ts",
-                line: 3,
-                values: SideEffect,
-            },
-            "./src/k.ts": Import {
-                import_path: "@src/k.ts",
-                line: 4,
-                values: SideEffect,
-            },
-        },
-        exports: [],
     },
-    "./src/j.ts": FileDepsInfo {
+    "./src/j.ts": DepsResult {
         deps: {
             "./src/h.ts",
             "./src/f.ts",
@@ -486,34 +289,13 @@ expression: "BTreeMap::from_iter(result)"
         circular_deps: Some(
             [
                 "./src/j.ts > ./src/h.ts > ./src/f.ts > ./src/d.ts > |./src/b.ts| > ./src/c.ts > |./src/b.ts|",
-                "./src/j.ts > ./src/h.ts > ./src/f.ts > |./src/d.ts| > ./src/b.ts > ./src/c.ts > |./src/d.ts|",
+                "./src/j.ts > ./src/h.ts > |./src/f.ts| > ./src/d.ts > |./src/f.ts|",
+                "./src/j.ts > |./src/h.ts| > ./src/f.ts > |./src/h.ts|",
+                "|./src/j.ts| > ./src/h.ts > |./src/j.ts|",
             ],
         ),
-        imports: {
-            "./src/h.ts": Import {
-                import_path: "@src/h.ts",
-                line: 1,
-                values: SideEffect,
-            },
-            "./src/i.ts": Import {
-                import_path: "@src/i.ts",
-                line: 2,
-                values: SideEffect,
-            },
-            "./src/k.ts": Import {
-                import_path: "@src/k.ts",
-                line: 3,
-                values: SideEffect,
-            },
-            "./src/l.ts": Import {
-                import_path: "@src/l.ts",
-                line: 4,
-                values: SideEffect,
-            },
-        },
-        exports: [],
     },
-    "./src/k.ts": FileDepsInfo {
+    "./src/k.ts": DepsResult {
         deps: {
             "./src/i.ts",
             "./src/g.ts",
@@ -534,33 +316,18 @@ expression: "BTreeMap::from_iter(result)"
         circular_deps: Some(
             [
                 "./src/k.ts > ./src/i.ts > ./src/g.ts > ./src/e.ts > |./src/c.ts| > ./src/b.ts > |./src/c.ts|",
+                "./src/k.ts > ./src/i.ts > ./src/g.ts > ./src/e.ts > ./src/c.ts > |./src/b.ts| > ./src/d.ts > |./src/b.ts|",
+                "./src/k.ts > ./src/i.ts > ./src/g.ts > ./src/e.ts > |./src/c.ts| > ./src/b.ts > ./src/d.ts > |./src/c.ts|",
+                "./src/k.ts > ./src/i.ts > ./src/g.ts > |./src/e.ts| > ./src/c.ts > ./src/b.ts > ./src/d.ts > |./src/e.ts|",
+                "./src/k.ts > ./src/i.ts > ./src/g.ts > ./src/e.ts > ./src/c.ts > ./src/b.ts > |./src/d.ts| > ./src/f.ts > |./src/d.ts|",
+                "./src/k.ts > ./src/i.ts > ./src/g.ts > |./src/e.ts| > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > |./src/e.ts|",
+                "./src/k.ts > ./src/i.ts > |./src/g.ts| > ./src/e.ts > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > |./src/g.ts|",
+                "./src/k.ts > ./src/i.ts > ./src/g.ts > |./src/e.ts| > ./src/c.ts > |./src/e.ts|",
+                "./src/k.ts > |./src/i.ts| > ./src/g.ts > |./src/i.ts|",
             ],
         ),
-        imports: {
-            "./src/i.ts": Import {
-                import_path: "@src/i.ts",
-                line: 1,
-                values: SideEffect,
-            },
-            "./src/j.ts": Import {
-                import_path: "@src/j.ts",
-                line: 2,
-                values: SideEffect,
-            },
-            "./src/l.ts": Import {
-                import_path: "@src/l.ts",
-                line: 3,
-                values: SideEffect,
-            },
-            "./src/m.ts": Import {
-                import_path: "@src/m.ts",
-                line: 4,
-                values: SideEffect,
-            },
-        },
-        exports: [],
     },
-    "./src/l.ts": FileDepsInfo {
+    "./src/l.ts": DepsResult {
         deps: {
             "./src/j.ts",
             "./src/h.ts",
@@ -581,34 +348,14 @@ expression: "BTreeMap::from_iter(result)"
         circular_deps: Some(
             [
                 "./src/l.ts > ./src/j.ts > ./src/h.ts > ./src/f.ts > ./src/d.ts > |./src/b.ts| > ./src/c.ts > |./src/b.ts|",
-                "./src/l.ts > ./src/j.ts > ./src/h.ts > ./src/f.ts > |./src/d.ts| > ./src/b.ts > ./src/c.ts > |./src/d.ts|",
+                "./src/l.ts > ./src/j.ts > ./src/h.ts > |./src/f.ts| > ./src/d.ts > |./src/f.ts|",
+                "./src/l.ts > ./src/j.ts > |./src/h.ts| > ./src/f.ts > |./src/h.ts|",
+                "./src/l.ts > |./src/j.ts| > ./src/h.ts > |./src/j.ts|",
+                "|./src/l.ts| > ./src/j.ts > |./src/l.ts|",
             ],
         ),
-        imports: {
-            "./src/j.ts": Import {
-                import_path: "@src/j.ts",
-                line: 1,
-                values: SideEffect,
-            },
-            "./src/k.ts": Import {
-                import_path: "@src/k.ts",
-                line: 2,
-                values: SideEffect,
-            },
-            "./src/m.ts": Import {
-                import_path: "@src/m.ts",
-                line: 3,
-                values: SideEffect,
-            },
-            "./src/n.ts": Import {
-                import_path: "@src/n.ts",
-                line: 4,
-                values: SideEffect,
-            },
-        },
-        exports: [],
     },
-    "./src/m.ts": FileDepsInfo {
+    "./src/m.ts": DepsResult {
         deps: {
             "./src/k.ts",
             "./src/i.ts",
@@ -629,33 +376,18 @@ expression: "BTreeMap::from_iter(result)"
         circular_deps: Some(
             [
                 "./src/m.ts > ./src/k.ts > ./src/i.ts > ./src/g.ts > ./src/e.ts > |./src/c.ts| > ./src/b.ts > |./src/c.ts|",
+                "./src/m.ts > ./src/k.ts > ./src/i.ts > ./src/g.ts > ./src/e.ts > ./src/c.ts > |./src/b.ts| > ./src/d.ts > |./src/b.ts|",
+                "./src/m.ts > ./src/k.ts > ./src/i.ts > ./src/g.ts > ./src/e.ts > |./src/c.ts| > ./src/b.ts > ./src/d.ts > |./src/c.ts|",
+                "./src/m.ts > ./src/k.ts > ./src/i.ts > ./src/g.ts > |./src/e.ts| > ./src/c.ts > ./src/b.ts > ./src/d.ts > |./src/e.ts|",
+                "./src/m.ts > ./src/k.ts > ./src/i.ts > ./src/g.ts > ./src/e.ts > ./src/c.ts > ./src/b.ts > |./src/d.ts| > ./src/f.ts > |./src/d.ts|",
+                "./src/m.ts > ./src/k.ts > ./src/i.ts > ./src/g.ts > |./src/e.ts| > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > |./src/e.ts|",
+                "./src/m.ts > ./src/k.ts > ./src/i.ts > |./src/g.ts| > ./src/e.ts > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > |./src/g.ts|",
+                "./src/m.ts > ./src/k.ts > ./src/i.ts > ./src/g.ts > |./src/e.ts| > ./src/c.ts > |./src/e.ts|",
+                "./src/m.ts > ./src/k.ts > |./src/i.ts| > ./src/g.ts > |./src/i.ts|",
             ],
         ),
-        imports: {
-            "./src/k.ts": Import {
-                import_path: "@src/k.ts",
-                line: 1,
-                values: SideEffect,
-            },
-            "./src/l.ts": Import {
-                import_path: "@src/l.ts",
-                line: 2,
-                values: SideEffect,
-            },
-            "./src/n.ts": Import {
-                import_path: "@src/n.ts",
-                line: 3,
-                values: SideEffect,
-            },
-            "./src/o.ts": Import {
-                import_path: "@src/o.ts",
-                line: 4,
-                values: SideEffect,
-            },
-        },
-        exports: [],
     },
-    "./src/n.ts": FileDepsInfo {
+    "./src/n.ts": DepsResult {
         deps: {
             "./src/l.ts",
             "./src/j.ts",
@@ -676,34 +408,14 @@ expression: "BTreeMap::from_iter(result)"
         circular_deps: Some(
             [
                 "./src/n.ts > ./src/l.ts > ./src/j.ts > ./src/h.ts > ./src/f.ts > ./src/d.ts > |./src/b.ts| > ./src/c.ts > |./src/b.ts|",
-                "./src/n.ts > ./src/l.ts > ./src/j.ts > ./src/h.ts > ./src/f.ts > |./src/d.ts| > ./src/b.ts > ./src/c.ts > |./src/d.ts|",
+                "./src/n.ts > ./src/l.ts > ./src/j.ts > ./src/h.ts > |./src/f.ts| > ./src/d.ts > |./src/f.ts|",
+                "./src/n.ts > ./src/l.ts > ./src/j.ts > |./src/h.ts| > ./src/f.ts > |./src/h.ts|",
+                "./src/n.ts > ./src/l.ts > |./src/j.ts| > ./src/h.ts > |./src/j.ts|",
+                "./src/n.ts > |./src/l.ts| > ./src/j.ts > |./src/l.ts|",
             ],
         ),
-        imports: {
-            "./src/l.ts": Import {
-                import_path: "@src/l.ts",
-                line: 1,
-                values: SideEffect,
-            },
-            "./src/m.ts": Import {
-                import_path: "@src/m.ts",
-                line: 2,
-                values: SideEffect,
-            },
-            "./src/o.ts": Import {
-                import_path: "@src/o.ts",
-                line: 3,
-                values: SideEffect,
-            },
-            "./src/p.ts": Import {
-                import_path: "@src/p.ts",
-                line: 4,
-                values: SideEffect,
-            },
-        },
-        exports: [],
     },
-    "./src/o.ts": FileDepsInfo {
+    "./src/o.ts": DepsResult {
         deps: {
             "./src/m.ts",
             "./src/k.ts",
@@ -724,33 +436,20 @@ expression: "BTreeMap::from_iter(result)"
         circular_deps: Some(
             [
                 "./src/o.ts > ./src/m.ts > ./src/k.ts > ./src/i.ts > ./src/g.ts > ./src/e.ts > |./src/c.ts| > ./src/b.ts > |./src/c.ts|",
+                "./src/o.ts > ./src/m.ts > ./src/k.ts > ./src/i.ts > ./src/g.ts > ./src/e.ts > ./src/c.ts > |./src/b.ts| > ./src/d.ts > |./src/b.ts|",
+                "./src/o.ts > ./src/m.ts > ./src/k.ts > ./src/i.ts > ./src/g.ts > ./src/e.ts > |./src/c.ts| > ./src/b.ts > ./src/d.ts > |./src/c.ts|",
+                "./src/o.ts > ./src/m.ts > ./src/k.ts > ./src/i.ts > ./src/g.ts > |./src/e.ts| > ./src/c.ts > ./src/b.ts > ./src/d.ts > |./src/e.ts|",
+                "./src/o.ts > ./src/m.ts > ./src/k.ts > ./src/i.ts > ./src/g.ts > ./src/e.ts > ./src/c.ts > ./src/b.ts > |./src/d.ts| > ./src/f.ts > |./src/d.ts|",
+                "./src/o.ts > ./src/m.ts > ./src/k.ts > ./src/i.ts > ./src/g.ts > |./src/e.ts| > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > |./src/e.ts|",
+                "./src/o.ts > ./src/m.ts > ./src/k.ts > ./src/i.ts > |./src/g.ts| > ./src/e.ts > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > |./src/g.ts|",
+                "./src/o.ts > ./src/m.ts > ./src/k.ts > ./src/i.ts > ./src/g.ts > |./src/e.ts| > ./src/c.ts > |./src/e.ts|",
+                "./src/o.ts > ./src/m.ts > ./src/k.ts > |./src/i.ts| > ./src/g.ts > |./src/i.ts|",
+                "./src/o.ts > |./src/m.ts| > ./src/k.ts > |./src/m.ts|",
+                "|./src/o.ts| > ./src/m.ts > |./src/o.ts|",
             ],
         ),
-        imports: {
-            "./src/m.ts": Import {
-                import_path: "@src/m.ts",
-                line: 1,
-                values: SideEffect,
-            },
-            "./src/n.ts": Import {
-                import_path: "@src/n.ts",
-                line: 2,
-                values: SideEffect,
-            },
-            "./src/p.ts": Import {
-                import_path: "@src/p.ts",
-                line: 3,
-                values: SideEffect,
-            },
-            "./src/b.ts": Import {
-                import_path: "@src/b.ts",
-                line: 4,
-                values: SideEffect,
-            },
-        },
-        exports: [],
     },
-    "./src/p.ts": FileDepsInfo {
+    "./src/p.ts": DepsResult {
         deps: {
             "./src/n.ts",
             "./src/l.ts",
@@ -771,26 +470,12 @@ expression: "BTreeMap::from_iter(result)"
         circular_deps: Some(
             [
                 "./src/p.ts > ./src/n.ts > ./src/l.ts > ./src/j.ts > ./src/h.ts > ./src/f.ts > ./src/d.ts > |./src/b.ts| > ./src/c.ts > |./src/b.ts|",
-                "./src/p.ts > ./src/n.ts > ./src/l.ts > ./src/j.ts > ./src/h.ts > ./src/f.ts > |./src/d.ts| > ./src/b.ts > ./src/c.ts > |./src/d.ts|",
+                "./src/p.ts > ./src/n.ts > ./src/l.ts > ./src/j.ts > ./src/h.ts > |./src/f.ts| > ./src/d.ts > |./src/f.ts|",
+                "./src/p.ts > ./src/n.ts > ./src/l.ts > ./src/j.ts > |./src/h.ts| > ./src/f.ts > |./src/h.ts|",
+                "./src/p.ts > ./src/n.ts > ./src/l.ts > |./src/j.ts| > ./src/h.ts > |./src/j.ts|",
+                "./src/p.ts > ./src/n.ts > |./src/l.ts| > ./src/j.ts > |./src/l.ts|",
+                "|./src/p.ts| > ./src/n.ts > |./src/p.ts|",
             ],
         ),
-        imports: {
-            "./src/n.ts": Import {
-                import_path: "@src/n.ts",
-                line: 1,
-                values: SideEffect,
-            },
-            "./src/o.ts": Import {
-                import_path: "@src/o.ts",
-                line: 2,
-                values: SideEffect,
-            },
-            "./src/c.ts": Import {
-                import_path: "@src/c.ts",
-                line: 3,
-                values: SideEffect,
-            },
-        },
-        exports: [],
     },
 }

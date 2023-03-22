@@ -30,7 +30,7 @@ publish_patch:
 	make publish_current
 
 jestor_test:
-	cargo run -- --config projects_test/jestor_store_folder.yaml --root ../jestor/web-app
+	cargo run --release -- --config projects_test/jestor_store_folder.yaml --root ../jestor/web-app
 
 flamegraph:
 	cargo flamegraph -- --config projects_test/jestor_store_folder.yaml --root ../jestor/web-app

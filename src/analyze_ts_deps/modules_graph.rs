@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::Mutex};
 use indexmap::IndexSet;
 use lazy_static::lazy_static;
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Default)]
 pub struct DepsResult {
     pub deps: IndexSet<String>,
     pub circular_deps: Option<Vec<String>>,
@@ -13,6 +13,7 @@ pub type DepsCache = HashMap<String, DepsResult>;
 
 lazy_static! {
     pub static ref DEPS_CACHE: Mutex<DepsCache> = Mutex::new(HashMap::new());
+    pub static ref COUNT: Mutex<usize> = Mutex::new(0);
 }
 
 pub fn get_node_deps<F>(
@@ -23,14 +24,14 @@ pub fn get_node_deps<F>(
 where
     F: FnMut(&str) -> Result<Vec<String>, String>,
 {
+    if let Some(cached) = DEPS_CACHE.lock().unwrap().get(start) {
+        return Ok(cached.clone());
+    }
+
     let mut deps = IndexSet::new();
     let mut circular_deps: Vec<String> = Vec::new();
     let mut path = IndexSet::new();
     let mut calls = 0;
-
-    if let Some(cached) = DEPS_CACHE.lock().unwrap().get(start) {
-        return Ok(cached.clone());
-    }
 
     dfs(
         &mut deps,
@@ -52,8 +53,6 @@ where
         .lock()
         .unwrap()
         .insert(start.to_string(), deps_result.clone());
-
-    // dbg!(DEPS_CACHE.lock().unwrap().clone());
 
     Ok(deps_result)
 }

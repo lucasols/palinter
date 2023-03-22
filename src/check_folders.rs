@@ -2,11 +2,8 @@ use colored::Colorize;
 use std::collections::HashSet;
 
 use crate::{
-    analyze_ts_deps::{
-        ts_checks::{
-            check_ts_not_have_circular_deps, check_ts_not_have_unused_exports,
-        },
-        UsedFilesDepsInfo,
+    analyze_ts_deps::ts_checks::{
+        check_ts_not_have_circular_deps, check_ts_not_have_unused_exports,
     },
     internal_config::{
         AnyNoneOr, AnyOr, Config, FileConditions, FileExpect, FileRule,
@@ -91,7 +88,6 @@ fn file_pass_expected(
     expected: &AnyNoneOr<Vec<FileExpect>>,
     folder: &Folder,
     conditions_result: &ConditionsResult,
-    used_files_deps_info: &mut UsedFilesDepsInfo,
 ) -> Result<(), Vec<String>> {
     if let AnyNoneOr::None = expected {
         return Err(vec!["File is not expected".to_string()]);
@@ -204,7 +200,7 @@ fn file_pass_expected(
                 if ts_expect.not_have_unused_exports {
                     pass_some_expect = true;
                     check_result(
-                        check_ts_not_have_unused_exports(file, used_files_deps_info),
+                        check_ts_not_have_unused_exports(file),
                         &expect.error_msg,
                     );
                 }
@@ -212,7 +208,7 @@ fn file_pass_expected(
                 if ts_expect.not_have_circular_deps {
                     pass_some_expect = true;
                     check_result(
-                        check_ts_not_have_circular_deps(file, used_files_deps_info),
+                        check_ts_not_have_circular_deps(file),
                         &expect.error_msg,
                     );
                 }
@@ -396,7 +392,6 @@ fn check_folder_childs(
     folder_path: String,
     inherited_files_rules: Vec<InheritedFileRule>,
     inherited_folders_rules: Vec<InheritedFolderRule>,
-    used_files_deps_info: &mut UsedFilesDepsInfo,
 ) -> Result<(), Vec<String>> {
     let mut errors: Vec<String> = Vec::new();
 
@@ -449,7 +444,6 @@ fn check_folder_childs(
                             &rule.expect,
                             folder,
                             &conditions_result,
-                            used_files_deps_info,
                         ) {
                             for error in expect_errors {
                                 errors.push(format!(
@@ -496,7 +490,6 @@ fn check_folder_childs(
                                     &rule.expect,
                                     folder,
                                     &conditions_result,
-                                    used_files_deps_info,
                                 )
                                 .is_ok()
                                 {
@@ -654,7 +647,6 @@ fn check_folder_childs(
                     parent_path,
                     sub_folder_inherited_files_rules,
                     sub_folder_inherited_folders_rules,
-                    used_files_deps_info,
                 ) {
                     errors.extend(extra_errors);
                 }
@@ -679,7 +671,6 @@ fn check_folder_childs(
 pub fn check_root_folder(
     config: &Config,
     folder: &Folder,
-    used_files_deps_info: &mut UsedFilesDepsInfo,
 ) -> Result<(), Vec<String>> {
     check_folder_childs(
         folder,
@@ -687,7 +678,6 @@ pub fn check_root_folder(
         String::from("."),
         Vec::new(),
         Vec::new(),
-        used_files_deps_info,
     )
 }
 

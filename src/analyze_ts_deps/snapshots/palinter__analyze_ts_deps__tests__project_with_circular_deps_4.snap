@@ -1,10 +1,10 @@
 ---
 source: src/analyze_ts_deps/tests.rs
-assertion_line: 307
-expression: "BTreeMap::from_iter(result)"
+assertion_line: 269
+expression: results
 ---
 {
-    "./src/a.ts": FileDepsInfo {
+    "./src/a.ts": DepsResult {
         deps: {
             "./src/b.ts",
             "./src/c.ts",
@@ -15,21 +15,8 @@ expression: "BTreeMap::from_iter(result)"
                 "./src/a.ts > |./src/b.ts| > ./src/c.ts > |./src/b.ts|",
             ],
         ),
-        imports: {
-            "./src/b.ts": Import {
-                import_path: "@src/b.ts",
-                line: 1,
-                values: SideEffect,
-            },
-            "./src/c.ts": Import {
-                import_path: "@src/c.ts",
-                line: 2,
-                values: SideEffect,
-            },
-        },
-        exports: [],
     },
-    "./src/b.ts": FileDepsInfo {
+    "./src/b.ts": DepsResult {
         deps: {
             "./src/c.ts",
             "./src/b.ts",
@@ -40,21 +27,8 @@ expression: "BTreeMap::from_iter(result)"
                 "|./src/b.ts| > ./src/c.ts > |./src/b.ts|",
             ],
         ),
-        imports: {
-            "./src/c.ts": Import {
-                import_path: "@src/c.ts",
-                line: 1,
-                values: SideEffect,
-            },
-            "./src/d.ts": Import {
-                import_path: "@src/d.ts",
-                line: 2,
-                values: SideEffect,
-            },
-        },
-        exports: [],
     },
-    "./src/c.ts": FileDepsInfo {
+    "./src/c.ts": DepsResult {
         deps: {
             "./src/b.ts",
             "./src/c.ts",
@@ -65,24 +39,9 @@ expression: "BTreeMap::from_iter(result)"
                 "|./src/c.ts| > ./src/b.ts > |./src/c.ts|",
             ],
         ),
-        imports: {
-            "./src/b.ts": Import {
-                import_path: "@src/b.ts",
-                line: 1,
-                values: SideEffect,
-            },
-            "./src/d.ts": Import {
-                import_path: "@src/d.ts",
-                line: 2,
-                values: SideEffect,
-            },
-        },
-        exports: [],
     },
-    "./src/d.ts": FileDepsInfo {
+    "./src/d.ts": DepsResult {
         deps: {},
         circular_deps: None,
-        imports: {},
-        exports: [],
     },
 }

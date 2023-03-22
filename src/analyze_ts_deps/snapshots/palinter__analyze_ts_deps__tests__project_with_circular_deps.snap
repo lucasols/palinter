@@ -1,9 +1,10 @@
 ---
 source: src/analyze_ts_deps/tests.rs
-expression: "BTreeMap::from_iter(result)"
+assertion_line: 188
+expression: results
 ---
 {
-    "./src/fileA.ts": FileDepsInfo {
+    "./src/fileA.ts": DepsResult {
         deps: {
             "./src/fileB.ts",
             "./src/fileA.ts",
@@ -13,29 +14,8 @@ expression: "BTreeMap::from_iter(result)"
                 "|./src/fileA.ts| > ./src/fileB.ts > |./src/fileA.ts|",
             ],
         ),
-        imports: {
-            "./src/fileB.ts": Import {
-                import_path: "@src/fileB",
-                line: 2,
-                values: Named(
-                    [
-                        "c",
-                    ],
-                ),
-            },
-        },
-        exports: [
-            Export {
-                line: 3,
-                name: "a",
-            },
-            Export {
-                line: 4,
-                name: "b",
-            },
-        ],
     },
-    "./src/fileB.ts": FileDepsInfo {
+    "./src/fileB.ts": DepsResult {
         deps: {
             "./src/fileA.ts",
             "./src/fileB.ts",
@@ -45,35 +25,8 @@ expression: "BTreeMap::from_iter(result)"
                 "|./src/fileB.ts| > ./src/fileA.ts > |./src/fileB.ts|",
             ],
         ),
-        imports: {
-            "./src/fileA.ts": Import {
-                import_path: "@src/fileA",
-                line: 3,
-                values: Named(
-                    [
-                        "a",
-                        "b",
-                    ],
-                ),
-            },
-            "testLib": Import {
-                import_path: "testLib",
-                line: 4,
-                values: Named(
-                    [
-                        "test",
-                    ],
-                ),
-            },
-        },
-        exports: [
-            Export {
-                line: 5,
-                name: "c",
-            },
-        ],
     },
-    "./src/index.ts": FileDepsInfo {
+    "./src/index.ts": DepsResult {
         deps: {
             "./src/fileB.ts",
             "./src/fileA.ts",
@@ -83,13 +36,5 @@ expression: "BTreeMap::from_iter(result)"
                 "./src/index.ts > |./src/fileB.ts| > ./src/fileA.ts > |./src/fileB.ts|",
             ],
         ),
-        imports: {
-            "./src/fileB.ts": Import {
-                import_path: "@src/fileB",
-                line: 1,
-                values: SideEffect,
-            },
-        },
-        exports: [],
     },
 }

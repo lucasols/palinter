@@ -10,7 +10,7 @@ use std::{
 use super::*;
 
 use crate::{
-    analyze_ts_deps::{get_used_project_files_deps_info_from_cfg, TsProjectCtx, _setup_test},
+    analyze_ts_deps::_setup_test,
     internal_config::{get_config, OneOfBlocks},
     load_folder_structure,
     parse_config_file::{parse_config_string, ParseFrom},
@@ -361,35 +361,8 @@ fn test_cases() {
                                 colored::control::set_override(false);
                                 _setup_test();
 
-                                let mut ts_project_ctx = TsProjectCtx::default();
-
-                                let mut used_files_deps_info =
-                                    match get_used_project_files_deps_info_from_cfg(
-                                        config,
-                                        &project.structure,
-                                        Path::new("."),
-                                        &mut ts_project_ctx,
-                                    ) {
-                                        Ok(used_files_deps_info) => {
-                                            used_files_deps_info
-                                        }
-                                        Err(error) => {
-                                            test_errors.push(format!(
-                                                "❌ Test case '{}': Project {}: {}",
-                                                file_name.blue(),
-                                                i + 1,
-                                                error
-                                            ));
-
-                                            continue;
-                                        }
-                                    };
-
-                                let result = check_root_folder(
-                                    config,
-                                    &project.structure,
-                                    &mut used_files_deps_info,
-                                );
+                                let result =
+                                    check_root_folder(config, &project.structure);
 
                                 colored::control::unset_override();
 

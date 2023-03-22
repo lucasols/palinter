@@ -1,83 +1,31 @@
 ---
 source: src/analyze_ts_deps/tests.rs
-assertion_line: 135
-expression: "BTreeMap::from_iter(result)"
+assertion_line: 150
+expression: results
 ---
 {
-    "./src/fileA.ts": FileDepsInfo {
+    "./src/fileA.ts": DepsResult {
         deps: {
             "./src/fileC.ts",
         },
         circular_deps: None,
-        imports: {
-            "./src/fileC.ts": Import {
-                import_path: "@src/fileC",
-                line: 2,
-                values: Named(
-                    [
-                        "c",
-                    ],
-                ),
-            },
-        },
-        exports: [],
     },
-    "./src/fileB.ts": FileDepsInfo {
+    "./src/fileB.ts": DepsResult {
         deps: {
             "./src/fileC.ts",
         },
         circular_deps: None,
-        imports: {
-            "./src/fileC.ts": Import {
-                import_path: "@src/fileC",
-                line: 2,
-                values: Named(
-                    [
-                        "c",
-                    ],
-                ),
-            },
-        },
-        exports: [],
     },
-    "./src/fileC.ts": FileDepsInfo {
+    "./src/fileC.ts": DepsResult {
         deps: {},
         circular_deps: None,
-        imports: {},
-        exports: [
-            Export {
-                line: 2,
-                name: "c",
-            },
-        ],
     },
-    "./src/index.ts": FileDepsInfo {
+    "./src/index.ts": DepsResult {
         deps: {
             "./src/fileA.ts",
             "./src/fileC.ts",
             "./src/fileB.ts",
         },
         circular_deps: None,
-        imports: {
-            "./src/fileA.ts": Import {
-                import_path: "@src/fileA",
-                line: 2,
-                values: Named(
-                    [
-                        "a",
-                    ],
-                ),
-            },
-            "./src/fileB.ts": Import {
-                import_path: "@src/fileB",
-                line: 3,
-                values: Named(
-                    [
-                        "b",
-                    ],
-                ),
-            },
-        },
-        exports: [],
     },
 }

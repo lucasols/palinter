@@ -1,78 +1,90 @@
 ---
 source: src/analyze_ts_deps/tests.rs
-assertion_line: 81
-expression: "BTreeMap::from_iter(result)"
+assertion_line: 104
+expression: results
 ---
-{
-    "./src/fileA.ts": FileDepsInfo {
-        deps: {},
-        circular_deps: None,
-        imports: {},
-        exports: [
-            Export {
-                line: 2,
-                name: "a",
-            },
-            Export {
-                line: 3,
-                name: "b",
-            },
-        ],
-    },
-    "./src/fileB.ts": FileDepsInfo {
-        deps: {
-            "./src/fileA.ts",
-            "./src/img.svg",
+(
+    {
+        "./src/fileA.ts": DepsResult {
+            deps: {},
+            circular_deps: None,
         },
-        circular_deps: None,
-        imports: {
-            "./src/fileA.ts": Import {
-                import_path: "@src/fileA",
-                line: 3,
-                values: Named(
-                    [
-                        "a",
-                        "b",
-                    ],
-                ),
+        "./src/fileB.ts": DepsResult {
+            deps: {
+                "./src/fileA.ts",
+                "./src/img.svg",
             },
-            "testLib": Import {
-                import_path: "testLib",
-                line: 4,
-                values: Named(
-                    [
-                        "test",
-                    ],
-                ),
-            },
-            "./src/img.svg": Import {
-                import_path: "@src/img.svg",
-                line: 5,
-                values: SideEffect,
-            },
+            circular_deps: None,
         },
-        exports: [],
-    },
-    "./src/img.svg": FileDepsInfo {
-        deps: {},
-        circular_deps: None,
-        imports: {},
-        exports: [],
-    },
-    "./src/index.ts": FileDepsInfo {
-        deps: {
-            "./src/fileB.ts",
-            "./src/fileA.ts",
-            "./src/img.svg",
+        "./src/img.svg": DepsResult {
+            deps: {},
+            circular_deps: None,
         },
-        circular_deps: None,
-        imports: {
-            "./src/fileB.ts": Import {
-                import_path: "@src/fileB",
-                line: 1,
-                values: SideEffect,
+        "./src/index.ts": DepsResult {
+            deps: {
+                "./src/fileB.ts",
+                "./src/fileA.ts",
+                "./src/img.svg",
             },
+            circular_deps: None,
         },
-        exports: [],
     },
-}
+    {
+        "./src/fileA.ts": FileDepsInfo {
+            imports: {},
+            exports: [
+                Export {
+                    line: 2,
+                    name: "a",
+                },
+                Export {
+                    line: 3,
+                    name: "b",
+                },
+            ],
+        },
+        "./src/fileB.ts": FileDepsInfo {
+            imports: {
+                "./src/fileA.ts": Import {
+                    import_path: "@src/fileA",
+                    line: 3,
+                    values: Named(
+                        [
+                            "a",
+                            "b",
+                        ],
+                    ),
+                },
+                "testLib": Import {
+                    import_path: "testLib",
+                    line: 4,
+                    values: Named(
+                        [
+                            "test",
+                        ],
+                    ),
+                },
+                "./src/img.svg": Import {
+                    import_path: "@src/img.svg",
+                    line: 5,
+                    values: SideEffect,
+                },
+            },
+            exports: [],
+        },
+        "./src/img.svg": FileDepsInfo {
+            imports: {},
+            exports: [],
+        },
+        "./src/index.ts": FileDepsInfo {
+            imports: {
+                "./src/fileB.ts": Import {
+                    import_path: "@src/fileB",
+                    line: 1,
+                    values: SideEffect,
+                },
+            },
+            exports: [],
+        },
+    },
+)

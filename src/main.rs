@@ -13,9 +13,7 @@ use internal_config::get_config;
 use load_folder_structure::load_folder_structure;
 use parse_config_file::parse_config_file;
 
-use crate::analyze_ts_deps::{
-    get_used_project_files_deps_info_from_cfg, TsProjectCtx,
-};
+use crate::analyze_ts_deps::load_used_project_files_deps_info_from_cfg;
 
 #[derive(Parser)]
 struct Cli {
@@ -60,30 +58,19 @@ fn lint(confg_path: PathBuf, root: PathBuf) {
         }
     };
 
-    let mut ts_ctx = TsProjectCtx::default();
-
-    let mut used_files_deps_info = match get_used_project_files_deps_info_from_cfg(
-        &config,
-        &root_structure,
-        &root,
-        &mut ts_ctx,
-    ) {
-        Ok(used_files_deps_info) => used_files_deps_info,
-        Err(err) => {
-            println!("❌ Error getting used files deps info: {}", err);
-            std::process::exit(1);
-        }
+    if let Err(err) =
+        load_used_project_files_deps_info_from_cfg(&config, &root_structure, &root)
+    {
+        println!("❌ Error getting used files deps info: {}", err);
+        std::process::exit(1);
     };
 
-    match check_root_folder(&config, &root_structure, &mut used_files_deps_info) {
-        Ok(_) => {}
-        Err(err) => {
-            println!(
-                "❌ Errors found in the project:\n\n{}\n\n",
-                err.join("\n\n")
-            );
-            std::process::exit(1);
-        }
+    if let Err(err) = check_root_folder(&config, &root_structure) {
+        println!(
+            "❌ Errors found in the project:\n\n{}\n\n",
+            err.join("\n\n")
+        );
+        std::process::exit(1);
     }
 
     println!("The project architecture is valid!");
