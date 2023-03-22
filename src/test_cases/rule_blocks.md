@@ -63,7 +63,7 @@ structure:
     camel_case.svg: ''
 
 expected_errors:
-  - "File ./camelCase/camel_case.svg:\n • Custom error | should be named in camelCase"
+  - "File ./camelCase/camel_case.svg:\n • Custom error\n   | should be named in camelCase"
   - "File ./src/file-test.tsx:\n • should be named in camelCase"
   - "Folder ./src/camel_Case:\n • should be named in camelCase"
   - "File ./src/wrongExtension.ts:\n • should have extension 'tsx'"

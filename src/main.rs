@@ -11,6 +11,7 @@ use std::{path::PathBuf, process};
 use analyze_ts_deps::circular_deps::get_detailed_file_circular_deps_result;
 use check_folders::check_root_folder;
 use clap::{arg, command, value_parser, Command};
+use colored::Colorize;
 use internal_config::{get_config, Config};
 use load_folder_structure::load_folder_structure;
 use parse_config_file::parse_config_file;
@@ -127,6 +128,6 @@ fn lint(config: Config, root: PathBuf) {
         std::process::exit(1);
     }
 
-    println!("✨ The project architecture is valid!");
-    println!("Time: {:.3}s", measure_time.elapsed().as_secs_f32());
+    println!("\n✨ The project architecture is valid!");
+    println!("⌛ time: {:.3}s", measure_time.elapsed().as_secs_f32());
 }

@@ -20,6 +20,6 @@ structure:
     level-3.svg: ''
 
 expected_errors:
-  - "File ./src/level-3.svg:\n • custom file error message 2 | should have extension 'tsx'"
-  - "File ./src/level-3.svg:\n • custom file error message | should be named in camelCase"
+  - "File ./src/level-3.svg:\n • custom file error message 2\n   | should have extension 'tsx'"
+  - "File ./src/level-3.svg:\n • custom file error message\n   | should be named in camelCase"
 ```

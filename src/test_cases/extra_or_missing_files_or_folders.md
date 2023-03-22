@@ -87,6 +87,6 @@ structure:
       kebab-case.svg: ''
 
 expected_errors:
-  - Folder /subfolder is not expected in folder ./kebab-case | Unexpected folder
-  - File unexpected.ts is not expected in folder ./kebab-case | Unexpected file
+  - "Folder /subfolder is not expected in folder ./kebab-case\n   | Unexpected folder"
+  - "File unexpected.ts is not expected in folder ./kebab-case\n   | Unexpected file"
 ```

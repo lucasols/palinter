@@ -98,7 +98,7 @@ structure:
       kebab_case.ts: ''
 
 expected_errors:
-  - "File ./kebab-case/sub/kebab_case.ts:\n • should be named in kebab-case | check docs"
-  - Folder /subfolder is not expected in folder ./kebab-case | Unexpected file/folder | check docs
-  - File unexpected.ts is not expected in folder ./kebab-case | Unexpected file/folder | check docs
+  - "File ./kebab-case/sub/kebab_case.ts:\n • should be named in kebab-case\n   | check docs"
+  - "Folder /subfolder is not expected in folder ./kebab-case\n   | Unexpected file/folder\n   | check docs"
+  - "File unexpected.ts is not expected in folder ./kebab-case\n   | Unexpected file/folder\n   | check docs"
 ```

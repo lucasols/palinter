@@ -193,6 +193,7 @@ fn filter_map_named_import_value(captured_string: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use insta::assert_debug_snapshot;
     #[cfg(test)]
     use pretty_assertions::assert_eq;
 
@@ -564,6 +565,109 @@ mod tests {
                 line: 2,
                 values: ImportType::SideEffect,
             }],
+        );
+    }
+
+    #[test]
+    fn bug_test() {
+        let file_content = r#"
+import { apiMutation } from '@src/api/apiCall';
+import { validateApiResponse } from '@src/api/apiStores/apiStores.utils';
+import { ChatType } from '@src/api/schemas/resources/conversationResource';
+import { getCurrentUserId } from '@src/state/userStore';
+import { chatMessagesList } from '@src/stores/chat/chatMessagesList';
+import {
+ChatConversation,
+chatsList,
+conversationListMetaId,
+conversationSchema,
+convertFromApiConversation,
+} from '@src/stores/chat/chatsList';
+import { isBetaFeature } from '@src/utils/betaFeatures';
+import { navigate } from '@src/utils/history';
+import { strictAssertIsNotNullish } from '@utils/typeAssertions';
+"#;
+
+        let imports = extract_imports_from_file_content(file_content).unwrap();
+
+        assert_debug_snapshot!(
+            imports,
+            @r###"
+        [
+            Import {
+                import_path: "@src/api/apiCall",
+                line: 2,
+                values: Named(
+                    [
+                        "apiMutation",
+                    ],
+                ),
+            },
+            Import {
+                import_path: "@src/api/apiStores/apiStores.utils",
+                line: 3,
+                values: Named(
+                    [
+                        "validateApiResponse",
+                    ],
+                ),
+            },
+            Import {
+                import_path: "@src/api/schemas/resources/conversationResource",
+                line: 4,
+                values: Named(
+                    [
+                        "ChatType",
+                    ],
+                ),
+            },
+            Import {
+                import_path: "@src/state/userStore",
+                line: 5,
+                values: Named(
+                    [
+                        "getCurrentUserId",
+                    ],
+                ),
+            },
+            Import {
+                import_path: "@src/stores/chat/chatMessagesList",
+                line: 6,
+                values: Named(
+                    [
+                        "chatMessagesList",
+                    ],
+                ),
+            },
+            Import {
+                import_path: "@src/utils/betaFeatures",
+                line: 14,
+                values: Named(
+                    [
+                        "isBetaFeature",
+                    ],
+                ),
+            },
+            Import {
+                import_path: "@src/utils/history",
+                line: 15,
+                values: Named(
+                    [
+                        "navigate",
+                    ],
+                ),
+            },
+            Import {
+                import_path: "@utils/typeAssertions",
+                line: 16,
+                values: Named(
+                    [
+                        "strictAssertIsNotNullish",
+                    ],
+                ),
+            },
+        ]
+        "###
         );
     }
 }
