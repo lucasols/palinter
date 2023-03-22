@@ -117,7 +117,7 @@ structure:
         import { c } from '@src/ok/fileB';
         export const c = c;
 expected_errors:
-  - "File ./src/ok/fileB.ts:\n • disallowed used exports in file '@src/tests/fileC.ts', this file can only be imported from '@src/ok/*, @src/index.ts'"
+  - "File ./src/ok/fileB.ts:\n • disallowed used exports in files '@src/ok2/fileA.ts, @src/tests/fileC.ts', this file can only be imported from '@src/ok/*, @src/index.ts'"
 ```
 
 ```yaml
@@ -148,6 +148,6 @@ structure:
         export const c = c;
 
 expected_errors:
-  - "File ./src/ok/fileB.ts:\n • disallowed used exports in file '@src/ok2/fileA.ts', this file can only be imported from '@src/ok/*, @src/index.ts'"
-  - "File ./src/ok2/fileB.ts:\n • disallowed used exports in file '@src/tests/fileC.ts', this file can only be imported from '@src/ok/*, @src/ok2/*, @src/index.ts'"
+  - "File ./src/ok/fileB.ts:\n • disallowed used exports in files '@src/ok2/fileA.ts', this file can only be imported from '@src/ok/*, @src/index.ts'"
+  - "File ./src/ok2/fileB.ts:\n • disallowed used exports in files '@src/tests/fileC.ts', this file can only be imported from '@src/ok/*, @src/ok2/*, @src/index.ts'"
 ```

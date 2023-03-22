@@ -2,7 +2,10 @@ use colored::Colorize;
 use globset::Glob;
 use std::path::PathBuf;
 
-use crate::{analyze_ts_deps::replace_aliases, load_folder_structure::File};
+use crate::{
+    analyze_ts_deps::replace_aliases, load_folder_structure::File,
+    utils::join_and_truncate_string_vec,
+};
 
 use super::{
     add_aliases, extract_file_content_imports::ImportType, get_file_deps_result,
@@ -165,6 +168,8 @@ pub fn check_ts_not_have_used_exports_outside(
 
     let allowed_to_use_exports_set = builder.build().unwrap();
 
+    let mut errors = vec![];
+
     for (other_used_file, other_deps_info) in used_files.iter() {
         if other_used_file == &file.relative_path {
             continue;
@@ -173,13 +178,19 @@ pub fn check_ts_not_have_used_exports_outside(
         if other_deps_info.imports.contains_key(&file.relative_path)
             && !allowed_to_use_exports_set.is_match(other_used_file)
         {
-            return Err(format!(
-                    "disallowed used exports in file '{}', this file can only be imported from '{}'",
-                    add_aliases(other_used_file),
-                    allowed.join(", ")
-                ));
+            errors.push(add_aliases(other_used_file));
         }
     }
 
-    Ok(())
+    errors.sort();
+
+    if !errors.is_empty() {
+        Err(format!(
+            "disallowed used exports in files '{}', this file can only be imported from '{}'",
+            join_and_truncate_string_vec(&errors, ", ", 3),
+            allowed.join(", ")
+        ))
+    } else {
+        Ok(())
+    }
 }

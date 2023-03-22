@@ -59,6 +59,22 @@ pub fn clone_extend_vec<T: Clone>(vec: &[T], extend_with: &[T]) -> Vec<T> {
     new_vec
 }
 
+pub fn join_and_truncate_string_vec(
+    vec: &[String],
+    join_by: &str,
+    max_len: usize,
+) -> String {
+    let mut joined = vec.to_vec();
+
+    joined.truncate(max_len);
+
+    if joined.len() > max_len {
+        format!("{}...", joined.join(join_by))
+    } else {
+        joined.join(join_by)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
