@@ -6,6 +6,7 @@ build:
 		--target x86_64-pc-windows-gnu \
 		--target aarch64-apple-darwin
 	rm -rf npm/bin
+	mkdir -p npm/bin
 	cp target/aarch64-apple-darwin/release/palinter npm/bin/darwin-arm64
 	cp target/x86_64-apple-darwin/release/palinter npm/bin/darwin-x64
 	cp target/x86_64-pc-windows-gnu/release/palinter.exe npm/bin/win-x64.exe
