@@ -57,7 +57,7 @@ pub fn get_detailed_file_circular_deps_result(
 
         let original_len = cdeps.len();
 
-        cdeps.truncate(5);
+        cdeps.truncate(8);
 
         println!("🔁 Circular deps found:");
 
@@ -74,7 +74,7 @@ pub fn get_detailed_file_circular_deps_result(
                 if i == 0 {
                     println!("\n{} {}", ">>".dimmed(), part_to_use);
                 } else {
-                    println!("  {}{}", " ".repeat(i * 2), part_to_use);
+                    println!("   {}{}", " ".repeat(i * 2), part_to_use);
                 }
             }
         }
