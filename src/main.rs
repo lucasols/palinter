@@ -4,6 +4,7 @@ mod internal_config;
 mod load_folder_structure;
 mod parse_config_file;
 mod utils;
+mod test_utils;
 
 use std::path::PathBuf;
 

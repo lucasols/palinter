@@ -60,6 +60,7 @@ pub fn _setup_test() {
     *DEBUG_READ_EDGES_COUNT.lock().unwrap() = 0;
     FILE_EDGES_CACHE.lock().unwrap().clear();
     USED_FILES.lock().unwrap().clear();
+    FILE_DEPS_RESULT_CACHE.lock().unwrap().clear();
 }
 
 fn load_file_from_cache(file_path: &PathBuf) -> Result<File, String> {

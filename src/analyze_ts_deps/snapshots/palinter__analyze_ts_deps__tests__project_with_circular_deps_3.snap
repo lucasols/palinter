@@ -1,6 +1,5 @@
 ---
 source: src/analyze_ts_deps/tests.rs
-assertion_line: 252
 expression: results
 ---
 {
@@ -25,6 +24,34 @@ expression: results
         circular_deps: Some(
             [
                 "./src/a.ts > |./src/b.ts| > ./src/c.ts > |./src/b.ts|",
+                "./src/a.ts > |./src/b.ts| > ./src/c.ts > ./src/d.ts > |./src/b.ts|",
+                "./src/a.ts > ./src/b.ts > |./src/c.ts| > ./src/d.ts > |./src/c.ts|",
+                "./src/a.ts > ./src/b.ts > |./src/c.ts| > ./src/d.ts > ./src/e.ts > |./src/c.ts|",
+                "./src/a.ts > ./src/b.ts > ./src/c.ts > |./src/d.ts| > ./src/e.ts > |./src/d.ts|",
+                "./src/a.ts > ./src/b.ts > ./src/c.ts > |./src/d.ts| > ./src/e.ts > ./src/f.ts > |./src/d.ts|",
+                "./src/a.ts > ./src/b.ts > ./src/c.ts > ./src/d.ts > |./src/e.ts| > ./src/f.ts > |./src/e.ts|",
+                "./src/a.ts > ./src/b.ts > ./src/c.ts > ./src/d.ts > |./src/e.ts| > ./src/f.ts > ./src/g.ts > |./src/e.ts|",
+                "./src/a.ts > ./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > |./src/f.ts| > ./src/g.ts > |./src/f.ts|",
+                "./src/a.ts > ./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > |./src/f.ts| > ./src/g.ts > ./src/h.ts > |./src/f.ts|",
+                "./src/a.ts > ./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > |./src/g.ts| > ./src/h.ts > |./src/g.ts|",
+                "./src/a.ts > ./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > |./src/g.ts| > ./src/h.ts > ./src/i.ts > |./src/g.ts|",
+                "./src/a.ts > ./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > |./src/h.ts| > ./src/i.ts > |./src/h.ts|",
+                "./src/a.ts > ./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > |./src/h.ts| > ./src/i.ts > ./src/j.ts > |./src/h.ts|",
+                "./src/a.ts > ./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > |./src/i.ts| > ./src/j.ts > |./src/i.ts|",
+                "./src/a.ts > ./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > |./src/i.ts| > ./src/j.ts > ./src/k.ts > |./src/i.ts|",
+                "./src/a.ts > ./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > |./src/j.ts| > ./src/k.ts > |./src/j.ts|",
+                "./src/a.ts > ./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > |./src/j.ts| > ./src/k.ts > ./src/l.ts > |./src/j.ts|",
+                "./src/a.ts > ./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > |./src/k.ts| > ./src/l.ts > |./src/k.ts|",
+                "./src/a.ts > ./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > |./src/k.ts| > ./src/l.ts > ./src/m.ts > |./src/k.ts|",
+                "./src/a.ts > ./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > ./src/k.ts > |./src/l.ts| > ./src/m.ts > |./src/l.ts|",
+                "./src/a.ts > ./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > ./src/k.ts > |./src/l.ts| > ./src/m.ts > ./src/n.ts > |./src/l.ts|",
+                "./src/a.ts > ./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > ./src/k.ts > ./src/l.ts > |./src/m.ts| > ./src/n.ts > |./src/m.ts|",
+                "./src/a.ts > ./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > ./src/k.ts > ./src/l.ts > |./src/m.ts| > ./src/n.ts > ./src/o.ts > |./src/m.ts|",
+                "./src/a.ts > ./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > ./src/k.ts > ./src/l.ts > ./src/m.ts > |./src/n.ts| > ./src/o.ts > |./src/n.ts|",
+                "./src/a.ts > ./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > ./src/k.ts > ./src/l.ts > ./src/m.ts > |./src/n.ts| > ./src/o.ts > ./src/p.ts > |./src/n.ts|",
+                "./src/a.ts > ./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > ./src/k.ts > ./src/l.ts > ./src/m.ts > ./src/n.ts > |./src/o.ts| > ./src/p.ts > |./src/o.ts|",
+                "./src/a.ts > ./src/b.ts > |./src/c.ts| > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > ./src/k.ts > ./src/l.ts > ./src/m.ts > ./src/n.ts > ./src/o.ts > ./src/p.ts > |./src/c.ts|",
+                "./src/a.ts > |./src/b.ts| > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > ./src/k.ts > ./src/l.ts > ./src/m.ts > ./src/n.ts > ./src/o.ts > |./src/b.ts|",
             ],
         ),
     },
@@ -49,6 +76,34 @@ expression: results
         circular_deps: Some(
             [
                 "|./src/b.ts| > ./src/c.ts > |./src/b.ts|",
+                "|./src/b.ts| > ./src/c.ts > ./src/d.ts > |./src/b.ts|",
+                "./src/b.ts > |./src/c.ts| > ./src/d.ts > |./src/c.ts|",
+                "./src/b.ts > |./src/c.ts| > ./src/d.ts > ./src/e.ts > |./src/c.ts|",
+                "./src/b.ts > ./src/c.ts > |./src/d.ts| > ./src/e.ts > |./src/d.ts|",
+                "./src/b.ts > ./src/c.ts > |./src/d.ts| > ./src/e.ts > ./src/f.ts > |./src/d.ts|",
+                "./src/b.ts > ./src/c.ts > ./src/d.ts > |./src/e.ts| > ./src/f.ts > |./src/e.ts|",
+                "./src/b.ts > ./src/c.ts > ./src/d.ts > |./src/e.ts| > ./src/f.ts > ./src/g.ts > |./src/e.ts|",
+                "./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > |./src/f.ts| > ./src/g.ts > |./src/f.ts|",
+                "./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > |./src/f.ts| > ./src/g.ts > ./src/h.ts > |./src/f.ts|",
+                "./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > |./src/g.ts| > ./src/h.ts > |./src/g.ts|",
+                "./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > |./src/g.ts| > ./src/h.ts > ./src/i.ts > |./src/g.ts|",
+                "./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > |./src/h.ts| > ./src/i.ts > |./src/h.ts|",
+                "./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > |./src/h.ts| > ./src/i.ts > ./src/j.ts > |./src/h.ts|",
+                "./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > |./src/i.ts| > ./src/j.ts > |./src/i.ts|",
+                "./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > |./src/i.ts| > ./src/j.ts > ./src/k.ts > |./src/i.ts|",
+                "./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > |./src/j.ts| > ./src/k.ts > |./src/j.ts|",
+                "./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > |./src/j.ts| > ./src/k.ts > ./src/l.ts > |./src/j.ts|",
+                "./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > |./src/k.ts| > ./src/l.ts > |./src/k.ts|",
+                "./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > |./src/k.ts| > ./src/l.ts > ./src/m.ts > |./src/k.ts|",
+                "./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > ./src/k.ts > |./src/l.ts| > ./src/m.ts > |./src/l.ts|",
+                "./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > ./src/k.ts > |./src/l.ts| > ./src/m.ts > ./src/n.ts > |./src/l.ts|",
+                "./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > ./src/k.ts > ./src/l.ts > |./src/m.ts| > ./src/n.ts > |./src/m.ts|",
+                "./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > ./src/k.ts > ./src/l.ts > |./src/m.ts| > ./src/n.ts > ./src/o.ts > |./src/m.ts|",
+                "./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > ./src/k.ts > ./src/l.ts > ./src/m.ts > |./src/n.ts| > ./src/o.ts > |./src/n.ts|",
+                "./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > ./src/k.ts > ./src/l.ts > ./src/m.ts > |./src/n.ts| > ./src/o.ts > ./src/p.ts > |./src/n.ts|",
+                "./src/b.ts > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > ./src/k.ts > ./src/l.ts > ./src/m.ts > ./src/n.ts > |./src/o.ts| > ./src/p.ts > |./src/o.ts|",
+                "./src/b.ts > |./src/c.ts| > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > ./src/k.ts > ./src/l.ts > ./src/m.ts > ./src/n.ts > ./src/o.ts > ./src/p.ts > |./src/c.ts|",
+                "|./src/b.ts| > ./src/c.ts > ./src/d.ts > ./src/e.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > ./src/k.ts > ./src/l.ts > ./src/m.ts > ./src/n.ts > ./src/o.ts > |./src/b.ts|",
             ],
         ),
     },
@@ -73,9 +128,6 @@ expression: results
         circular_deps: Some(
             [
                 "|./src/c.ts| > ./src/b.ts > |./src/c.ts|",
-                "./src/c.ts > |./src/b.ts| > ./src/d.ts > |./src/b.ts|",
-                "|./src/c.ts| > ./src/b.ts > ./src/d.ts > |./src/c.ts|",
-                "|./src/c.ts| > ./src/b.ts > ./src/d.ts > ./src/e.ts > |./src/c.ts|",
             ],
         ),
     },
@@ -100,6 +152,7 @@ expression: results
         circular_deps: Some(
             [
                 "./src/d.ts > |./src/b.ts| > ./src/c.ts > |./src/b.ts|",
+                "|./src/d.ts| > ./src/b.ts > ./src/c.ts > |./src/d.ts|",
             ],
         ),
     },
@@ -124,34 +177,6 @@ expression: results
         circular_deps: Some(
             [
                 "./src/e.ts > |./src/c.ts| > ./src/b.ts > |./src/c.ts|",
-                "./src/e.ts > ./src/c.ts > |./src/b.ts| > ./src/d.ts > |./src/b.ts|",
-                "./src/e.ts > |./src/c.ts| > ./src/b.ts > ./src/d.ts > |./src/c.ts|",
-                "|./src/e.ts| > ./src/c.ts > ./src/b.ts > ./src/d.ts > |./src/e.ts|",
-                "./src/e.ts > ./src/c.ts > ./src/b.ts > |./src/d.ts| > ./src/f.ts > |./src/d.ts|",
-                "|./src/e.ts| > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > |./src/e.ts|",
-                "|./src/e.ts| > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > ./src/g.ts > |./src/e.ts|",
-                "./src/e.ts > ./src/c.ts > ./src/b.ts > ./src/d.ts > |./src/f.ts| > ./src/g.ts > |./src/f.ts|",
-                "./src/e.ts > ./src/c.ts > ./src/b.ts > ./src/d.ts > |./src/f.ts| > ./src/g.ts > ./src/h.ts > |./src/f.ts|",
-                "./src/e.ts > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > |./src/g.ts| > ./src/h.ts > |./src/g.ts|",
-                "./src/e.ts > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > |./src/g.ts| > ./src/h.ts > ./src/i.ts > |./src/g.ts|",
-                "./src/e.ts > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > ./src/g.ts > |./src/h.ts| > ./src/i.ts > |./src/h.ts|",
-                "./src/e.ts > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > ./src/g.ts > |./src/h.ts| > ./src/i.ts > ./src/j.ts > |./src/h.ts|",
-                "./src/e.ts > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > |./src/i.ts| > ./src/j.ts > |./src/i.ts|",
-                "./src/e.ts > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > |./src/i.ts| > ./src/j.ts > ./src/k.ts > |./src/i.ts|",
-                "./src/e.ts > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > |./src/j.ts| > ./src/k.ts > |./src/j.ts|",
-                "./src/e.ts > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > |./src/j.ts| > ./src/k.ts > ./src/l.ts > |./src/j.ts|",
-                "./src/e.ts > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > |./src/k.ts| > ./src/l.ts > |./src/k.ts|",
-                "./src/e.ts > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > |./src/k.ts| > ./src/l.ts > ./src/m.ts > |./src/k.ts|",
-                "./src/e.ts > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > ./src/k.ts > |./src/l.ts| > ./src/m.ts > |./src/l.ts|",
-                "./src/e.ts > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > ./src/k.ts > |./src/l.ts| > ./src/m.ts > ./src/n.ts > |./src/l.ts|",
-                "./src/e.ts > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > ./src/k.ts > ./src/l.ts > |./src/m.ts| > ./src/n.ts > |./src/m.ts|",
-                "./src/e.ts > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > ./src/k.ts > ./src/l.ts > |./src/m.ts| > ./src/n.ts > ./src/o.ts > |./src/m.ts|",
-                "./src/e.ts > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > ./src/k.ts > ./src/l.ts > ./src/m.ts > |./src/n.ts| > ./src/o.ts > |./src/n.ts|",
-                "./src/e.ts > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > ./src/k.ts > ./src/l.ts > ./src/m.ts > |./src/n.ts| > ./src/o.ts > ./src/p.ts > |./src/n.ts|",
-                "./src/e.ts > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > ./src/k.ts > ./src/l.ts > ./src/m.ts > ./src/n.ts > |./src/o.ts| > ./src/p.ts > |./src/o.ts|",
-                "./src/e.ts > |./src/c.ts| > ./src/b.ts > ./src/d.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > ./src/k.ts > ./src/l.ts > ./src/m.ts > ./src/n.ts > ./src/o.ts > ./src/p.ts > |./src/c.ts|",
-                "./src/e.ts > ./src/c.ts > |./src/b.ts| > ./src/d.ts > ./src/f.ts > ./src/g.ts > ./src/h.ts > ./src/i.ts > ./src/j.ts > ./src/k.ts > ./src/l.ts > ./src/m.ts > ./src/n.ts > ./src/o.ts > |./src/b.ts|",
-                "|./src/e.ts| > ./src/c.ts > |./src/e.ts|",
             ],
         ),
     },
@@ -176,7 +201,7 @@ expression: results
         circular_deps: Some(
             [
                 "./src/f.ts > ./src/d.ts > |./src/b.ts| > ./src/c.ts > |./src/b.ts|",
-                "|./src/f.ts| > ./src/d.ts > |./src/f.ts|",
+                "./src/f.ts > |./src/d.ts| > ./src/b.ts > ./src/c.ts > |./src/d.ts|",
             ],
         ),
     },
@@ -201,13 +226,6 @@ expression: results
         circular_deps: Some(
             [
                 "./src/g.ts > ./src/e.ts > |./src/c.ts| > ./src/b.ts > |./src/c.ts|",
-                "./src/g.ts > ./src/e.ts > ./src/c.ts > |./src/b.ts| > ./src/d.ts > |./src/b.ts|",
-                "./src/g.ts > ./src/e.ts > |./src/c.ts| > ./src/b.ts > ./src/d.ts > |./src/c.ts|",
-                "./src/g.ts > |./src/e.ts| > ./src/c.ts > ./src/b.ts > ./src/d.ts > |./src/e.ts|",
-                "./src/g.ts > ./src/e.ts > ./src/c.ts > ./src/b.ts > |./src/d.ts| > ./src/f.ts > |./src/d.ts|",
-                "./src/g.ts > |./src/e.ts| > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > |./src/e.ts|",
-                "|./src/g.ts| > ./src/e.ts > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > |./src/g.ts|",
-                "./src/g.ts > |./src/e.ts| > ./src/c.ts > |./src/e.ts|",
             ],
         ),
     },
@@ -232,7 +250,7 @@ expression: results
         circular_deps: Some(
             [
                 "./src/h.ts > ./src/f.ts > ./src/d.ts > |./src/b.ts| > ./src/c.ts > |./src/b.ts|",
-                "./src/h.ts > |./src/f.ts| > ./src/d.ts > |./src/f.ts|",
+                "./src/h.ts > ./src/f.ts > |./src/d.ts| > ./src/b.ts > ./src/c.ts > |./src/d.ts|",
             ],
         ),
     },
@@ -257,14 +275,6 @@ expression: results
         circular_deps: Some(
             [
                 "./src/i.ts > ./src/g.ts > ./src/e.ts > |./src/c.ts| > ./src/b.ts > |./src/c.ts|",
-                "./src/i.ts > ./src/g.ts > ./src/e.ts > ./src/c.ts > |./src/b.ts| > ./src/d.ts > |./src/b.ts|",
-                "./src/i.ts > ./src/g.ts > ./src/e.ts > |./src/c.ts| > ./src/b.ts > ./src/d.ts > |./src/c.ts|",
-                "./src/i.ts > ./src/g.ts > |./src/e.ts| > ./src/c.ts > ./src/b.ts > ./src/d.ts > |./src/e.ts|",
-                "./src/i.ts > ./src/g.ts > ./src/e.ts > ./src/c.ts > ./src/b.ts > |./src/d.ts| > ./src/f.ts > |./src/d.ts|",
-                "./src/i.ts > ./src/g.ts > |./src/e.ts| > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > |./src/e.ts|",
-                "./src/i.ts > |./src/g.ts| > ./src/e.ts > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > |./src/g.ts|",
-                "./src/i.ts > ./src/g.ts > |./src/e.ts| > ./src/c.ts > |./src/e.ts|",
-                "|./src/i.ts| > ./src/g.ts > |./src/i.ts|",
             ],
         ),
     },
@@ -289,9 +299,7 @@ expression: results
         circular_deps: Some(
             [
                 "./src/j.ts > ./src/h.ts > ./src/f.ts > ./src/d.ts > |./src/b.ts| > ./src/c.ts > |./src/b.ts|",
-                "./src/j.ts > ./src/h.ts > |./src/f.ts| > ./src/d.ts > |./src/f.ts|",
-                "./src/j.ts > |./src/h.ts| > ./src/f.ts > |./src/h.ts|",
-                "|./src/j.ts| > ./src/h.ts > |./src/j.ts|",
+                "./src/j.ts > ./src/h.ts > ./src/f.ts > |./src/d.ts| > ./src/b.ts > ./src/c.ts > |./src/d.ts|",
             ],
         ),
     },
@@ -316,14 +324,6 @@ expression: results
         circular_deps: Some(
             [
                 "./src/k.ts > ./src/i.ts > ./src/g.ts > ./src/e.ts > |./src/c.ts| > ./src/b.ts > |./src/c.ts|",
-                "./src/k.ts > ./src/i.ts > ./src/g.ts > ./src/e.ts > ./src/c.ts > |./src/b.ts| > ./src/d.ts > |./src/b.ts|",
-                "./src/k.ts > ./src/i.ts > ./src/g.ts > ./src/e.ts > |./src/c.ts| > ./src/b.ts > ./src/d.ts > |./src/c.ts|",
-                "./src/k.ts > ./src/i.ts > ./src/g.ts > |./src/e.ts| > ./src/c.ts > ./src/b.ts > ./src/d.ts > |./src/e.ts|",
-                "./src/k.ts > ./src/i.ts > ./src/g.ts > ./src/e.ts > ./src/c.ts > ./src/b.ts > |./src/d.ts| > ./src/f.ts > |./src/d.ts|",
-                "./src/k.ts > ./src/i.ts > ./src/g.ts > |./src/e.ts| > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > |./src/e.ts|",
-                "./src/k.ts > ./src/i.ts > |./src/g.ts| > ./src/e.ts > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > |./src/g.ts|",
-                "./src/k.ts > ./src/i.ts > ./src/g.ts > |./src/e.ts| > ./src/c.ts > |./src/e.ts|",
-                "./src/k.ts > |./src/i.ts| > ./src/g.ts > |./src/i.ts|",
             ],
         ),
     },
@@ -348,10 +348,7 @@ expression: results
         circular_deps: Some(
             [
                 "./src/l.ts > ./src/j.ts > ./src/h.ts > ./src/f.ts > ./src/d.ts > |./src/b.ts| > ./src/c.ts > |./src/b.ts|",
-                "./src/l.ts > ./src/j.ts > ./src/h.ts > |./src/f.ts| > ./src/d.ts > |./src/f.ts|",
-                "./src/l.ts > ./src/j.ts > |./src/h.ts| > ./src/f.ts > |./src/h.ts|",
-                "./src/l.ts > |./src/j.ts| > ./src/h.ts > |./src/j.ts|",
-                "|./src/l.ts| > ./src/j.ts > |./src/l.ts|",
+                "./src/l.ts > ./src/j.ts > ./src/h.ts > ./src/f.ts > |./src/d.ts| > ./src/b.ts > ./src/c.ts > |./src/d.ts|",
             ],
         ),
     },
@@ -376,14 +373,6 @@ expression: results
         circular_deps: Some(
             [
                 "./src/m.ts > ./src/k.ts > ./src/i.ts > ./src/g.ts > ./src/e.ts > |./src/c.ts| > ./src/b.ts > |./src/c.ts|",
-                "./src/m.ts > ./src/k.ts > ./src/i.ts > ./src/g.ts > ./src/e.ts > ./src/c.ts > |./src/b.ts| > ./src/d.ts > |./src/b.ts|",
-                "./src/m.ts > ./src/k.ts > ./src/i.ts > ./src/g.ts > ./src/e.ts > |./src/c.ts| > ./src/b.ts > ./src/d.ts > |./src/c.ts|",
-                "./src/m.ts > ./src/k.ts > ./src/i.ts > ./src/g.ts > |./src/e.ts| > ./src/c.ts > ./src/b.ts > ./src/d.ts > |./src/e.ts|",
-                "./src/m.ts > ./src/k.ts > ./src/i.ts > ./src/g.ts > ./src/e.ts > ./src/c.ts > ./src/b.ts > |./src/d.ts| > ./src/f.ts > |./src/d.ts|",
-                "./src/m.ts > ./src/k.ts > ./src/i.ts > ./src/g.ts > |./src/e.ts| > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > |./src/e.ts|",
-                "./src/m.ts > ./src/k.ts > ./src/i.ts > |./src/g.ts| > ./src/e.ts > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > |./src/g.ts|",
-                "./src/m.ts > ./src/k.ts > ./src/i.ts > ./src/g.ts > |./src/e.ts| > ./src/c.ts > |./src/e.ts|",
-                "./src/m.ts > ./src/k.ts > |./src/i.ts| > ./src/g.ts > |./src/i.ts|",
             ],
         ),
     },
@@ -408,10 +397,7 @@ expression: results
         circular_deps: Some(
             [
                 "./src/n.ts > ./src/l.ts > ./src/j.ts > ./src/h.ts > ./src/f.ts > ./src/d.ts > |./src/b.ts| > ./src/c.ts > |./src/b.ts|",
-                "./src/n.ts > ./src/l.ts > ./src/j.ts > ./src/h.ts > |./src/f.ts| > ./src/d.ts > |./src/f.ts|",
-                "./src/n.ts > ./src/l.ts > ./src/j.ts > |./src/h.ts| > ./src/f.ts > |./src/h.ts|",
-                "./src/n.ts > ./src/l.ts > |./src/j.ts| > ./src/h.ts > |./src/j.ts|",
-                "./src/n.ts > |./src/l.ts| > ./src/j.ts > |./src/l.ts|",
+                "./src/n.ts > ./src/l.ts > ./src/j.ts > ./src/h.ts > ./src/f.ts > |./src/d.ts| > ./src/b.ts > ./src/c.ts > |./src/d.ts|",
             ],
         ),
     },
@@ -436,16 +422,6 @@ expression: results
         circular_deps: Some(
             [
                 "./src/o.ts > ./src/m.ts > ./src/k.ts > ./src/i.ts > ./src/g.ts > ./src/e.ts > |./src/c.ts| > ./src/b.ts > |./src/c.ts|",
-                "./src/o.ts > ./src/m.ts > ./src/k.ts > ./src/i.ts > ./src/g.ts > ./src/e.ts > ./src/c.ts > |./src/b.ts| > ./src/d.ts > |./src/b.ts|",
-                "./src/o.ts > ./src/m.ts > ./src/k.ts > ./src/i.ts > ./src/g.ts > ./src/e.ts > |./src/c.ts| > ./src/b.ts > ./src/d.ts > |./src/c.ts|",
-                "./src/o.ts > ./src/m.ts > ./src/k.ts > ./src/i.ts > ./src/g.ts > |./src/e.ts| > ./src/c.ts > ./src/b.ts > ./src/d.ts > |./src/e.ts|",
-                "./src/o.ts > ./src/m.ts > ./src/k.ts > ./src/i.ts > ./src/g.ts > ./src/e.ts > ./src/c.ts > ./src/b.ts > |./src/d.ts| > ./src/f.ts > |./src/d.ts|",
-                "./src/o.ts > ./src/m.ts > ./src/k.ts > ./src/i.ts > ./src/g.ts > |./src/e.ts| > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > |./src/e.ts|",
-                "./src/o.ts > ./src/m.ts > ./src/k.ts > ./src/i.ts > |./src/g.ts| > ./src/e.ts > ./src/c.ts > ./src/b.ts > ./src/d.ts > ./src/f.ts > |./src/g.ts|",
-                "./src/o.ts > ./src/m.ts > ./src/k.ts > ./src/i.ts > ./src/g.ts > |./src/e.ts| > ./src/c.ts > |./src/e.ts|",
-                "./src/o.ts > ./src/m.ts > ./src/k.ts > |./src/i.ts| > ./src/g.ts > |./src/i.ts|",
-                "./src/o.ts > |./src/m.ts| > ./src/k.ts > |./src/m.ts|",
-                "|./src/o.ts| > ./src/m.ts > |./src/o.ts|",
             ],
         ),
     },
@@ -470,11 +446,7 @@ expression: results
         circular_deps: Some(
             [
                 "./src/p.ts > ./src/n.ts > ./src/l.ts > ./src/j.ts > ./src/h.ts > ./src/f.ts > ./src/d.ts > |./src/b.ts| > ./src/c.ts > |./src/b.ts|",
-                "./src/p.ts > ./src/n.ts > ./src/l.ts > ./src/j.ts > ./src/h.ts > |./src/f.ts| > ./src/d.ts > |./src/f.ts|",
-                "./src/p.ts > ./src/n.ts > ./src/l.ts > ./src/j.ts > |./src/h.ts| > ./src/f.ts > |./src/h.ts|",
-                "./src/p.ts > ./src/n.ts > ./src/l.ts > |./src/j.ts| > ./src/h.ts > |./src/j.ts|",
-                "./src/p.ts > ./src/n.ts > |./src/l.ts| > ./src/j.ts > |./src/l.ts|",
-                "|./src/p.ts| > ./src/n.ts > |./src/p.ts|",
+                "./src/p.ts > ./src/n.ts > ./src/l.ts > ./src/j.ts > ./src/h.ts > ./src/f.ts > |./src/d.ts| > ./src/b.ts > ./src/c.ts > |./src/d.ts|",
             ],
         ),
     },

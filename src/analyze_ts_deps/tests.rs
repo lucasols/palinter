@@ -1,5 +1,7 @@
 use std::collections::BTreeMap;
 
+use crate::test_utils::TEST_MUTEX;
+
 use super::*;
 use insta::assert_debug_snapshot;
 
@@ -23,7 +25,7 @@ fn get_results(
     )
     .unwrap();
 
-    for (file_path, _) in flatten_root_structure {
+    for (file_path, _) in BTreeMap::from_iter(flatten_root_structure) {
         let deps_info =
             get_file_deps_result(&PathBuf::from(file_path.clone())).unwrap();
 
@@ -65,6 +67,8 @@ fn create_flatten_root_structure(
 
 #[test]
 fn get_project_files_deps_info_test() {
+    let _guard = TEST_MUTEX.lock().unwrap();
+
     _setup_test();
 
     let results = get_results(
@@ -106,6 +110,8 @@ fn get_project_files_deps_info_test() {
 
 #[test]
 fn get_project_files_deps_info_test_2() {
+    let _guard = TEST_MUTEX.lock().unwrap();
+
     _setup_test();
 
     let (results, _) = get_results(
@@ -152,6 +158,8 @@ fn get_project_files_deps_info_test_2() {
 
 #[test]
 fn project_with_circular_deps() {
+    let _guard = TEST_MUTEX.lock().unwrap();
+
     _setup_test();
 
     let (results, _) = get_results(
@@ -203,6 +211,8 @@ fn get_file(name: &str, files: &[&str]) -> SimplifiedFile {
 
 #[test]
 fn project_with_circular_deps_2() {
+    let _guard = TEST_MUTEX.lock().unwrap();
+
     _setup_test();
 
     let (results, _) = get_results(
@@ -225,6 +235,8 @@ fn project_with_circular_deps_2() {
 
 #[test]
 fn project_with_circular_deps_3() {
+    let _guard = TEST_MUTEX.lock().unwrap();
+
     _setup_test();
 
     let (results, _) = get_results(
@@ -254,6 +266,8 @@ fn project_with_circular_deps_3() {
 
 #[test]
 fn project_with_circular_deps_4() {
+    let _guard = TEST_MUTEX.lock().unwrap();
+
     _setup_test();
 
     let (results, _) = get_results(

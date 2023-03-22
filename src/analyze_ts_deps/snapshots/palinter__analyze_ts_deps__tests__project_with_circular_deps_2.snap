@@ -1,6 +1,5 @@
 ---
 source: src/analyze_ts_deps/tests.rs
-assertion_line: 223
 expression: results
 ---
 {
@@ -131,6 +130,7 @@ expression: results
             [
                 "./src/index.ts > ./src/b.ts > ./src/d.ts > |./src/1.ts| > ./src/2.ts > ./src/3.ts > |./src/1.ts|",
                 "./src/index.ts > |./src/b.ts| > ./src/e.ts > ./src/f.ts > |./src/b.ts|",
+                "./src/index.ts > ./src/c.ts > ./src/d.ts > |./src/1.ts| > ./src/2.ts > ./src/3.ts > |./src/1.ts|",
             ],
         ),
     },

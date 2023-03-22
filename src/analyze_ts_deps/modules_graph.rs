@@ -13,7 +13,6 @@ pub type DepsCache = HashMap<String, DepsResult>;
 
 lazy_static! {
     pub static ref DEPS_CACHE: Mutex<DepsCache> = Mutex::new(HashMap::new());
-    pub static ref COUNT: Mutex<usize> = Mutex::new(0);
 }
 
 pub fn get_node_deps<F>(
@@ -24,7 +23,9 @@ pub fn get_node_deps<F>(
 where
     F: FnMut(&str) -> Result<Vec<String>, String>,
 {
-    if let Some(cached) = DEPS_CACHE.lock().unwrap().get(start) {
+    let mut cache = DEPS_CACHE.lock().unwrap();
+
+    if let Some(cached) = cache.get(start) {
         return Ok(cached.clone());
     }
 
@@ -42,6 +43,7 @@ where
         &mut path,
         max_calls,
         &mut calls,
+        &mut cache,
     )?;
 
     let deps_result = DepsResult {
@@ -49,10 +51,7 @@ where
         circular_deps: (!circular_deps.is_empty()).then_some(circular_deps),
     };
 
-    DEPS_CACHE
-        .lock()
-        .unwrap()
-        .insert(start.to_string(), deps_result.clone());
+    cache.insert(start.to_string(), deps_result.clone());
 
     Ok(deps_result)
 }
@@ -68,6 +67,7 @@ fn dfs<F>(
     path: &mut IndexSet<String>,
     max_calls: Option<usize>,
     calls: &mut usize,
+    cache: &mut DepsCache,
 ) -> Result<Option<IndexSet<String>>, String>
 where
     F: FnMut(&str) -> Result<Vec<String>, String>,
@@ -87,19 +87,22 @@ where
 
         main_node_deps.insert(node_name.to_string());
 
-        circular_deps.push(
-            circular_path
-                .iter()
-                .map(|s| {
-                    if s == node_name {
-                        format!("|{}|", s)
-                    } else {
-                        s.to_string()
-                    }
-                })
-                .collect::<Vec<String>>()
-                .join(" > "),
-        );
+        let circular_path_string = circular_path
+            .iter()
+            .map(|s| {
+                if s == node_name {
+                    format!("|{}|", s)
+                } else {
+                    s.to_string()
+                }
+            })
+            .collect::<Vec<String>>()
+            .join(" > ");
+
+        if !circular_deps.iter().any(|i| i == &circular_path_string) {
+            circular_deps.push(circular_path_string);
+        }
+
         return Ok(None);
     }
 
@@ -115,7 +118,7 @@ where
 
     let edges = get_node_edges(node_name)?;
 
-    if let Some(cached) = DEPS_CACHE.lock().unwrap().get(node_name) {
+    if let Some(cached) = cache.get(node_name) {
         main_node_deps.extend(cached.deps.clone());
 
         path.remove(node_name);
@@ -124,7 +127,7 @@ where
             for circular_path in cached.circular_deps.clone().unwrap() {
                 let new_path = merge_circular_paths(path, circular_path);
 
-                if !circular_deps.contains(&new_path) {
+                if !circular_deps.iter().any(|i| i == &new_path) {
                     circular_deps.push(new_path);
                 }
             }
@@ -148,8 +151,9 @@ where
             path,
             max_calls,
             calls,
+            cache,
         )? {
-            DEPS_CACHE.lock().unwrap().insert(
+            cache.insert(
                 edge.to_string(),
                 DepsResult {
                     deps: edge_deps.clone(),

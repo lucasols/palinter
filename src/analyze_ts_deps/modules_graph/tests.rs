@@ -1,4 +1,4 @@
-use crate::analyze_ts_deps::_setup_test;
+use crate::{analyze_ts_deps::_setup_test, test_utils::TEST_MUTEX};
 
 use super::*;
 use indexmap::IndexMap;
@@ -29,6 +29,7 @@ fn get_deps_for_each(
 #[test]
 fn simple_dep_calc_1() {
     _setup_test();
+    let _guard = TEST_MUTEX.lock().unwrap();
 
     let get_node_edges = |node_name: &str| -> Result<Vec<String>, String> {
         Ok(match node_name {
@@ -70,6 +71,7 @@ fn simple_dep_calc_1() {
 
 #[test]
 fn simple_dep_calc_2() {
+    let _guard = TEST_MUTEX.lock().unwrap();
     _setup_test();
 
     let get_node_edges = |node_name: &str| -> Result<Vec<String>, String> {
@@ -126,6 +128,7 @@ fn simple_dep_calc_2() {
 
 #[test]
 fn circular_dep_calc() {
+    let _guard = TEST_MUTEX.lock().unwrap();
     _setup_test();
 
     let get_node_edges = |node_name: &str| -> Result<Vec<String>, String> {
@@ -143,51 +146,52 @@ fn circular_dep_calc() {
             get_node_edges,
         ),
         @r###"
-        {
-            "circular": DepsResult {
-                deps: {
-                    "dep1",
-                    "dep2",
-                    "circular",
-                },
-                circular_deps: Some(
-                    [
-                        "|circular| > dep1 > dep2 > |circular|",
-                    ],
-                ),
+    {
+        "circular": DepsResult {
+            deps: {
+                "dep1",
+                "dep2",
+                "circular",
             },
-            "dep1": DepsResult {
-                deps: {
-                    "dep2",
-                    "circular",
-                    "dep1",
-                },
-                circular_deps: Some(
-                    [
-                        "|dep1| > dep2 > circular > |dep1|",
-                    ],
-                ),
+            circular_deps: Some(
+                [
+                    "|circular| > dep1 > dep2 > |circular|",
+                ],
+            ),
+        },
+        "dep1": DepsResult {
+            deps: {
+                "dep2",
+                "circular",
+                "dep1",
             },
-            "dep2": DepsResult {
-                deps: {
-                    "circular",
-                    "dep1",
-                    "dep2",
-                },
-                circular_deps: Some(
-                    [
-                        "|dep2| > circular > dep1 > |dep2|",
-                    ],
-                ),
+            circular_deps: Some(
+                [
+                    "|dep1| > dep2 > circular > |dep1|",
+                ],
+            ),
+        },
+        "dep2": DepsResult {
+            deps: {
+                "circular",
+                "dep1",
+                "dep2",
             },
-        }
-        "###
+            circular_deps: Some(
+                [
+                    "|dep2| > circular > dep1 > |dep2|",
+                ],
+            ),
+        },
+    }
+    "###
     );
 }
 
 #[test]
 fn circular_1() {
     _setup_test();
+    let _guard = TEST_MUTEX.lock().unwrap();
 
     let get_node_edges = |node_name: &str| -> Result<Vec<String>, String> {
         Ok(match node_name {
@@ -205,58 +209,59 @@ fn circular_1() {
             get_node_edges,
         ),
         @r###"
-        {
-            "circular": DepsResult {
-                deps: {
-                    "dep1",
-                    "dep2",
-                    "circular",
-                    "dep3",
-                },
-                circular_deps: Some(
-                    [
-                        "|circular| > dep1 > dep2 > |circular|",
-                    ],
-                ),
+    {
+        "circular": DepsResult {
+            deps: {
+                "dep1",
+                "dep2",
+                "circular",
+                "dep3",
             },
-            "dep1": DepsResult {
-                deps: {
-                    "dep2",
-                    "circular",
-                    "dep1",
-                    "dep3",
-                },
-                circular_deps: Some(
-                    [
-                        "|dep1| > dep2 > circular > |dep1|",
-                    ],
-                ),
+            circular_deps: Some(
+                [
+                    "|circular| > dep1 > dep2 > |circular|",
+                ],
+            ),
+        },
+        "dep1": DepsResult {
+            deps: {
+                "dep2",
+                "circular",
+                "dep1",
+                "dep3",
             },
-            "dep2": DepsResult {
-                deps: {
-                    "circular",
-                    "dep1",
-                    "dep2",
-                    "dep3",
-                },
-                circular_deps: Some(
-                    [
-                        "|dep2| > circular > dep1 > |dep2|",
-                    ],
-                ),
+            circular_deps: Some(
+                [
+                    "|dep1| > dep2 > circular > |dep1|",
+                ],
+            ),
+        },
+        "dep2": DepsResult {
+            deps: {
+                "circular",
+                "dep1",
+                "dep2",
+                "dep3",
             },
-            "dep3": DepsResult {
-                deps: {},
-                circular_deps: None,
-            },
-        }
-        "###
+            circular_deps: Some(
+                [
+                    "|dep2| > circular > dep1 > |dep2|",
+                ],
+            ),
+        },
+        "dep3": DepsResult {
+            deps: {},
+            circular_deps: None,
+        },
+    }
+    "###
     );
 }
 
 #[test]
 fn circular_2() {
     _setup_test();
+    let _guard = TEST_MUTEX.lock().unwrap();
 
     let get_node_edges = |node_name: &str| -> Result<Vec<String>, String> {
         Ok(match node_name {
@@ -315,6 +320,7 @@ fn circular_2() {
 #[test]
 fn circular_3() {
     _setup_test();
+    let _guard = TEST_MUTEX.lock().unwrap();
 
     let get_node_edges = |node_name: &str| -> Result<Vec<String>, String> {
         Ok(match node_name {
@@ -421,6 +427,7 @@ fn circular_3() {
 #[test]
 fn circular_4() {
     _setup_test();
+    let _guard = TEST_MUTEX.lock().unwrap();
 
     let get_node_edges = |node_name: &str| -> Result<Vec<String>, String> {
         Ok(match node_name {
@@ -518,6 +525,7 @@ fn circular_4() {
 #[test]
 fn non_cyclic_graph() {
     _setup_test();
+    let _guard = TEST_MUTEX.lock().unwrap();
 
     let get_node_edges = |node_name: &str| -> Result<Vec<String>, String> {
         Ok(match node_name {
@@ -568,6 +576,7 @@ fn non_cyclic_graph() {
 #[test]
 fn dag_5() {
     _setup_test();
+    let _guard = TEST_MUTEX.lock().unwrap();
 
     let get_node_edges = |node_name: &str| -> Result<Vec<String>, String> {
         Ok(match node_name {
@@ -639,6 +648,7 @@ fn dag_5() {
 #[test]
 fn simple_6() {
     _setup_test();
+    let _guard = TEST_MUTEX.lock().unwrap();
 
     let get_node_edges = |node_name: &str| -> Result<Vec<String>, String> {
         Ok(match node_name {
@@ -690,6 +700,7 @@ fn simple_6() {
 #[test]
 fn simple_7() {
     _setup_test();
+    let _guard = TEST_MUTEX.lock().unwrap();
 
     let get_node_edges = |node_name: &str| -> Result<Vec<String>, String> {
         Ok(match node_name {
@@ -745,6 +756,7 @@ fn simple_7() {
 #[test]
 fn circular_8() {
     _setup_test();
+    let _guard = TEST_MUTEX.lock().unwrap();
 
     let get_node_edges = |node_name: &str| -> Result<Vec<String>, String> {
         Ok(match node_name {
@@ -763,66 +775,67 @@ fn circular_8() {
             get_node_edges
         ),
         @r###"
-            {
-                "circular": DepsResult {
-                    deps: {
-                        "dep1",
-                        "dep2",
-                        "circular",
-                        "dep3",
-                        "dep4",
-                    },
-                    circular_deps: Some(
-                        [
-                            "|circular| > dep1 > dep2 > |circular|",
-                        ],
-                    ),
-                },
-                "dep1": DepsResult {
-                    deps: {
-                        "dep2",
-                        "circular",
-                        "dep1",
-                        "dep3",
-                        "dep4",
-                    },
-                    circular_deps: Some(
-                        [
-                            "|dep1| > dep2 > circular > |dep1|",
-                        ],
-                    ),
-                },
-                "dep2": DepsResult {
-                    deps: {
-                        "circular",
-                        "dep1",
-                        "dep2",
-                        "dep3",
-                        "dep4",
-                    },
-                    circular_deps: Some(
-                        [
-                            "|dep2| > circular > dep1 > |dep2|",
-                        ],
-                    ),
-                },
-                "dep3": DepsResult {
-                    deps: {
-                        "dep4",
-                    },
-                    circular_deps: None,
-                },
-                "dep4": DepsResult {
-                    deps: {},
-                    circular_deps: None,
-                },
-            }
-            "###);
+    {
+        "circular": DepsResult {
+            deps: {
+                "dep1",
+                "dep2",
+                "circular",
+                "dep3",
+                "dep4",
+            },
+            circular_deps: Some(
+                [
+                    "|circular| > dep1 > dep2 > |circular|",
+                ],
+            ),
+        },
+        "dep1": DepsResult {
+            deps: {
+                "dep2",
+                "circular",
+                "dep1",
+                "dep3",
+                "dep4",
+            },
+            circular_deps: Some(
+                [
+                    "|dep1| > dep2 > circular > |dep1|",
+                ],
+            ),
+        },
+        "dep2": DepsResult {
+            deps: {
+                "circular",
+                "dep1",
+                "dep2",
+                "dep3",
+                "dep4",
+            },
+            circular_deps: Some(
+                [
+                    "|dep2| > circular > dep1 > |dep2|",
+                ],
+            ),
+        },
+        "dep3": DepsResult {
+            deps: {
+                "dep4",
+            },
+            circular_deps: None,
+        },
+        "dep4": DepsResult {
+            deps: {},
+            circular_deps: None,
+        },
+    }
+    "###);
 }
 
 #[test]
 fn circular_9() {
     _setup_test();
+    let _guard = TEST_MUTEX.lock().unwrap();
 
     let get_node_edges = |node_name: &str| -> Result<Vec<String>, String> {
         Ok(match node_name {
@@ -983,6 +996,7 @@ fn circular_9() {
 #[test]
 fn circular_11() {
     _setup_test();
+    let _guard = TEST_MUTEX.lock().unwrap();
 
     let get_node_edges = |node_name: &str| -> Result<Vec<String>, String> {
         Ok(match node_name {
