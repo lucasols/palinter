@@ -35,9 +35,9 @@ structure:
       export const b = 2;
 
 expected_errors:
-  - "File ./src/fileA.ts:\n • File has circular dependencies: |./src/fileA.ts| > ./src/fileB.ts > |./src/fileA.ts|"
-  - "File ./src/fileB.ts:\n • File has circular dependencies: |./src/fileB.ts| > ./src/fileA.ts > |./src/fileB.ts|"
-  - "File ./src/index.ts:\n • File has circular dependencies: ./src/index.ts > |./src/fileB.ts| > ./src/fileA.ts > |./src/fileB.ts|"
+  - "File ./src/fileA.ts:\n • File has circular dependencies: ./src/fileA.ts"
+  - "File ./src/fileB.ts:\n • File has circular dependencies: ./src/fileA.ts"
+  - "File ./src/index.ts:\n • File has circular dependencies: ./src/fileA.ts"
 ```
 
 ```yaml
@@ -58,6 +58,6 @@ structure:
       export const b = 2;
 
 expected_errors:
-  - "File ./src/fileB.ts:\n • File has circular dependencies: |./src/fileB.ts| > ./src/fileA.ts > |./src/fileB.ts|"
-  - "File ./src/fileA.ts:\n • File has circular dependencies: |./src/fileA.ts| > ./src/fileB.ts > |./src/fileA.ts|"
+  - "File ./src/fileB.ts:\n • File has circular dependencies: ./src/fileA.ts"
+  - "File ./src/fileA.ts:\n • File has circular dependencies: ./src/fileA.ts"
 ```

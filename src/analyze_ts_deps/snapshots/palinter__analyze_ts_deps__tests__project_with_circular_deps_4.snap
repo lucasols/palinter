@@ -1,6 +1,5 @@
 ---
 source: src/analyze_ts_deps/tests.rs
-assertion_line: 269
 expression: results
 ---
 {
@@ -12,19 +11,18 @@ expression: results
         },
         circular_deps: Some(
             [
-                "./src/a.ts > |./src/b.ts| > ./src/c.ts > |./src/b.ts|",
+                "./src/b.ts",
             ],
         ),
     },
     "./src/b.ts": DepsResult {
         deps: {
             "./src/c.ts",
-            "./src/b.ts",
             "./src/d.ts",
         },
         circular_deps: Some(
             [
-                "|./src/b.ts| > ./src/c.ts > |./src/b.ts|",
+                "./src/b.ts",
             ],
         ),
     },
@@ -36,7 +34,7 @@ expression: results
         },
         circular_deps: Some(
             [
-                "|./src/c.ts| > ./src/b.ts > |./src/c.ts|",
+                "./src/b.ts",
             ],
         ),
     },

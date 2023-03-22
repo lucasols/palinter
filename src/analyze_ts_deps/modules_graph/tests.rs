@@ -151,11 +151,10 @@ fn circular_dep_calc() {
             deps: {
                 "dep1",
                 "dep2",
-                "circular",
             },
             circular_deps: Some(
                 [
-                    "|circular| > dep1 > dep2 > |circular|",
+                    "circular",
                 ],
             ),
         },
@@ -167,7 +166,7 @@ fn circular_dep_calc() {
             },
             circular_deps: Some(
                 [
-                    "|dep1| > dep2 > circular > |dep1|",
+                    "circular",
                 ],
             ),
         },
@@ -179,7 +178,7 @@ fn circular_dep_calc() {
             },
             circular_deps: Some(
                 [
-                    "|dep2| > circular > dep1 > |dep2|",
+                    "circular",
                 ],
             ),
         },
@@ -214,12 +213,11 @@ fn circular_1() {
             deps: {
                 "dep1",
                 "dep2",
-                "circular",
                 "dep3",
             },
             circular_deps: Some(
                 [
-                    "|circular| > dep1 > dep2 > |circular|",
+                    "circular",
                 ],
             ),
         },
@@ -232,7 +230,7 @@ fn circular_1() {
             },
             circular_deps: Some(
                 [
-                    "|dep1| > dep2 > circular > |dep1|",
+                    "circular",
                 ],
             ),
         },
@@ -245,7 +243,7 @@ fn circular_1() {
             },
             circular_deps: Some(
                 [
-                    "|dep2| > circular > dep1 > |dep2|",
+                    "circular",
                 ],
             ),
         },
@@ -286,18 +284,17 @@ fn circular_2() {
             },
             circular_deps: Some(
                 [
-                    "dep1 > |dep2| > dep3 > |dep2|",
+                    "dep2",
                 ],
             ),
         },
         "dep2": DepsResult {
             deps: {
                 "dep3",
-                "dep2",
             },
             circular_deps: Some(
                 [
-                    "|dep2| > dep3 > |dep2|",
+                    "dep2",
                 ],
             ),
         },
@@ -308,7 +305,7 @@ fn circular_2() {
             },
             circular_deps: Some(
                 [
-                    "|dep3| > dep2 > |dep3|",
+                    "dep2",
                 ],
             ),
         },
@@ -346,29 +343,26 @@ fn circular_3() {
                 "dep3",
                 "dep4",
                 "dep5",
-                "dep1",
             },
             circular_deps: Some(
                 [
-                    "dep1 > |dep2| > dep3 > |dep2|",
-                    "dep1 > |dep2| > dep4 > |dep2|",
-                    "|dep1| > dep2 > dep4 > dep5 > |dep1|",
+                    "dep2",
+                    "dep1",
                 ],
             ),
         },
         "dep2": DepsResult {
             deps: {
                 "dep3",
-                "dep2",
                 "dep4",
                 "dep5",
                 "dep1",
+                "dep2",
             },
             circular_deps: Some(
                 [
-                    "|dep2| > dep3 > |dep2|",
-                    "|dep2| > dep4 > |dep2|",
-                    "|dep2| > dep4 > dep5 > dep1 > |dep2|",
+                    "dep2",
+                    "dep1",
                 ],
             ),
         },
@@ -382,9 +376,8 @@ fn circular_3() {
             },
             circular_deps: Some(
                 [
-                    "|dep3| > dep2 > |dep3|",
-                    "dep3 > |dep2| > dep4 > |dep2|",
-                    "dep3 > |dep2| > dep4 > dep5 > dep1 > |dep2|",
+                    "dep2",
+                    "dep1",
                 ],
             ),
         },
@@ -398,8 +391,8 @@ fn circular_3() {
             },
             circular_deps: Some(
                 [
-                    "dep4 > |dep2| > dep3 > |dep2|",
-                    "|dep4| > dep2 > |dep4|",
+                    "dep2",
+                    "dep1",
                 ],
             ),
         },
@@ -413,9 +406,8 @@ fn circular_3() {
             },
             circular_deps: Some(
                 [
-                    "dep5 > dep1 > |dep2| > dep3 > |dep2|",
-                    "dep5 > dep1 > |dep2| > dep4 > |dep2|",
-                    "|dep5| > dep1 > dep2 > dep4 > |dep5|",
+                    "dep2",
+                    "dep1",
                 ],
             ),
         },
@@ -456,22 +448,19 @@ fn circular_4() {
             },
             circular_deps: Some(
                 [
-                    "dep1 > |dep2| > dep3 > |dep2|",
-                    "dep1 > |dep2| > dep4 > |dep2|",
+                    "dep2",
                 ],
             ),
         },
         "dep2": DepsResult {
             deps: {
                 "dep3",
-                "dep2",
                 "dep4",
                 "dep5",
             },
             circular_deps: Some(
                 [
-                    "|dep2| > dep3 > |dep2|",
-                    "|dep2| > dep4 > |dep2|",
+                    "dep2",
                 ],
             ),
         },
@@ -484,8 +473,7 @@ fn circular_4() {
             },
             circular_deps: Some(
                 [
-                    "|dep3| > dep2 > |dep3|",
-                    "dep3 > |dep2| > dep4 > |dep2|",
+                    "dep2",
                 ],
             ),
         },
@@ -498,8 +486,7 @@ fn circular_4() {
             },
             circular_deps: Some(
                 [
-                    "dep4 > |dep2| > dep3 > |dep2|",
-                    "|dep4| > dep2 > |dep4|",
+                    "dep2",
                 ],
             ),
         },
@@ -512,8 +499,7 @@ fn circular_4() {
             },
             circular_deps: Some(
                 [
-                    "dep5 > |dep3| > dep2 > |dep3|",
-                    "dep5 > dep3 > |dep2| > dep4 > |dep2|",
+                    "dep2",
                 ],
             ),
         },
@@ -780,13 +766,12 @@ fn circular_8() {
             deps: {
                 "dep1",
                 "dep2",
-                "circular",
                 "dep3",
                 "dep4",
             },
             circular_deps: Some(
                 [
-                    "|circular| > dep1 > dep2 > |circular|",
+                    "circular",
                 ],
             ),
         },
@@ -800,7 +785,7 @@ fn circular_8() {
             },
             circular_deps: Some(
                 [
-                    "|dep1| > dep2 > circular > |dep1|",
+                    "circular",
                 ],
             ),
         },
@@ -814,7 +799,7 @@ fn circular_8() {
             },
             circular_deps: Some(
                 [
-                    "|dep2| > circular > dep1 > |dep2|",
+                    "circular",
                 ],
             ),
         },
@@ -872,8 +857,8 @@ fn circular_9() {
             },
             circular_deps: Some(
                 [
-                    "A > B > D > |1| > 2 > 3 > |1|",
-                    "A > |B| > E > F > |B|",
+                    "1",
+                    "B",
                 ],
             ),
         },
@@ -885,12 +870,11 @@ fn circular_9() {
                 "3",
                 "E",
                 "F",
-                "B",
             },
             circular_deps: Some(
                 [
-                    "B > D > |1| > 2 > 3 > |1|",
-                    "|B| > E > F > |B|",
+                    "1",
+                    "B",
                 ],
             ),
         },
@@ -903,7 +887,7 @@ fn circular_9() {
             },
             circular_deps: Some(
                 [
-                    "C > D > |1| > 2 > 3 > |1|",
+                    "1",
                 ],
             ),
         },
@@ -915,7 +899,7 @@ fn circular_9() {
             },
             circular_deps: Some(
                 [
-                    "D > |1| > 2 > 3 > |1|",
+                    "1",
                 ],
             ),
         },
@@ -931,8 +915,8 @@ fn circular_9() {
             },
             circular_deps: Some(
                 [
-                    "E > F > B > D > |1| > 2 > 3 > |1|",
-                    "|E| > F > B > |E|",
+                    "1",
+                    "B",
                 ],
             ),
         },
@@ -948,8 +932,8 @@ fn circular_9() {
             },
             circular_deps: Some(
                 [
-                    "F > B > D > |1| > 2 > 3 > |1|",
-                    "|F| > B > E > |F|",
+                    "1",
+                    "B",
                 ],
             ),
         },
@@ -957,11 +941,10 @@ fn circular_9() {
             deps: {
                 "2",
                 "3",
-                "1",
             },
             circular_deps: Some(
                 [
-                    "|1| > 2 > 3 > |1|",
+                    "1",
                 ],
             ),
         },
@@ -973,7 +956,7 @@ fn circular_9() {
             },
             circular_deps: Some(
                 [
-                    "|2| > 3 > 1 > |2|",
+                    "1",
                 ],
             ),
         },
@@ -985,7 +968,7 @@ fn circular_9() {
             },
             circular_deps: Some(
                 [
-                    "|3| > 1 > 2 > |3|",
+                    "1",
                 ],
             ),
         },
@@ -1031,8 +1014,8 @@ fn circular_11() {
             },
             circular_deps: Some(
                 [
-                    "A > B > |E| > F > |E|",
-                    "A > C > |1| > 2 > |1|",
+                    "E",
+                    "1",
                 ],
             ),
         },
@@ -1044,7 +1027,7 @@ fn circular_11() {
             },
             circular_deps: Some(
                 [
-                    "B > |E| > F > |E|",
+                    "E",
                 ],
             ),
         },
@@ -1056,7 +1039,7 @@ fn circular_11() {
             },
             circular_deps: Some(
                 [
-                    "C > |1| > 2 > |1|",
+                    "1",
                 ],
             ),
         },
@@ -1067,11 +1050,10 @@ fn circular_11() {
         "E": DepsResult {
             deps: {
                 "F",
-                "E",
             },
             circular_deps: Some(
                 [
-                    "|E| > F > |E|",
+                    "E",
                 ],
             ),
         },
@@ -1082,18 +1064,17 @@ fn circular_11() {
             },
             circular_deps: Some(
                 [
-                    "|F| > E > |F|",
+                    "E",
                 ],
             ),
         },
         "1": DepsResult {
             deps: {
                 "2",
-                "1",
             },
             circular_deps: Some(
                 [
-                    "|1| > 2 > |1|",
+                    "1",
                 ],
             ),
         },
@@ -1104,7 +1085,7 @@ fn circular_11() {
             },
             circular_deps: Some(
                 [
-                    "|2| > 1 > |2|",
+                    "1",
                 ],
             ),
         },

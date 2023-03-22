@@ -66,7 +66,7 @@ pub fn check_ts_not_have_circular_deps(file: &File) -> Result<(), String> {
     if let Some(circular_deps) = &deps_info.circular_deps {
         let mut circular_deps = circular_deps.join(", ");
 
-        circular_deps.truncate(100);
+        circular_deps.truncate(200);
 
         Err(format!("File has circular dependencies: {}", circular_deps))
     } else {

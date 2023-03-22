@@ -81,26 +81,8 @@ where
     }
 
     if path.contains(node_name) {
-        let mut circular_path: Vec<String> = path.clone().iter().cloned().collect();
-
-        circular_path.push(node_name.to_string());
-
-        main_node_deps.insert(node_name.to_string());
-
-        let circular_path_string = circular_path
-            .iter()
-            .map(|s| {
-                if s == node_name {
-                    format!("|{}|", s)
-                } else {
-                    s.to_string()
-                }
-            })
-            .collect::<Vec<String>>()
-            .join(" > ");
-
-        if !circular_deps.iter().any(|i| i == &circular_path_string) {
-            circular_deps.push(circular_path_string);
+        if !circular_deps.iter().any(|i| i == node_name) {
+            circular_deps.push(node_name.clone());
         }
 
         return Ok(None);
@@ -125,10 +107,8 @@ where
 
         return if cached.circular_deps.is_some() {
             for circular_path in cached.circular_deps.clone().unwrap() {
-                let new_path = merge_circular_paths(path, circular_path);
-
-                if !circular_deps.iter().any(|i| i == &new_path) {
-                    circular_deps.push(new_path);
+                if !circular_deps.iter().any(|i| i == &circular_path) {
+                    circular_deps.push(circular_path);
                 }
             }
 
