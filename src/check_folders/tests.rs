@@ -528,6 +528,8 @@ fn test_case_folder_structure_is_equal_to_loaded_structure() {
             sub_folders_config: HashMap::new(),
             unexpected_files_error_msg: None,
             unexpected_folders_error_msg: None,
+            append_error_msg: None,
+            unexpected_error_msg: None,
         },
         ts_config: None,
     };

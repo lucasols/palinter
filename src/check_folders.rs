@@ -420,6 +420,11 @@ fn check_folder_childs(
 ) -> Result<(), Vec<String>> {
     let mut errors: Vec<String> = Vec::new();
 
+    let append_error = folder_config
+        .and_then(|fc| fc.append_error_msg.clone())
+        .map(|append_err| format!(" | {}", &append_err))
+        .unwrap_or_default();
+
     let allow_unconfigured_folders = folder_config.map_or(false, |folder_config| {
         folder_config.allow_unexpected_folders
     });
@@ -472,13 +477,14 @@ fn check_folder_childs(
                         ) {
                             for error in expect_errors {
                                 errors.push(format!(
-                                    "{}{}",
+                                    "{}{}{}",
                                     file_error_prefix,
                                     if let Some(custom_error) = &rule.error_msg {
                                         format!("{} | {}", custom_error, error)
                                     } else {
                                         error
-                                    }
+                                    },
+                                    append_error
                                 ));
                             }
                         }
@@ -526,8 +532,8 @@ fn check_folder_childs(
 
                         if one_of_matched_at_least_one_condition && !one_of_matched {
                             errors.push(format!(
-                                "{}{}",
-                                file_error_prefix, one_of.error_msg
+                                "{}{}{}",
+                                file_error_prefix, one_of.error_msg, append_error
                             ));
                         }
                     }
@@ -535,13 +541,17 @@ fn check_folder_childs(
 
                 if !file_touched && !allow_unconfigured_files {
                     errors.push(format!(
-                        "File {} is not expected in folder {}{}",
+                        "File {} is not expected in folder {}{}{}",
                         file.name_with_ext.bright_yellow(),
                         folder_path.bright_red(),
                         folder_config
-                            .and_then(|cfg| cfg.unexpected_files_error_msg.as_ref())
+                            .and_then(|cfg| cfg
+                                .unexpected_files_error_msg
+                                .as_ref()
+                                .or(cfg.unexpected_error_msg.as_ref()))
                             .map(|msg| format!(" | {}", msg))
-                            .unwrap_or_default()
+                            .unwrap_or_default(),
+                        append_error
                     ));
                 }
             }
@@ -572,13 +582,14 @@ fn check_folder_childs(
                         ) {
                             folder_has_error = true;
                             errors.push(format!(
-                                "{}{}",
+                                "{}{}{}",
                                 folder_error_prefix,
                                 if let Some(custom_error) = &rule.error_msg {
                                     format!("{} | {}", custom_error, error)
                                 } else {
                                     error
-                                }
+                                },
+                                append_error
                             ));
                         }
                     }
@@ -616,15 +627,17 @@ fn check_folder_childs(
                     folders_missing_check.remove(&sub_folder.name);
                 } else if !folder_touched && !allow_unconfigured_folders {
                     errors.push(format!(
-                        "Folder {} is not expected in folder {}{}",
+                        "Folder {} is not expected in folder {}{}{}",
                         format!("/{}", sub_folder.name).bright_red(),
                         folder_path.bright_red(),
                         folder_config
                             .and_then(|cfg| cfg
                                 .unexpected_folders_error_msg
-                                .as_ref())
+                                .as_ref()
+                                .or(cfg.unexpected_error_msg.as_ref()))
                             .map(|msg| format!(" | {}", msg))
-                            .unwrap_or_default()
+                            .unwrap_or_default(),
+                        append_error
                     ));
                 }
 
@@ -681,8 +694,8 @@ fn check_folder_childs(
 
     for folder_missing in folders_missing_check {
         errors.push(format!(
-            "Folder '/{}' is missing in folder '{}'",
-            folder_missing, folder_path
+            "Folder '/{}' is missing in folder '{}'{}",
+            folder_missing, folder_path, append_error
         ));
     }
 

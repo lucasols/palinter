@@ -160,6 +160,8 @@ pub struct CorrectParsedFolderConfig {
     pub allow_unexpected: Option<bool>,
     pub unexpected_files_error_msg: Option<String>,
     pub unexpected_folders_error_msg: Option<String>,
+    pub unexpected_error_msg: Option<String>,
+    pub append_error_msg: Option<String>,
 
     #[serde(flatten)]
     pub folders: BTreeMap<String, ParsedFolderConfig>,

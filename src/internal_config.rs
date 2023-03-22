@@ -151,6 +151,8 @@ pub struct FolderConfig {
     pub allow_unexpected_folders: bool,
     pub unexpected_files_error_msg: Option<String>,
     pub unexpected_folders_error_msg: Option<String>,
+    pub unexpected_error_msg: Option<String>,
+    pub append_error_msg: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -1035,6 +1037,8 @@ pub fn normalize_folder_config(
                                 )]),
                                 allow_unexpected_files: None,
                                 allow_unexpected_folders: None,
+                                append_error_msg: None,
+                                unexpected_error_msg: None,
                                 allow_unexpected: None,
                                 unexpected_files_error_msg: None,
                                 unexpected_folders_error_msg: None,
@@ -1067,12 +1071,14 @@ pub fn normalize_folder_config(
                 sub_folders_config,
                 folder_rules,
                 one_of_blocks,
+                append_error_msg: config.append_error_msg.clone(),
                 unexpected_files_error_msg: config
                     .unexpected_files_error_msg
                     .clone(),
                 unexpected_folders_error_msg: config
                     .unexpected_folders_error_msg
                     .clone(),
+                unexpected_error_msg: config.unexpected_error_msg.clone(),
                 allow_unexpected_files: config
                     .allow_unexpected_files
                     .unwrap_or(default_allow_unexpected_files_or_folders),
