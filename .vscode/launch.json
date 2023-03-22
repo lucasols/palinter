@@ -16,6 +16,8 @@
         }
       },
       "args": [
+        "circular-deps",
+        "'@src/api/apiCall.ts",
         "--config",
         "projects_test/jestor_store_folder.yaml",
         "--root",

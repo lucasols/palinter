@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-clap = { version = "4.1.8", features = ["derive"] }
+clap = { version = "4.1.8", features = ["derive", "cargo"] }
 colored = "2.0.0"
 convert_case = "0.6.0"
 globset = "0.4.10"

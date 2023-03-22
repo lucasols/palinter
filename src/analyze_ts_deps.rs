@@ -25,6 +25,7 @@ mod extract_file_content_exports;
 mod extract_file_content_imports;
 mod modules_graph;
 pub mod ts_checks;
+pub mod circular_deps;
 
 #[derive(Debug, Clone, Default)]
 pub struct FileDepsInfo {
@@ -39,7 +40,7 @@ lazy_static! {
         Mutex::new(HashMap::new());
     static ref IMPORTS_CACHE: Mutex<HashMap<String, IndexMap<String, Import>>> =
         Mutex::new(HashMap::new());
-    static ref ALIASES: Mutex<HashMap<String, String>> = Mutex::new(HashMap::new());
+    pub static ref ALIASES: Mutex<HashMap<String, String>> = Mutex::new(HashMap::new());
     static ref ROOT_DIR: Mutex<String> = Mutex::new(String::from("."));
     static ref DEBUG_READ_EDGES_COUNT: Mutex<usize> = Mutex::new(0);
     static ref FILE_EDGES_CACHE: Mutex<HashMap<String, Vec<String>>> =
@@ -95,6 +96,8 @@ fn get_file_deps_result(file_path: &Path) -> Result<DepsResult, String> {
                 &file_path.to_str().unwrap().to_string(),
                 &mut get_file_edges,
                 None,
+                false,
+                false,
             )?;
 
             binding.insert(file_path.to_str().unwrap().to_string(), deps.clone());
