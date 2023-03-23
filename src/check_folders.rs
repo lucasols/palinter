@@ -607,7 +607,7 @@ fn check_folder_childs(
 
                 let mut folder_touched = false;
                 let mut folder_has_error = false;
-                let mut folder_has_child_rules = false;
+                let mut childs_was_checked = false;
 
                 let mut check_folder_rule = |rule: &FolderRule| {
                     let folder_matches =
@@ -625,7 +625,7 @@ fn check_folder_childs(
                                 .iter()
                                 .any(|rule| rule.childs_rules.is_some())
                             {
-                                folder_has_child_rules = true;
+                                childs_was_checked = true;
                             }
                         }
 
@@ -755,7 +755,7 @@ fn check_folder_childs(
                         ..sub_folder_cfg.clone()
                     });
 
-                if !folder_has_child_rules {
+                if !childs_was_checked {
                     if let Err(extra_errors) = check_folder_childs(
                         sub_folder,
                         new_sub_folder_cfg.as_ref(),
