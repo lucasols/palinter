@@ -64,10 +64,19 @@ pub fn extension_is(
     Ok(())
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Capture {
     pub name: String,
     pub value: String,
+}
+
+impl Capture {
+    pub fn new(name: &str, value: &String) -> Self {
+        Self {
+            name: format!("${{{}}}", name),
+            value: value.clone(),
+        }
+    }
 }
 
 pub fn path_pattern_match(
@@ -118,6 +127,27 @@ struct ContextVars {
     pub folder_name: Option<String>,
 }
 
+pub fn expand_to_capture_case_variation(name: &str, value: String) -> Vec<Capture> {
+    let mut result = vec![];
+
+    result.extend([
+        Capture::new(name, &value),
+        Capture::new(&format!("{}_camelCase", name), &value.to_case(Case::Camel)),
+        Capture::new(&format!("{}_kebab-case", name), &value.to_case(Case::Kebab)),
+        Capture::new(&format!("{}_snake_case", name), &value.to_case(Case::Snake)),
+        Capture::new(
+            &format!("{}_PascalCase", name),
+            &value.to_case(Case::Pascal),
+        ),
+        Capture::new(
+            &format!("{}_CONSTANT_CASE", name),
+            &value.to_case(Case::UpperSnake),
+        ),
+    ]);
+
+    result
+}
+
 fn replace_with_captures(
     pattern: &String,
     captures: &[Capture],
@@ -125,28 +155,11 @@ fn replace_with_captures(
 ) -> String {
     let mut result = pattern.to_owned();
 
+    let mut captures = captures.to_vec();
+
     if let Some(folder_name) = context_vars.folder_name {
-        result = result.replace("${folder_name}", &folder_name);
-        result = result.replace(
-            "${folder_name_camelCase}",
-            &folder_name.to_case(Case::Camel),
-        );
-        result = result.replace(
-            "${folder_name_kebab-case}",
-            &folder_name.to_case(Case::Kebab),
-        );
-        result = result.replace(
-            "${folder_name_snake_case}",
-            &folder_name.to_case(Case::Snake),
-        );
-        result = result.replace(
-            "${folder_name_PascalCase}",
-            &folder_name.to_case(Case::Pascal),
-        );
-        result = result.replace(
-            "${folder_name_CONSTANT_CASE}",
-            &folder_name.to_case(Case::UpperSnake),
-        );
+        captures
+            .extend(expand_to_capture_case_variation("folder_name", folder_name));
     }
 
     for capture in captures.iter() {

@@ -101,6 +101,7 @@ pub struct FolderExpect {
     pub root_files_has: Option<String>,
     pub root_files_has_not: Option<String>,
     pub have_min_childs: Option<usize>,
+    pub childs_rules: Option<(Vec<FolderRule>, Vec<FileRule>)>,
 
     pub error_msg: Option<String>,
 }
@@ -495,6 +496,8 @@ fn normalize_rules(
                                 expects.push(get_folder_expect(
                                     parsed_expected,
                                     config_path,
+                                    config,
+                                    normalized_blocks,
                                 )?);
                             }
 
@@ -535,6 +538,8 @@ fn normalize_rules(
                                 expect: AnyNoneOr::Or(vec![get_folder_expect(
                                     rule_expect.clone(),
                                     config_path,
+                                    config,
+                                    normalized_blocks,
                                 )?]),
                                 not_touch: get_true_flag(
                                     config_path,
@@ -792,6 +797,8 @@ fn check_expect_one_of<T>(
 fn get_folder_expect(
     parsed_expected: ParsedFolderExpect,
     config_path: &String,
+    parsed_config: &ParsedConfig,
+    normalized_blocks: &NormalizedBlocks,
 ) -> Result<FolderExpect, String> {
     Ok(FolderExpect {
         error_msg: parsed_expected.error_msg.clone(),
@@ -805,6 +812,35 @@ fn get_folder_expect(
         root_files_has: parsed_expected.root_files_has,
         root_files_has_not: parsed_expected.root_files_has_not,
         have_min_childs: parsed_expected.have_min_childs,
+        childs_rules: parsed_expected
+            .childs_rules
+            .map(
+                |rules| -> Result<(Vec<FolderRule>, Vec<FileRule>), String> {
+                    let (file_rules, folder_rules, _) = normalize_rules(
+                        &rules,
+                        config_path,
+                        normalized_blocks,
+                        parsed_config,
+                    )?;
+
+                    for folder_rule in &folder_rules {
+                        if let AnyNoneOr::Or(expect) = &folder_rule.expect {
+                            if expect
+                                .iter()
+                                .any(|expect| expect.childs_rules.is_some())
+                            {
+                                return Err(format!(
+                                    "Config error in '{}': 'childs_rules' cannot be used inside another 'childs_rules'",
+                                    config_path
+                                ));
+                            }
+                        }
+                    }
+
+                    Ok((folder_rules, file_rules))
+                },
+            )
+            .transpose()?,
     })
 }
 
@@ -847,6 +883,7 @@ fn get_file_expect(
         content_not_matches: normalize_single_or_multiple_option(
             &parsed_expected.content_not_matches,
         ),
+
         name_is_not: parsed_expected.name_is_not,
         ts: match parsed_expected.ts {
             Some(ts) => Some(TsFileExpect {

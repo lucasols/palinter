@@ -69,6 +69,7 @@ pub struct ParsedFolderExpect {
     pub root_files_has: Option<String>,
     pub root_files_has_not: Option<String>,
     pub have_min_childs: Option<usize>,
+    pub childs_rules: Option<Vec<ParsedRule>>,
 
     pub error_msg: Option<String>,
 

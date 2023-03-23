@@ -395,16 +395,18 @@ fn test_cases() {
                                 match &project.expected_errors {
                                     Some(expected_errors) => {
                                         if let Err(errors) = result {
-                                            if !do_vecs_match(
-                                                &errors,
-                                                expected_errors,
-                                            ) {
+                                            let collected = &expected_errors
+                                                .iter()
+                                                .map(|err| err.trim().to_string())
+                                                .collect::<Vec<String>>();
+
+                                            if !do_vecs_match(&errors, collected) {
                                                 test_errors.push(format!(
                                                     "{}\n\
                                                     Expected errors: {:#?}\n\
                                                     But got:         {:#?}",
                                                     test_case,
-                                                    sort_vector(expected_errors),
+                                                    sort_vector(collected),
                                                     sort_vector(&errors)
                                                 ));
                                             }
