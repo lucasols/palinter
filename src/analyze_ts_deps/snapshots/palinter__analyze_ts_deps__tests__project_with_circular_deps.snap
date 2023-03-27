@@ -6,6 +6,7 @@ expression: results
     "./src/fileA.ts": DepsResult {
         deps: {
             "./src/fileB.ts",
+            "./src/fileA.ts",
         },
         circular_deps: Some(
             [

@@ -58,6 +58,7 @@ pub struct ContentMatches {
 pub struct TsFileExpect {
     pub not_have_unused_exports: bool,
     pub not_have_circular_deps: bool,
+    pub not_have_direct_circular_deps: bool,
     pub not_have_deps_from: Option<Vec<String>>,
     pub not_have_deps_outside: Option<Vec<String>>,
     pub not_have_exports_used_outside: Option<Vec<String>>,
@@ -896,6 +897,11 @@ fn get_file_expect(
                     config_path,
                     &ts.not_have_circular_deps,
                     "ts.not_have_circular_deps",
+                )?,
+                not_have_direct_circular_deps: get_true_flag(
+                    config_path,
+                    &ts.not_have_direct_circular_deps,
+                    "ts.not_have_direct_circular_deps",
                 )?,
                 not_have_deps_from: normalize_single_or_multiple_option(
                     &ts.not_have_deps_from,

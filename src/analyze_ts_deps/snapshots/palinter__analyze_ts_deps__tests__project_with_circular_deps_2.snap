@@ -7,6 +7,7 @@ expression: results
         deps: {
             "./src/2.ts",
             "./src/3.ts",
+            "./src/1.ts",
         },
         circular_deps: Some(
             [
@@ -46,6 +47,7 @@ expression: results
             "./src/3.ts",
             "./src/e.ts",
             "./src/f.ts",
+            "./src/b.ts",
         },
         circular_deps: Some(
             [

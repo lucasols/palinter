@@ -87,6 +87,8 @@ where
     }
 
     if path.contains(node_name) {
+        main_node_deps.insert(node_name.to_string());
+
         if !detailed_circular_deps {
             if !circular_deps.iter().any(|i| i == node_name) {
                 circular_deps.push(node_name.clone());

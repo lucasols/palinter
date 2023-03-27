@@ -90,6 +90,17 @@ pub fn check_ts_not_have_circular_deps(file: &File) -> Result<(), String> {
     }
 }
 
+pub fn check_ts_not_have_direct_circular_deps(file: &File) -> Result<(), String> {
+    let deps_info =
+        get_file_deps_result(&PathBuf::from(file.clone().relative_path))?;
+
+    if deps_info.deps.contains(&file.relative_path) {
+        Err("File has direct circular dependencies (run cmd `palinter circular-deps [file]` to get more info)".to_string())
+    } else {
+        Ok(())
+    }
+}
+
 pub fn check_ts_not_have_deps_from(
     file: &File,
     disallow: &[String],

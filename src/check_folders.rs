@@ -4,8 +4,8 @@ use std::collections::{HashMap, HashSet};
 use crate::{
     analyze_ts_deps::ts_checks::{
         check_ts_not_have_circular_deps, check_ts_not_have_deps_from,
-        check_ts_not_have_deps_outside, check_ts_not_have_unused_exports,
-        check_ts_not_have_used_exports_outside,
+        check_ts_not_have_deps_outside, check_ts_not_have_direct_circular_deps,
+        check_ts_not_have_unused_exports, check_ts_not_have_used_exports_outside,
     },
     internal_config::{
         AnyNoneOr, AnyOr, Config, FileConditions, FileExpect, FileRule,
@@ -236,6 +236,14 @@ fn check_file_expect(
                     pass_some_expect = true;
                     check_result(
                         check_ts_not_have_used_exports_outside(file, allowed),
+                        &expect.error_msg,
+                    );
+                }
+
+                if ts_expect.not_have_direct_circular_deps {
+                    pass_some_expect = true;
+                    check_result(
+                        check_ts_not_have_direct_circular_deps(file),
                         &expect.error_msg,
                     );
                 }

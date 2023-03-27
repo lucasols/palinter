@@ -43,6 +43,7 @@ expression: results
     "./src/b.ts": DepsResult {
         deps: {
             "./src/c.ts",
+            "./src/b.ts",
             "./src/d.ts",
             "./src/e.ts",
             "./src/f.ts",
