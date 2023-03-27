@@ -683,4 +683,243 @@ import { strictAssertIsNotNullish } from '@utils/typeAssertions';
         "###
         );
     }
+
+    #[test]
+    fn bug_test_2() {
+        let file_content = r#"
+import {
+  SheelMenuItemTabIcon,
+  ShellMenuItem,
+} from '@src/components/shellMenu/ShellMenuItem';
+import { ShellMenuItemsContainer } from '@src/components/shellMenu/ShellMenuItemsContainer';
+import { ShellMenuItemsGroup } from '@src/components/shellMenu/ShellMenuItemsGroup';
+import { ShellMenuLoadingState } from '@src/components/shellMenu/ShellMenuLoadingState';
+import { UserProfilePicWithStatus } from '@src/components/UserProfilePicWithStatus';
+import { getCurrentUserId } from '@src/state/userStore';
+import {
+  ChatConversation,
+  chatsList,
+  UseListQueryConversations,
+} from '@src/stores/chat/chatsList';
+import { createDm } from '@src/stores/chat/chatsList.actions';
+import { NormalizedTab } from '@src/stores/tabsCollection';
+import { useUsers } from '@src/stores/usersList';
+import { usersStatusStore } from '@src/stores/usersStatusStore';
+import { getChatPath, parseRecordChatSlug } from '@src/utils/chat.utils';
+import { navigate } from '@src/utils/history';
+import { useMutationWithValueState } from '@src/utils/hooks/useSavingState';
+import { localSync, useLocalSync } from '@src/utils/localSync';
+import { useArrayToMap } from '@utils/hooks/useArrayToMap';
+import { __ } from '@utils/i18n/i18n';
+import { isNotNullish, isNullish } from '@utils/isNullish';
+import { sortBy } from '@utils/sortBy';
+import { useMemo } from 'react';
+import { useStoreSnapshot } from 't-state';
+"#;
+
+        let imports = extract_imports_from_file_content(file_content).unwrap();
+
+        assert_debug_snapshot!(
+            imports,
+            @r###"
+        [
+            Import {
+                import_path: "@src/components/shellMenu/ShellMenuItem",
+                line: 2,
+                values: Named(
+                    [
+                        "SheelMenuItemTabIcon",
+                        "ShellMenuItem",
+                    ],
+                ),
+            },
+            Import {
+                import_path: "@src/components/shellMenu/ShellMenuItemsContainer",
+                line: 6,
+                values: Named(
+                    [
+                        "ShellMenuItemsContainer",
+                    ],
+                ),
+            },
+            Import {
+                import_path: "@src/components/shellMenu/ShellMenuItemsGroup",
+                line: 7,
+                values: Named(
+                    [
+                        "ShellMenuItemsGroup",
+                    ],
+                ),
+            },
+            Import {
+                import_path: "@src/components/shellMenu/ShellMenuLoadingState",
+                line: 8,
+                values: Named(
+                    [
+                        "ShellMenuLoadingState",
+                    ],
+                ),
+            },
+            Import {
+                import_path: "@src/components/UserProfilePicWithStatus",
+                line: 9,
+                values: Named(
+                    [
+                        "UserProfilePicWithStatus",
+                    ],
+                ),
+            },
+            Import {
+                import_path: "@src/state/userStore",
+                line: 10,
+                values: Named(
+                    [
+                        "getCurrentUserId",
+                    ],
+                ),
+            },
+            Import {
+                import_path: "@src/stores/chat/chatsList",
+                line: 11,
+                values: Named(
+                    [
+                        "ChatConversation",
+                        "chatsList",
+                        "UseListQueryConversations",
+                    ],
+                ),
+            },
+            Import {
+                import_path: "@src/stores/chat/chatsList.actions",
+                line: 16,
+                values: Named(
+                    [
+                        "createDm",
+                    ],
+                ),
+            },
+            Import {
+                import_path: "@src/stores/tabsCollection",
+                line: 17,
+                values: Named(
+                    [
+                        "NormalizedTab",
+                    ],
+                ),
+            },
+            Import {
+                import_path: "@src/stores/usersList",
+                line: 18,
+                values: Named(
+                    [
+                        "useUsers",
+                    ],
+                ),
+            },
+            Import {
+                import_path: "@src/stores/usersStatusStore",
+                line: 19,
+                values: Named(
+                    [
+                        "usersStatusStore",
+                    ],
+                ),
+            },
+            Import {
+                import_path: "@src/utils/chat.utils",
+                line: 20,
+                values: Named(
+                    [
+                        "getChatPath",
+                        "parseRecordChatSlug",
+                    ],
+                ),
+            },
+            Import {
+                import_path: "@src/utils/history",
+                line: 21,
+                values: Named(
+                    [
+                        "navigate",
+                    ],
+                ),
+            },
+            Import {
+                import_path: "@src/utils/hooks/useSavingState",
+                line: 22,
+                values: Named(
+                    [
+                        "useMutationWithValueState",
+                    ],
+                ),
+            },
+            Import {
+                import_path: "@src/utils/localSync",
+                line: 23,
+                values: Named(
+                    [
+                        "localSync",
+                        "useLocalSync",
+                    ],
+                ),
+            },
+            Import {
+                import_path: "@utils/hooks/useArrayToMap",
+                line: 24,
+                values: Named(
+                    [
+                        "useArrayToMap",
+                    ],
+                ),
+            },
+            Import {
+                import_path: "@utils/i18n/i18n",
+                line: 25,
+                values: Named(
+                    [
+                        "__",
+                    ],
+                ),
+            },
+            Import {
+                import_path: "@utils/isNullish",
+                line: 26,
+                values: Named(
+                    [
+                        "isNotNullish",
+                        "isNullish",
+                    ],
+                ),
+            },
+            Import {
+                import_path: "@utils/sortBy",
+                line: 27,
+                values: Named(
+                    [
+                        "sortBy",
+                    ],
+                ),
+            },
+            Import {
+                import_path: "react",
+                line: 28,
+                values: Named(
+                    [
+                        "useMemo",
+                    ],
+                ),
+            },
+            Import {
+                import_path: "t-state",
+                line: 29,
+                values: Named(
+                    [
+                        "useStoreSnapshot",
+                    ],
+                ),
+            },
+        ]
+        "###
+        );
+    }
 }

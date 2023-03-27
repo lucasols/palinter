@@ -138,7 +138,7 @@ fn get_resolved_path(path: &Path) -> Result<Option<PathBuf>, String> {
         .lock()
         .unwrap()
         .contains_key(file_with_replaced_alias.to_str().unwrap())
-        || PathBuf::from(file_abs_path.clone()).exists();
+        || PathBuf::from(file_abs_path.clone()).is_file();
 
     if !file_exists {
         let file_name_start_with_uppercase = file_with_replaced_alias
@@ -152,16 +152,16 @@ fn get_resolved_path(path: &Path) -> Result<Option<PathBuf>, String> {
             .is_uppercase();
 
         let test_extensions = if file_name_start_with_uppercase {
-            vec!["tsx", "ts"]
+            vec![".tsx", ".ts", "/index.tsx", "/index.ts"]
         } else {
-            vec!["ts", "tsx"]
+            vec![".ts", ".tsx", "/index.ts", "/index.tsx"]
         };
 
-        for ext_to_try in &test_extensions {
+        for paths_to_try in &test_extensions {
             let cache_name = format!(
-                "{}.{}",
+                "{}{}",
                 file_with_replaced_alias.to_str().unwrap(),
-                ext_to_try
+                paths_to_try
             );
 
             let file_is_in_cache =
@@ -170,7 +170,7 @@ fn get_resolved_path(path: &Path) -> Result<Option<PathBuf>, String> {
             let new_path = if file_is_in_cache {
                 PathBuf::from(cache_name)
             } else {
-                PathBuf::from(format!("{}.{}", file_abs_path, ext_to_try))
+                PathBuf::from(format!("{}{}", file_abs_path, paths_to_try))
             };
 
             let new_file = load_file_from_cache(&new_path);
@@ -186,7 +186,7 @@ fn get_resolved_path(path: &Path) -> Result<Option<PathBuf>, String> {
         }
 
         return Err(format!(
-            "TS: Can't find file with extensions .ts or .tsx for path: {:?}",
+            "TS: Can't resolve path: {:?}",
             file_with_replaced_alias
         ));
     } else {
