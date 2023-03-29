@@ -46,6 +46,11 @@ fn main() {
                     arg!(-r --root <root> "Path to the root folder of the project")
                         .default_value(".")
                         .value_parser(value_parser!(PathBuf)),
+                )
+                .arg(
+                    arg!(-t --truncate <truncate> "Truncate the output to the first n elements")
+                        .default_value("10")
+                        .value_parser(value_parser!(usize)),
                 ),
         )
         .get_matches();
@@ -70,9 +75,12 @@ fn main() {
 
             let config = get_config(&parsed_config).unwrap();
 
-            if let Err(err) =
-                get_detailed_file_circular_deps_result(file_name, root, config)
-            {
+            if let Err(err) = get_detailed_file_circular_deps_result(
+                file_name,
+                root,
+                config,
+                *matches.get_one::<usize>("truncate").unwrap(),
+            ) {
                 eprintln!("❌ Error getting circular deps: {}", err);
 
                 std::process::exit(1);
