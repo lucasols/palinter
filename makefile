@@ -42,4 +42,4 @@ delete_unused_snapshots:
 	cargo insta test --unreferenced=delete
 
 jestor_test_circular_dep:
-	cargo run --release -- circular-deps '@src/api/apiCall.ts' --config projects_test/jestor_store_folder.yaml --root ../jestor/web-app
+	cargo run --release -- circular-deps '@src/pages/modals/Find.tsx' --config ../jestor/web-app/palinter.yaml --root ../jestor/web-app

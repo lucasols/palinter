@@ -168,13 +168,16 @@ where
             detailed_circular_deps,
             disable_cache,
         )? {
-            cache.insert(
-                edge.to_string(),
-                DepsResult {
-                    deps: edge_deps.clone(),
-                    circular_deps: None,
-                },
-            );
+            if !disable_cache {
+                cache.insert(
+                    edge.to_string(),
+                    DepsResult {
+                        deps: edge_deps.clone(),
+                        circular_deps: None,
+                    },
+                );
+            }
+
             deps.extend(edge_deps);
         } else {
             has_circular_deps = true;

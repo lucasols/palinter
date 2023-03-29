@@ -58,9 +58,26 @@ pub fn get_detailed_file_circular_deps_result(
 
         let original_len = cdeps.len();
 
+        let current_dep_path = format!("|{}|", resolved_path.to_str().unwrap());
+
+        cdeps.sort_by_key(|dep| {
+            if dep.ends_with(&current_dep_path) {
+                0
+            } else {
+                1
+            }
+        });
+
         cdeps.truncate(truncate);
 
         println!("🔁 Circular deps found:");
+
+        if result
+            .deps
+            .contains(&resolved_path.to_str().unwrap().to_string())
+        {
+            println!("\n{}", "Direct circular deps found".bright_yellow());
+        }
 
         for dep in &cdeps {
             let parts = dep.split(" > ").collect::<Vec<&str>>();
