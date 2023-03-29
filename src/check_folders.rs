@@ -8,19 +8,21 @@ use crate::{
         check_ts_not_have_unused_exports, check_ts_not_have_used_exports_outside,
     },
     internal_config::{
-        AnyNoneOr, AnyOr, Config, FileConditions, FileExpect, FileRule,
-        FolderConditions, FolderConfig, FolderExpect, FolderRule, OneOfBlocks,
+        AnyNoneOr, AnyOr, Config, ErrorMsgVars, FileConditions, FileExpect,
+        FileRule, FolderConditions, FolderConfig, FolderExpect, FolderRule,
+        OneOfBlocks,
     },
     load_folder_structure::{File, Folder, FolderChild},
     utils::clone_extend_vec,
 };
 
 use self::checks::{
-    check_content, check_content_not_matches, check_folder_min_childs,
-    check_negated_path_pattern, check_negated_root_files_has_pattern,
-    check_path_pattern, check_root_files_find_pattern, check_root_files_has_pattern,
+    check_content, check_content_not_matches, check_file_is_not_empty,
+    check_folder_min_childs, check_negated_path_pattern,
+    check_negated_root_files_has_pattern, check_path_pattern,
+    check_root_files_find_pattern, check_root_files_has_pattern,
     expand_to_capture_case_variation, extension_is, has_sibling_file, name_case_is,
-    path_pattern_match, Capture, check_file_is_not_empty,
+    path_pattern_match, Capture,
 };
 
 #[derive(Debug, Default)]
@@ -70,12 +72,25 @@ fn file_matches_condition(
 fn append_expect_error(
     result: Result<(), String>,
     expect_error_msg: &Option<String>,
+    error_msg_vars: &ErrorMsgVars,
 ) -> Result<(), String> {
     match result {
         Ok(_) => Ok(()),
         Err(error) => {
             if let Some(expect_error_msg) = expect_error_msg {
-                Err(format!("{}\n   | {}", expect_error_msg, error.dimmed()))
+                let custom_err_msg = if let Some(vars) = error_msg_vars {
+                    let mut err_msg = expect_error_msg.clone();
+
+                    for (var, value) in vars {
+                        err_msg = err_msg.replace(&format!("${{{}}}", var), value);
+                    }
+
+                    err_msg
+                } else {
+                    expect_error_msg.to_string()
+                };
+
+                Err(format!("{}\n   | {}", custom_err_msg, error.dimmed()))
             } else {
                 Err(error)
             }
@@ -86,8 +101,9 @@ fn append_expect_error(
 fn append_error_to_vec(
     result: Result<(), String>,
     expect_error_msg: &Option<String>,
+    error_msg_vars: &ErrorMsgVars,
 ) -> Result<(), Vec<String>> {
-    let result = append_expect_error(result, expect_error_msg);
+    let result = append_expect_error(result, expect_error_msg, error_msg_vars);
 
     match result {
         Ok(_) => Ok(()),
@@ -101,6 +117,7 @@ fn check_file_expect(
     folder: &Folder,
     conditions_result: &ConditionsResult,
     context_conditions: &[Capture],
+    error_msg_vars: &ErrorMsgVars,
 ) -> Result<(), Vec<String>> {
     if let AnyNoneOr::None = expected {
         return Err(vec!["File is not expected".to_string()]);
@@ -110,7 +127,9 @@ fn check_file_expect(
 
     let mut check_result =
         |result: Result<(), String>, expect_error_msg: &Option<String>| {
-            if let Err(error) = append_expect_error(result, expect_error_msg) {
+            if let Err(error) =
+                append_expect_error(result, expect_error_msg, error_msg_vars)
+            {
                 errors.push(error);
             }
         };
@@ -201,10 +220,7 @@ fn check_file_expect(
 
             if expect.is_not_empty {
                 pass_some_expect = true;
-                check_result(
-                    check_file_is_not_empty(&file),
-                    &expect.error_msg,
-                );
+                check_result(check_file_is_not_empty(file), &expect.error_msg);
             }
 
             if let Some(ts_expect) = &expect.ts {
@@ -316,6 +332,8 @@ fn folder_matches_condition(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
+
 fn check_folder_expected(
     folder: &Folder,
     expected: &AnyNoneOr<Vec<FolderExpect>>,
@@ -324,6 +342,7 @@ fn check_folder_expected(
     inherited_files_rules: &[InheritedFileRule],
     inherited_folders_rules: &[InheritedFolderRule],
     context_conditions: &[Capture],
+    error_msg_vars: &ErrorMsgVars,
 ) -> Result<(), Vec<String>> {
     match expected {
         AnyNoneOr::None => Err(vec!["Folder is not expected".to_string()]),
@@ -340,6 +359,7 @@ fn check_folder_expected(
                     append_error_to_vec(
                         name_case_is(&folder.name, file_name_case_is),
                         &expect.error_msg,
+                        error_msg_vars,
                     )?;
                 }
 
@@ -348,6 +368,7 @@ fn check_folder_expected(
                     append_error_to_vec(
                         check_path_pattern(&folder.name, name_is, &captures),
                         &expect.error_msg,
+                        error_msg_vars,
                     )?;
                 }
 
@@ -360,6 +381,7 @@ fn check_folder_expected(
                             &captures,
                         ),
                         &expect.error_msg,
+                        error_msg_vars,
                     )?;
                 }
 
@@ -373,6 +395,7 @@ fn check_folder_expected(
                         )
                         .map(|_| ()),
                         &expect.error_msg,
+                        error_msg_vars,
                     )?;
                 }
 
@@ -385,6 +408,7 @@ fn check_folder_expected(
                             &captures,
                         ),
                         &expect.error_msg,
+                        error_msg_vars,
                     )?;
                 }
 
@@ -393,6 +417,7 @@ fn check_folder_expected(
                     append_error_to_vec(
                         check_folder_min_childs(folder, *min_childs),
                         &expect.error_msg,
+                        error_msg_vars,
                     )?;
                 }
 
@@ -421,6 +446,7 @@ fn check_folder_expected(
                             "context_folder",
                             folder.name.clone(),
                         ),
+                        error_msg_vars,
                     )?;
                 }
 
@@ -475,6 +501,7 @@ fn check_folder_childs(
     inherited_files_rules: Vec<InheritedFileRule>,
     inherited_folders_rules: Vec<InheritedFolderRule>,
     context_conditions: Vec<Capture>,
+    error_msg_vars: &ErrorMsgVars,
 ) -> Result<(), Vec<String>> {
     let mut errors: Vec<String> = Vec::new();
 
@@ -533,6 +560,7 @@ fn check_folder_childs(
                             folder,
                             &conditions_result,
                             &context_conditions,
+                            error_msg_vars,
                         ) {
                             for error in expect_errors {
                                 errors.push(format!(
@@ -581,6 +609,7 @@ fn check_folder_childs(
                                     folder,
                                     &conditions_result,
                                     &context_conditions,
+                                    error_msg_vars,
                                 )
                                 .is_ok()
                                 {
@@ -653,6 +682,7 @@ fn check_folder_childs(
                             &inherited_files_rules,
                             &inherited_folders_rules,
                             &context_conditions,
+                            error_msg_vars,
                         ) {
                             if !errors_found.is_empty() {
                                 folder_has_error = true;
@@ -779,6 +809,7 @@ fn check_folder_childs(
                         sub_folder_inherited_files_rules,
                         sub_folder_inherited_folders_rules,
                         Vec::new(),
+                        error_msg_vars,
                     ) {
                         errors.extend(extra_errors);
                     }
@@ -812,6 +843,7 @@ pub fn check_root_folder(
         Vec::new(),
         Vec::new(),
         Vec::new(),
+        &config.error_msg_vars,
     )
 }
 

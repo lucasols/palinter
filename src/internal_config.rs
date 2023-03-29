@@ -165,12 +165,15 @@ pub struct TsConfig {
     pub unused_exports_entry_points: Vec<String>,
 }
 
+pub type ErrorMsgVars = Option<BTreeMap<String, String>>;
+
 #[derive(Debug, Clone)]
 pub struct Config {
     pub root_folder: FolderConfig,
     pub analyze_content_of_files_types: Vec<String>,
     pub ignore: HashSet<String>,
     pub ts_config: Option<TsConfig>,
+    pub error_msg_vars: ErrorMsgVars,
 }
 
 fn normalize_single_or_multiple<T: Clone>(
@@ -1196,6 +1199,7 @@ pub fn get_config(parsed_config: &ParsedConfig) -> Result<Config, String> {
     }
 
     Ok(Config {
+        error_msg_vars: parsed_config.error_msg_vars.clone(),
         root_folder: normalize_folder_config(
             &parsed_config.root_folder,
             String::from("."),

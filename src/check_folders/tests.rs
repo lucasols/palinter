@@ -534,6 +534,7 @@ fn test_case_folder_structure_is_equal_to_loaded_structure() {
             unexpected_error_msg: None,
         },
         ts_config: None,
+        error_msg_vars: None,
     };
 
     let root = PathBuf::from("./src/fixtures/analyze_file_contents");

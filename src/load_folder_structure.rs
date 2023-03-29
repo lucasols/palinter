@@ -188,6 +188,7 @@ mod tests {
                 sub_folders_config: HashMap::new(),
             },
             ts_config: None,
+            error_msg_vars: None,
         };
 
         let root = PathBuf::from("./src/fixtures/ignore_folder");
@@ -222,6 +223,7 @@ mod tests {
                 sub_folders_config: HashMap::new(),
             },
             ts_config: None,
+            error_msg_vars: None,
         };
 
         let root = PathBuf::from("./src/fixtures/analyze_file_contents");
@@ -250,6 +252,7 @@ mod tests {
                 sub_folders_config: HashMap::new(),
             },
             ts_config: None,
+            error_msg_vars: None,
         };
 
         let root = PathBuf::from("./src/fixtures/analyze_file_contents");
