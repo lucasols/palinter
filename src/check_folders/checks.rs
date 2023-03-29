@@ -1,6 +1,7 @@
 use crate::{
     check_folders::{Folder, FolderChild},
     internal_config::{ContentMatches, NameCase, RootFilesFindPattern},
+    load_folder_structure::File,
     utils::wrap_vec_string_itens_in,
 };
 use convert_case::{Case, Casing};
@@ -478,6 +479,19 @@ pub fn check_folder_min_childs(
     }
 
     Ok(())
+}
+
+pub fn check_file_is_not_empty(file: &File) -> Result<(), String> {
+    let is_emtpy = file
+        .content
+        .as_ref()
+        .map_or(true, |content| content.trim().is_empty());
+
+    if is_emtpy {
+        Err("file is empty".to_string())
+    } else {
+        Ok(())
+    }
 }
 
 #[cfg(test)]

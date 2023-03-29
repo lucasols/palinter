@@ -75,6 +75,7 @@ pub struct FileExpect {
     pub name_is: Option<String>,
     pub name_is_not: Option<String>,
     pub ts: Option<TsFileExpect>,
+    pub is_not_empty: bool,
 
     pub error_msg: Option<String>,
 }
@@ -886,6 +887,11 @@ fn get_file_expect(
         ),
 
         name_is_not: parsed_expected.name_is_not,
+        is_not_empty: get_true_flag(
+            config_path,
+            &parsed_expected.is_not_empty,
+            "is_not_empty",
+        )?,
         ts: match parsed_expected.ts {
             Some(ts) => Some(TsFileExpect {
                 not_have_unused_exports: get_true_flag(

@@ -20,7 +20,7 @@ use self::checks::{
     check_negated_path_pattern, check_negated_root_files_has_pattern,
     check_path_pattern, check_root_files_find_pattern, check_root_files_has_pattern,
     expand_to_capture_case_variation, extension_is, has_sibling_file, name_case_is,
-    path_pattern_match, Capture,
+    path_pattern_match, Capture, check_file_is_not_empty,
 };
 
 #[derive(Debug, Default)]
@@ -195,6 +195,14 @@ fn check_file_expect(
                         content_not_matches,
                         &captures,
                     ),
+                    &expect.error_msg,
+                );
+            }
+
+            if expect.is_not_empty {
+                pass_some_expect = true;
+                check_result(
+                    check_file_is_not_empty(&file),
                     &expect.error_msg,
                 );
             }

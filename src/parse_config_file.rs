@@ -43,6 +43,7 @@ pub struct ParsedFileExpect {
     pub content_not_matches: Option<SingleOrMultiple<String>>,
     pub name_is: Option<String>,
     pub name_is_not: Option<String>,
+    pub is_not_empty: Option<bool>,
     pub ts: Option<ParsedTsFileExpect>,
 
     pub error_msg: Option<String>,
