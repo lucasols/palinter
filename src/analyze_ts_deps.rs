@@ -33,6 +33,12 @@ pub struct FileDepsInfo {
     exports: Vec<Export>,
 }
 
+#[derive(Debug, Clone, Default)]
+struct FileEdgesCache {
+    edges_without_types: Vec<String>,
+    edges: Vec<String>,
+}
+
 lazy_static! {
     static ref FILES_CACHE: Mutex<HashMap<String, File>> =
         Mutex::new(HashMap::new());
@@ -44,9 +50,7 @@ lazy_static! {
         Mutex::new(HashMap::new());
     static ref ROOT_DIR: Mutex<String> = Mutex::new(String::from("."));
     static ref DEBUG_READ_EDGES_COUNT: Mutex<usize> = Mutex::new(0);
-    static ref FILE_EDGES_CACHE: Mutex<HashMap<String, Vec<String>>> =
-        Mutex::new(HashMap::new());
-    static ref FILE_EDGES_CACHE_IGNORE_TYPES: Mutex<HashMap<String, Vec<String>>> =
+    static ref FILE_EDGES_CACHE: Mutex<HashMap<String, FileEdgesCache>> =
         Mutex::new(HashMap::new());
     pub static ref USED_FILES: Mutex<HashMap<String, FileDepsInfo>> =
         Mutex::new(HashMap::new());
@@ -63,7 +67,6 @@ pub fn _setup_test() {
     *ROOT_DIR.lock().unwrap() = String::from(".");
     *DEBUG_READ_EDGES_COUNT.lock().unwrap() = 0;
     FILE_EDGES_CACHE.lock().unwrap().clear();
-    FILE_EDGES_CACHE_IGNORE_TYPES.lock().unwrap().clear();
     USED_FILES.lock().unwrap().clear();
     FILE_DEPS_RESULT_CACHE.lock().unwrap().clear();
 }
@@ -251,11 +254,7 @@ fn get_file_edges(
 ) -> Result<Vec<String>, String> {
     let resolved_path = get_resolved_path(Path::new(unresolved_path))?;
 
-    let mut file_edges_cache = if ignore_type_imports {
-        FILE_EDGES_CACHE_IGNORE_TYPES.lock().unwrap()
-    } else {
-        FILE_EDGES_CACHE.lock().unwrap()
-    };
+    let mut file_edges_cache = FILE_EDGES_CACHE.lock().unwrap();
 
     if *DEBUG_READ_EDGES_COUNT.lock().unwrap() > 2_000_000 {
         panic!("Too many edges read, probably infinite loop");
@@ -264,7 +263,11 @@ fn get_file_edges(
     *DEBUG_READ_EDGES_COUNT.lock().unwrap() += 1;
 
     if let Some(cached_edges) = file_edges_cache.get(unresolved_path) {
-        return Ok(cached_edges.clone());
+        return Ok(if ignore_type_imports {
+            cached_edges.edges_without_types.clone()
+        } else {
+            cached_edges.edges.clone()
+        });
     }
 
     if let Some(resolved_path) = resolved_path {
@@ -278,32 +281,41 @@ fn get_file_edges(
 
         let edges_imports = get_file_imports(resolved_path.to_str().unwrap())?;
 
-        let edges: Vec<String> = edges_imports
-            .values()
-            .map(|import: &Import| -> Result<Option<PathBuf>, String> {
-                if ignore_type_imports {
-                    if let ImportType::Type(_) = import.values {
-                        return Ok(None);
+        let mut non_type_edges: Vec<String> = Vec::new();
+        let mut edges: Vec<String> = Vec::new();
+
+        for import in edges_imports.values() {
+            if let Some(resolved_path) = get_resolved_path(&import.import_path)? {
+                let path_str = resolved_path.to_str().unwrap().to_string();
+
+                match import.values {
+                    ImportType::Type(_) => {
+                        edges.push(path_str);
+                    }
+                    _ => {
+                        non_type_edges.push(path_str.clone());
+                        edges.push(path_str);
                     }
                 }
+            }
+        }
 
-                if let Some(resolved_path) = get_resolved_path(&import.import_path)?
-                {
-                    Ok(Some(resolved_path))
-                } else {
-                    Ok(None)
-                }
-            })
-            .collect::<Result<Vec<Option<PathBuf>>, String>>()?
-            .into_iter()
-            .filter_map(|path| path.map(|p| p.to_str().unwrap().to_string()))
-            .collect();
+        file_edges_cache.insert(
+            unresolved_path.to_string(),
+            FileEdgesCache {
+                edges: edges.clone(),
+                edges_without_types: non_type_edges.clone(),
+            },
+        );
 
-        file_edges_cache.insert(unresolved_path.to_string(), edges.clone());
-
-        Ok(edges)
+        Ok(if ignore_type_imports {
+            non_type_edges
+        } else {
+            edges
+        })
     } else {
-        file_edges_cache.insert(unresolved_path.to_string(), vec![]);
+        file_edges_cache
+            .insert(unresolved_path.to_string(), FileEdgesCache::default());
 
         Ok(vec![])
     }
