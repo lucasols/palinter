@@ -40,6 +40,21 @@ structure:
     index.ts: |
       import '@src/fileB';
     fileA.ts: |
+      export type a = 1;
+      export type b = 2;
+    fileB.ts: |
+      import type { a } from '@src/fileA';
+      import type { b } from '@src/fileA';
+
+expected_errors: false
+```
+
+```yaml
+structure:
+  /src:
+    index.ts: |
+      import '@src/fileB';
+    fileA.ts: |
       export const a = 1;
       export const b = 2;
     fileB.ts: |

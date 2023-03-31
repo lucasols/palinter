@@ -44,6 +44,24 @@ expected_errors:
 structure:
   /src:
     index.ts: |
+      import '@src/fileB';
+    fileB.ts: |
+      import { a } from '@src/fileA';
+      import { b } from '@src/fileA';
+      import { test } from 'testLib';
+      export type c = 2;
+    fileA.ts: |
+      import type { c } from '@src/fileB';
+      export const a = 1;
+      export const b = 2;
+
+expected_errors: false
+```
+
+```yaml
+structure:
+  /src:
+    index.ts: |
       import '@src/fileC';
     fileC.ts: |
       export const d = 2;

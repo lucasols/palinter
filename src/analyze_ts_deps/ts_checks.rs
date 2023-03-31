@@ -41,6 +41,10 @@ pub fn check_ts_not_have_unused_exports(file: &File) -> Result<(), String> {
                             .retain(|export| !values.contains(&export.name));
                     }
                     ImportType::SideEffect => {}
+                    ImportType::Type(values) => {
+                        unused_exports
+                            .retain(|export| !values.contains(&export.name));
+                    }
                 }
             }
         }

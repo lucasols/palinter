@@ -1,5 +1,5 @@
 use colored::Colorize;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 use crate::{
     analyze_ts_deps::ts_checks::{
@@ -78,17 +78,8 @@ fn append_expect_error(
         Ok(_) => Ok(()),
         Err(error) => {
             if let Some(expect_error_msg) = expect_error_msg {
-                let custom_err_msg = if let Some(vars) = error_msg_vars {
-                    let mut err_msg = expect_error_msg.clone();
-
-                    for (var, value) in vars {
-                        err_msg = err_msg.replace(&format!("${{{}}}", var), value);
-                    }
-
-                    err_msg
-                } else {
-                    expect_error_msg.to_string()
-                };
+                let custom_err_msg =
+                    replace_error_msg_vars(error_msg_vars, expect_error_msg);
 
                 Err(format!("{}\n   | {}", custom_err_msg, error.dimmed()))
             } else {
@@ -96,6 +87,24 @@ fn append_expect_error(
             }
         }
     }
+}
+
+fn replace_error_msg_vars(
+    error_msg_vars: &Option<BTreeMap<String, String>>,
+    expect_error_msg: &String,
+) -> String {
+    let custom_err_msg = if let Some(vars) = error_msg_vars {
+        let mut err_msg = expect_error_msg.clone();
+
+        for (var, value) in vars {
+            err_msg = err_msg.replace(&format!("${{{}}}", var), value);
+        }
+
+        err_msg
+    } else {
+        expect_error_msg.to_string()
+    };
+    custom_err_msg
 }
 
 fn append_error_to_vec(
@@ -506,7 +515,11 @@ fn check_folder_childs(
     let mut errors: Vec<String> = Vec::new();
 
     let append_error = folder_config
-        .and_then(|fc| fc.append_error_msg.clone())
+        .and_then(|fc| {
+            fc.append_error_msg
+                .as_ref()
+                .map(|msg| replace_error_msg_vars(error_msg_vars, msg))
+        })
         .map(|append_err| format!("\n   | {}", &append_err.dimmed()))
         .unwrap_or_default();
 

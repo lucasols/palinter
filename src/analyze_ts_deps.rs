@@ -46,6 +46,8 @@ lazy_static! {
     static ref DEBUG_READ_EDGES_COUNT: Mutex<usize> = Mutex::new(0);
     static ref FILE_EDGES_CACHE: Mutex<HashMap<String, Vec<String>>> =
         Mutex::new(HashMap::new());
+    static ref FILE_EDGES_CACHE_IGNORE_TYPES: Mutex<HashMap<String, Vec<String>>> =
+        Mutex::new(HashMap::new());
     pub static ref USED_FILES: Mutex<HashMap<String, FileDepsInfo>> =
         Mutex::new(HashMap::new());
     static ref FILE_DEPS_RESULT_CACHE: Mutex<HashMap<String, DepsResult>> =
@@ -61,6 +63,7 @@ pub fn _setup_test() {
     *ROOT_DIR.lock().unwrap() = String::from(".");
     *DEBUG_READ_EDGES_COUNT.lock().unwrap() = 0;
     FILE_EDGES_CACHE.lock().unwrap().clear();
+    FILE_EDGES_CACHE_IGNORE_TYPES.lock().unwrap().clear();
     USED_FILES.lock().unwrap().clear();
     FILE_DEPS_RESULT_CACHE.lock().unwrap().clear();
 }
@@ -95,7 +98,7 @@ fn get_file_deps_result(file_path: &Path) -> Result<DepsResult, String> {
         None => {
             let deps = get_node_deps(
                 &file_path.to_str().unwrap().to_string(),
-                &mut get_file_edges,
+                &mut |path| get_file_edges(path, true),
                 None,
                 false,
                 false,
@@ -242,10 +245,17 @@ fn get_file_imports(
     }
 }
 
-fn get_file_edges(unresolved_path: &str) -> Result<Vec<String>, String> {
+fn get_file_edges(
+    unresolved_path: &str,
+    ignore_type_imports: bool,
+) -> Result<Vec<String>, String> {
     let resolved_path = get_resolved_path(Path::new(unresolved_path))?;
 
-    let mut file_edges_cache = FILE_EDGES_CACHE.lock().unwrap();
+    let mut file_edges_cache = if ignore_type_imports {
+        FILE_EDGES_CACHE_IGNORE_TYPES.lock().unwrap()
+    } else {
+        FILE_EDGES_CACHE.lock().unwrap()
+    };
 
     if *DEBUG_READ_EDGES_COUNT.lock().unwrap() > 2_000_000 {
         panic!("Too many edges read, probably infinite loop");
@@ -271,6 +281,12 @@ fn get_file_edges(unresolved_path: &str) -> Result<Vec<String>, String> {
         let edges: Vec<String> = edges_imports
             .values()
             .map(|import: &Import| -> Result<Option<PathBuf>, String> {
+                if ignore_type_imports {
+                    if let ImportType::Type(_) = import.values {
+                        return Ok(None);
+                    }
+                }
+
                 if let Some(resolved_path) = get_resolved_path(&import.import_path)?
                 {
                     Ok(Some(resolved_path))
@@ -309,7 +325,7 @@ fn visit_file(
 
     result.insert(resolved_path_string.clone(), file_deps_info);
 
-    let edges = get_file_edges(&resolved_path_string)?;
+    let edges = get_file_edges(&resolved_path_string, false)?;
 
     for edge in edges {
         let edge_path = PathBuf::from(edge.clone());
@@ -345,11 +361,12 @@ fn normalize_imports(
 ) -> Result<IndexMap<String, Import>, String> {
     let mut normalized_imports: IndexMap<String, Import> = IndexMap::new();
 
-    for import in imports {
-        let resolved_import_name = get_resolved_path(&import.import_path)?;
+    for new_import in imports {
+        let resolved_import_name = get_resolved_path(&new_import.import_path)?;
 
-        let use_name =
-            pb_to_string(resolved_import_name.unwrap_or(import.import_path.clone()));
+        let use_name = pb_to_string(
+            resolved_import_name.unwrap_or(new_import.import_path.clone()),
+        );
 
         let current_import = normalized_imports.get(&use_name);
 
@@ -359,9 +376,10 @@ fn normalize_imports(
                     continue;
                 }
                 ImportType::Named(current_named) => {
-                    let new_values = match &import.values {
+                    let new_values = match &new_import.values {
                         ImportType::All => ImportType::All,
-                        ImportType::Named(new_named) => ImportType::Named(
+                        ImportType::Named(new_named)
+                        | ImportType::Type(new_named) => ImportType::Named(
                             clone_extend_vec(current_named, new_named),
                         ),
                         ImportType::Dynamic | ImportType::SideEffect => {
@@ -372,18 +390,41 @@ fn normalize_imports(
                     normalized_imports.insert(
                         use_name,
                         Import {
-                            import_path: import.import_path,
-                            line: import.line,
+                            import_path: new_import.import_path,
+                            line: new_import.line,
+                            values: new_values,
+                        },
+                    );
+                }
+                ImportType::Type(current_types) => {
+                    let new_values = match &new_import.values {
+                        ImportType::All => ImportType::All,
+                        ImportType::Named(new_named) => ImportType::Named(
+                            clone_extend_vec(current_types, new_named),
+                        ),
+                        ImportType::Type(new_types) => ImportType::Type(
+                            clone_extend_vec(current_types, new_types),
+                        ),
+                        ImportType::Dynamic | ImportType::SideEffect => {
+                            ImportType::Named(current_types.clone())
+                        }
+                    };
+
+                    normalized_imports.insert(
+                        use_name,
+                        Import {
+                            import_path: new_import.import_path,
+                            line: new_import.line,
                             values: new_values,
                         },
                     );
                 }
                 ImportType::SideEffect | ImportType::Dynamic => {
-                    normalized_imports.insert(use_name, import);
+                    normalized_imports.insert(use_name, new_import);
                 }
             }
         } else {
-            normalized_imports.insert(use_name, import);
+            normalized_imports.insert(use_name, new_import);
         }
     }
 

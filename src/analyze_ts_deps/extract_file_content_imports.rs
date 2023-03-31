@@ -9,6 +9,7 @@ pub enum ImportType {
     Named(Vec<String>),
     All,
     Dynamic,
+    Type(Vec<String>),
     SideEffect,
 }
 
@@ -52,6 +53,8 @@ pub fn extract_imports_from_file_content(
                         (?P<default>\w+\s+)
                         |
                         \w+\s*,\s+\{(?P<named_with_default>[\w\s,]+?)\}\s+
+                        |
+                        type\s+\{(?P<types>[\w\s,]+?)\}\s+
                     )
                     from\s+["'](?P<import_path>.+)["']
                 "#
@@ -131,6 +134,18 @@ pub fn extract_imports_from_file_content(
                         import_path: PathBuf::from(import_path),
                         line: current_line,
                         values: ImportType::Named(values),
+                    });
+                } else if let Some(type_imports) = captures.name("types") {
+                    let values = type_imports
+                        .as_str()
+                        .split(',')
+                        .filter_map(filter_map_named_import_value)
+                        .collect::<Vec<String>>();
+
+                    imports.push(Import {
+                        import_path: PathBuf::from(import_path),
+                        line: current_line,
+                        values: ImportType::Type(values),
                     });
                 }
 
@@ -864,6 +879,15 @@ import { useStoreSnapshot } from 't-state';
                 ),
             },
             Import {
+                import_path: "@utils/hooks/useArrayToMap",
+                line: 24,
+                values: Type(
+                    [
+                        "useArrayToMap",
+                    ],
+                ),
+            },
+            Import {
                 import_path: "@utils/i18n/i18n",
                 line: 25,
                 values: Named(
@@ -873,11 +897,30 @@ import { useStoreSnapshot } from 't-state';
                 ),
             },
             Import {
+                import_path: "@utils/isNullish",
+                line: 26,
+                values: Type(
+                    [
+                        "isNotNullish",
+                        "isNullish",
+                    ],
+                ),
+            },
+            Import {
                 import_path: "@utils/sortBy",
                 line: 27,
                 values: Named(
                     [
                         "sortBy",
+                    ],
+                ),
+            },
+            Import {
+                import_path: "react",
+                line: 28,
+                values: Type(
+                    [
+                        "useMemo",
                     ],
                 ),
             },

@@ -47,7 +47,7 @@ pub fn get_detailed_file_circular_deps_result(
 
     let result = get_node_deps(
         &resolved_path.to_str().unwrap().to_string(),
-        &mut get_file_edges,
+        &mut |path| get_file_edges(path, true),
         None,
         true,
         true,
