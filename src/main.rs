@@ -112,10 +112,9 @@ fn main() {
                 Ok(success_msg) => println!("{}", success_msg),
                 Err(err) => {
                     eprintln!("❌ Error testing config: {}", err);
+                    std::process::exit(1);
                 }
             }
-
-            std::process::exit(1);
         }
     } else {
         let confg_path = cli.get_one::<PathBuf>("config").unwrap().clone();
