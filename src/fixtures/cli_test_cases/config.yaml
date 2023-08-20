@@ -1,0 +1,13 @@
+./:
+  /stores:
+    optional: true
+    rules:
+      - if_file: any
+        expect:
+          name_case_is: camelCase
+  /examples:
+    rules:
+      - if_file:
+          # with pattern
+          has_name: '*.example.ts'
+        expect: any

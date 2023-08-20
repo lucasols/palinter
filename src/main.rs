@@ -3,6 +3,7 @@ mod check_folders;
 mod internal_config;
 mod load_folder_structure;
 mod parse_config_file;
+mod test_config;
 mod test_utils;
 mod utils;
 
@@ -14,6 +15,7 @@ use clap::{arg, command, value_parser, Command};
 use internal_config::{get_config, Config};
 use load_folder_structure::load_folder_structure;
 use parse_config_file::parse_config_file;
+use test_config::test_config;
 
 use crate::analyze_ts_deps::load_used_project_files_deps_info_from_cfg;
 
@@ -53,6 +55,21 @@ fn main() {
                         .value_parser(value_parser!(usize)),
                 ),
         )
+        .subcommand(
+            Command::new("test-config")
+                .about("Test the config file with test cases")
+                .arg(
+                    arg!([test_cases_folder] "Path to the folder with the test cases")
+                        .required(true)
+                        .value_parser(value_parser!(PathBuf)),
+                )
+                .arg(
+                    arg!(-c --config <config> "Path to the config file")
+                        .default_value("palinter.yaml")
+                        .value_parser(value_parser!(PathBuf)),
+                )
+
+        )
         .get_matches();
 
     if let Some(matches) = cli.subcommand_matches("circular-deps") {
@@ -82,6 +99,17 @@ fn main() {
                 *matches.get_one::<usize>("truncate").unwrap(),
             ) {
                 eprintln!("❌ Error getting circular deps: {}", err);
+
+                std::process::exit(1);
+            }
+        }
+    } else if let Some(matches) = cli.subcommand_matches("test-config") {
+        if let Some(test_case_dir) = matches.get_one::<PathBuf>("test_cases_folder")
+        {
+            let confg_path = matches.get_one::<PathBuf>("config").unwrap();
+
+            if let Err(err) = test_config(test_case_dir, confg_path) {
+                eprintln!("❌ Error testing config: {}", err);
 
                 std::process::exit(1);
             }
