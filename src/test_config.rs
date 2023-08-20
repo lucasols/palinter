@@ -233,7 +233,7 @@ fn extract_projects_from_file_content(
 ) -> Result<Vec<Project>, String> {
     let mut projects: Vec<Project> = Vec::new();
 
-    let projects_regex = Regex::new(r"\n```yaml\n([\S\s]+?)\n```").unwrap();
+    let projects_regex = Regex::new(r"```yaml\n([\S\s]+?)\n```").unwrap();
 
     let projects_captures = projects_regex.captures_iter(&test_case_content);
 
@@ -252,6 +252,10 @@ fn extract_projects_from_file_content(
                 ))
             }
         }
+    }
+
+    if projects.is_empty() {
+        return Err("No projects found".to_string());
     }
 
     Ok(projects)
@@ -404,7 +408,23 @@ mod tests {
         assert_debug_snapshot!(test_summary,
             @r###"
         Err(
-            "\n\n❌ Test case '\u{1b}[34mtest.md\u{1b}[0m' - project 2: Expected Ok but got errors: [\n    \"File ./stores/test_examples.ts:\\n • should be named in camelCase\",\n]\n\n\n🟩 Running 1 test cases\n\n",
+            "\n\n❌ Test case '\u{1b}[34mtest.md\u{1b}[0m' - project 3: Expected Ok but got errors: [\n    \"File ./stores/test_examples.ts:\\n • should be named in camelCase\",\n]\n\n\n🟩 Running 1 test cases\n\n",
+        )
+        "###
+        )
+    }
+
+    #[test]
+    fn test_config_failure_2() {
+        let test_summary = test_config(
+            &PathBuf::from("./src/fixtures/cli_test_cases/test_cases_failure_2"),
+            &PathBuf::from("./src/fixtures/cli_test_cases/config.yaml"),
+        );
+
+        assert_debug_snapshot!(test_summary,
+            @r###"
+        Err(
+            "\n\n❌ Test case '\u{1b}[34mtest.md\u{1b}[0m' - project 1: Expected errors but got Ok\n\n\n🟩 Running 1 test cases\n\n",
         )
         "###
         )
