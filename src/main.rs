@@ -108,13 +108,14 @@ fn main() {
         {
             let confg_path = matches.get_one::<PathBuf>("config").unwrap();
 
-            if let Err(err) = test_config(test_case_dir, confg_path) {
-                eprintln!("❌ Error testing config: {}", err);
-
-                std::process::exit(1);
-            } else {
-                println!("✨ Config file matches all test cases!");
+            match test_config(test_case_dir, confg_path) {
+                Ok(success_msg) => println!("{}", success_msg),
+                Err(err) => {
+                    eprintln!("❌ Error testing config: {}", err);
+                }
             }
+
+            std::process::exit(1);
         }
     } else {
         let confg_path = cli.get_one::<PathBuf>("config").unwrap().clone();
