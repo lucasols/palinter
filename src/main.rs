@@ -112,6 +112,8 @@ fn main() {
                 eprintln!("❌ Error testing config: {}", err);
 
                 std::process::exit(1);
+            } else {
+                println!("✨ Config file matches all test cases!");
             }
         }
     } else {
