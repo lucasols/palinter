@@ -178,7 +178,7 @@ pub fn test_config(
                         }
                     };
 
-                    let result = check_root_folder(&config, &project.structure);
+                    let result = check_root_folder(&config, &project.structure, true);
 
                     colored::control::unset_override();
 

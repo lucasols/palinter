@@ -369,6 +369,7 @@ fn check_folder_expected(
     inherited_folders_rules: &[InheritedFolderRule],
     context_conditions: &[Capture],
     error_msg_vars: &ErrorMsgVars,
+    is_test_config: bool,
 ) -> Result<(), Vec<String>> {
     match expected {
         AnyNoneOr::None => Err(vec!["Folder is not expected".to_string()]),
@@ -473,6 +474,7 @@ fn check_folder_expected(
                             folder.name.clone(),
                         ),
                         error_msg_vars,
+                        is_test_config,
                     )?;
                 }
 
@@ -528,6 +530,7 @@ fn check_folder_childs(
     inherited_folders_rules: Vec<InheritedFolderRule>,
     context_conditions: Vec<Capture>,
     error_msg_vars: &ErrorMsgVars,
+    is_test_config: bool,
 ) -> Result<(), Vec<String>> {
     let mut errors: Vec<String> = Vec::new();
 
@@ -582,6 +585,10 @@ fn check_folder_childs(
                     {
                         if !rule.not_touch {
                             file_touched = true;
+                        }
+
+                        if is_test_config && rule.ignore_in_config_tests {
+                            return;
                         }
 
                         if let Err(expect_errors) = check_file_expect(
@@ -865,6 +872,7 @@ fn check_folder_childs(
 pub fn check_root_folder(
     config: &Config,
     folder: &Folder,
+    is_test_config: bool,
 ) -> Result<(), Vec<String>> {
     check_folder_childs(
         folder,
@@ -874,6 +882,7 @@ pub fn check_root_folder(
         Vec::new(),
         Vec::new(),
         &config.error_msg_vars,
+        is_test_config,
     )
 }
 
