@@ -200,7 +200,11 @@ pub fn test_config(
                                     if update_expected_errors {
                                         expected_errors_to_update.push(
                                             UpdateExpectedErrors {
-                                                test_case_path: file_name.clone(),
+                                                test_case_path: format!(
+                                                    "{}/{}",
+                                                    test_cases_dir.to_str().unwrap(),
+                                                    file_name
+                                                ),
                                                 project_index: i,
                                                 expected_errors: errors,
                                             },
@@ -454,7 +458,7 @@ fn get_test_cases(dir: &PathBuf) -> Result<Vec<TestCase>, String> {
             let path = entry.path();
 
             if path.is_dir() {
-                get_test_cases(&path).unwrap()
+                vec![]
             } else {
                 let file_name =
                     path.file_name().unwrap().to_str().unwrap().to_string();
