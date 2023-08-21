@@ -112,7 +112,7 @@ pub struct FolderExpect {
     pub root_files_has: Option<String>,
     pub root_files_has_not: Option<String>,
     pub have_min_childs: Option<usize>,
-    pub childs_rules: Option<(Vec<FolderRule>, Vec<FileRule>)>,
+    pub child_rules: Option<(Vec<FolderRule>, Vec<FileRule>)>,
 
     pub error_msg: Option<String>,
 }
@@ -826,8 +826,8 @@ fn get_folder_expect(
         root_files_has: parsed_expected.root_files_has,
         root_files_has_not: parsed_expected.root_files_has_not,
         have_min_childs: parsed_expected.have_min_childs,
-        childs_rules: parsed_expected
-            .childs_rules
+        child_rules: parsed_expected
+            .child_rules
             .map(
                 |rules| -> Result<(Vec<FolderRule>, Vec<FileRule>), String> {
                     let (file_rules, folder_rules, _) = normalize_rules(
@@ -841,7 +841,7 @@ fn get_folder_expect(
                         if let AnyNoneOr::Or(expect) = &folder_rule.expect {
                             if expect
                                 .iter()
-                                .any(|expect| expect.childs_rules.is_some())
+                                .any(|expect| expect.child_rules.is_some())
                             {
                                 return Err(format!(
                                     "Config error in '{}': 'childs_rules' cannot be used inside another 'childs_rules'",

@@ -5,8 +5,8 @@ use crate::{
     analyze_ts_deps::ts_checks::{
         check_ts_have_imports, check_ts_not_have_circular_deps,
         check_ts_not_have_deps_from, check_ts_not_have_deps_outside,
-        check_ts_not_have_direct_circular_deps, check_ts_not_have_unused_exports,
-        check_ts_not_have_used_exports_outside, check_ts_not_have_imports,
+        check_ts_not_have_direct_circular_deps, check_ts_not_have_imports,
+        check_ts_not_have_unused_exports, check_ts_not_have_used_exports_outside,
     },
     internal_config::{
         AnyNoneOr, AnyOr, Config, ErrorMsgVars, FileConditions, FileExpect,
@@ -447,7 +447,7 @@ fn check_folder_expected(
                     )?;
                 }
 
-                if let Some((folder_rules, file_rules)) = &expect.childs_rules {
+                if let Some((folder_rules, file_rules)) = &expect.child_rules {
                     pass_some_expect = true;
 
                     check_folder_childs(
@@ -680,6 +680,40 @@ fn check_folder_childs(
                     format!("{}/{}:", folder_path, sub_folder.name).bright_red()
                 );
 
+                let parent_file_rules: Vec<InheritedFileRule> = folder_config
+                    .map_or(Vec::new(), |folder_config| {
+                        folder_config
+                            .file_rules
+                            .iter()
+                            .filter_map(|rule| match rule.non_recursive {
+                                true => None,
+                                false => {
+                                    Some(InheritedFileRule { rule: rule.clone() })
+                                }
+                            })
+                            .collect()
+                    });
+
+                let sub_folder_inherited_files_rules =
+                    [inherited_files_rules.clone(), parent_file_rules].concat();
+
+                let parent_folder_rules: Vec<InheritedFolderRule> = folder_config
+                    .map_or(Vec::new(), |folder_config| {
+                        folder_config
+                            .folder_rules
+                            .iter()
+                            .filter_map(|rule| match rule.non_recursive {
+                                true => None,
+                                false => {
+                                    Some(InheritedFolderRule { rule: rule.clone() })
+                                }
+                            })
+                            .collect()
+                    });
+
+                let sub_folder_inherited_folders_rules =
+                    [inherited_folders_rules.clone(), parent_folder_rules].concat();
+
                 let mut folder_touched = false;
                 let mut folder_has_error = false;
                 let mut childs_was_checked = false;
@@ -698,7 +732,7 @@ fn check_folder_childs(
                         if let AnyNoneOr::Or(expect_rules) = &rule.expect {
                             if expect_rules
                                 .iter()
-                                .any(|rule| rule.childs_rules.is_some())
+                                .any(|rule| rule.child_rules.is_some())
                             {
                                 childs_was_checked = true;
                             }
@@ -709,8 +743,8 @@ fn check_folder_childs(
                             &rule.expect,
                             &conditions_result,
                             &folder_path,
-                            &inherited_files_rules,
-                            &inherited_folders_rules,
+                            &sub_folder_inherited_files_rules,
+                            &sub_folder_inherited_folders_rules,
                             &context_conditions,
                             error_msg_vars,
                         ) {
@@ -786,40 +820,6 @@ fn check_folder_childs(
                 if !folder_touched {
                     continue;
                 }
-
-                let parent_file_rules: Vec<InheritedFileRule> = folder_config
-                    .map_or(Vec::new(), |folder_config| {
-                        folder_config
-                            .file_rules
-                            .iter()
-                            .filter_map(|rule| match rule.non_recursive {
-                                true => None,
-                                false => {
-                                    Some(InheritedFileRule { rule: rule.clone() })
-                                }
-                            })
-                            .collect()
-                    });
-
-                let sub_folder_inherited_files_rules =
-                    [inherited_files_rules.clone(), parent_file_rules].concat();
-
-                let parent_folder_rules: Vec<InheritedFolderRule> = folder_config
-                    .map_or(Vec::new(), |folder_config| {
-                        folder_config
-                            .folder_rules
-                            .iter()
-                            .filter_map(|rule| match rule.non_recursive {
-                                true => None,
-                                false => {
-                                    Some(InheritedFolderRule { rule: rule.clone() })
-                                }
-                            })
-                            .collect()
-                    });
-
-                let sub_folder_inherited_folders_rules =
-                    [inherited_folders_rules.clone(), parent_folder_rules].concat();
 
                 let new_sub_folder_cfg =
                     sub_folder_cfg.map(|sub_folder_cfg| FolderConfig {

@@ -183,9 +183,63 @@ Check if the file is a typescript file
 
 # Folder conditions
 
-TODO
+## `any`
 
-Check the test_cases folder for examples for now
+Apply the rule to any folder
+
+```yaml
+- if_folder: any
+```
+
+## `has_name_case`
+
+Check if the folder name is in the specified case
+
+```yaml
+- if_folder:
+    has_name_case: camelCase # or: kebab-case, snake_case, PascalCase
+```
+
+## `has_name`
+
+Check if the folder name matches the specified pattern
+
+```yaml
+- if_folder:
+    has_name: folder
+
+    # the pattern can be a glob pattern
+    has_name: folder*
+```
+
+## `not_has_name`
+
+Check if the folder name doesn't match the specified pattern
+
+```yaml
+- if_folder:
+    not_has_name: folder
+
+    # the pattern can be a glob pattern
+    not_has_name: folder*
+```
+
+## `root_files_find_pattern`
+
+Check if the folder has files in it's root that match the specified pattern. The captured groups in the pattern can be used in the assertions.
+
+```yaml
+- if_folder:
+    root_files_find_pattern:
+      # the pattern can be a glob pattern
+      pattern: '*.test.ts'
+      # OR a regex
+      pattern: regex:(Foo|Bar)*
+
+      # limit the number of files that should match the pattern
+      at_least: 1
+      at_most: 1
+```
 
 # File assertions
 

@@ -53,6 +53,7 @@ pub struct ParsedFileExpect {
     pub name_is_not: Option<String>,
     pub is_not_empty: Option<bool>,
     pub ts: Option<ParsedTsFileExpect>,
+    pub has_parent_folder: Option<Vec<ParsedFolderExpect>>,
 
     pub error_msg: Option<String>,
 
@@ -79,7 +80,7 @@ pub struct ParsedFolderExpect {
     pub root_files_has: Option<String>,
     pub root_files_has_not: Option<String>,
     pub have_min_childs: Option<usize>,
-    pub childs_rules: Option<Vec<ParsedRule>>,
+    pub child_rules: Option<Vec<ParsedRule>>,
 
     pub error_msg: Option<String>,
 
