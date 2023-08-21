@@ -47,8 +47,10 @@ struct ParsedProjectYaml {
     only: Option<bool>,
     structure: ParsedFolder,
     expected_errors: ExpectedErrors,
+    files: Option<BTreeMap<String, String>>,
 }
 
+#[derive(Debug)]
 struct Project {
     only: bool,
     structure: Folder,
@@ -265,6 +267,7 @@ fn convert_from_parsed_folder_to_project(
     parsed: &ParsedFolder,
     folder_name: String,
     path: &str,
+    files: &Option<BTreeMap<String, String>>,
 ) -> Folder {
     let childs = parsed
         .childs
@@ -283,10 +286,18 @@ fn convert_from_parsed_folder_to_project(
                     (basename, extension)
                 };
 
+                let content_to_use = if file_content.starts_with("use:") {
+                    let file_name = file_content.replace("use:", "");
+
+                    files.as_ref().unwrap().get(&file_name).unwrap().to_owned()
+                } else {
+                    file_content.to_owned()
+                };
+
                 FolderChild::FileChild(File {
                     basename,
                     name_with_ext: child_string.clone(),
-                    content: Some(file_content.to_owned()),
+                    content: Some(content_to_use),
                     extension: Some(extension),
                     relative_path: format!("{}/{}", path, child_string),
                 })
@@ -297,6 +308,7 @@ fn convert_from_parsed_folder_to_project(
                     child_name.to_owned(),
                     format!("{}/{}", path, normalize_folder_config_name(child_name))
                         .as_str(),
+                    files,
                 ))
             }
         })
@@ -316,6 +328,7 @@ fn parse_project_yaml(project_yaml: String) -> Result<Project, serde_yaml::Error
         &parsed_project_yaml.structure,
         ".".to_string(),
         ".",
+        &parsed_project_yaml.files,
     );
 
     Ok(Project {
@@ -426,6 +439,60 @@ mod tests {
         Err(
             "\n\n❌ Test case '\u{1b}[34mtest.md\u{1b}[0m' - project 1: Expected errors but got Ok\n\n\n🟩 Running 1 test cases\n\n",
         )
+        "###
+        )
+    }
+
+    #[test]
+    fn parse_project_with_files_templates() {
+        let project_yaml = r###"
+        only: true
+
+        files:
+            test: |
+                import { test } from 'test';
+
+                test();
+
+        structure:
+            /src:
+                test.ts: use:test
+        expected_errors: false
+        "###;
+
+        let parsed_project = parse_project_yaml(project_yaml.to_string()).unwrap();
+
+        assert_debug_snapshot!(parsed_project,
+            @r###"
+        Project {
+            only: true,
+            structure: Folder {
+                name: ".",
+                childs: [
+                    Folder(
+                        Folder {
+                            name: "src",
+                            childs: [
+                                FileChild(
+                                    File {
+                                        basename: "test",
+                                        name_with_ext: "test.ts",
+                                        content: Some(
+                                            "import { test } from 'test';\n\ntest();\n",
+                                        ),
+                                        extension: Some(
+                                            "ts",
+                                        ),
+                                        relative_path: "./src/test.ts",
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+            },
+            expected_errors: None,
+        }
         "###
         )
     }
