@@ -269,13 +269,15 @@ fn apply_expected_errors_updates(
         expected_errors,
     } in expected_errors_to_update
     {
-        let mut test_case_content = std::fs::read_to_string(test_case_path).unwrap();
+        let test_case_content = std::fs::read_to_string(test_case_path).unwrap();
 
-        let projects_caputres = get_projects_capture(test_case_content);
+        let projects_caputres = get_projects_capture(&test_case_content);
 
-        for (i, project_capture) in projects_caputres.enumerate() {
+        let mut new_test_case_content = test_case_content.to_string();
+
+        for (i, project_capture) in projects_caputres.into_iter().enumerate() {
             if i == *project_index {
-                let project_yaml = project_capture.get(1).unwrap().as_str();
+                let project_yaml = project_capture;
 
                 // replace string in range from 'expected_errors:' to the end with new expected errors
 
@@ -292,9 +294,12 @@ fn apply_expected_errors_updates(
                             .iter()
                             .map(|err| {
                                 let new_err_with_balenced_new_lines =
-                                    err.replace("\n", "\n    ");
+                                    err.replace('\n', "\n    ");
 
-                                format!("  - |\n   \"{}\"", new_err_with_balenced_new_lines)
+                                format!(
+                                    "  - |\n   \"{}\"",
+                                    new_err_with_balenced_new_lines
+                                )
                             })
                             .collect::<Vec<String>>()
                             .join(",\n")
@@ -302,12 +307,12 @@ fn apply_expected_errors_updates(
                     .as_str(),
                 );
 
-                test_case_content = test_case_content
+                new_test_case_content = new_test_case_content
                     .replace(project_yaml, new_project_yaml.as_str());
             }
         }
 
-        std::fs::write(test_case_path, test_case_content).unwrap();
+        std::fs::write(test_case_path, new_test_case_content).unwrap();
     }
 }
 
@@ -316,12 +321,12 @@ fn extract_projects_from_file_content(
 ) -> Result<Vec<Project>, String> {
     let mut projects: Vec<Project> = Vec::new();
 
-    let projects_captures = get_projects_capture(test_case_content);
+    let projects_captures = get_projects_capture(&test_case_content);
 
     for (i, project_capture) in projects_captures.into_iter().enumerate() {
-        let project_yaml = project_capture.get(1).unwrap().as_str().to_string();
+        let project_yaml = project_capture;
 
-        let project = parse_project_yaml(project_yaml);
+        let project = parse_project_yaml(project_yaml.to_string());
 
         match project {
             Ok(project) => projects.push(project),
@@ -342,12 +347,17 @@ fn extract_projects_from_file_content(
     Ok(projects)
 }
 
-fn get_projects_capture(
-    test_case_content: String,
-) -> regex::CaptureMatches<'static, 'static> {
+fn get_projects_capture(test_case_content: &str) -> Vec<&str> {
     let projects_regex = Regex::new(r"```yaml\n([\S\s]+?)\n```").unwrap();
 
-    projects_regex.captures_iter(&test_case_content)
+    let captures = projects_regex.captures_iter(test_case_content);
+
+    let mut matches = Vec::new();
+    for capture in captures {
+        matches.push(capture.get(1).unwrap().as_str());
+    }
+
+    matches
 }
 
 fn convert_from_parsed_folder_to_project(
