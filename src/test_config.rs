@@ -301,7 +301,7 @@ fn apply_expected_errors_updates(
                                     err.replace('\n', "\n    ");
 
                                 format!(
-                                    "  - |\n   \"{}\"",
+                                    "  - |\n   {}",
                                     new_err_with_balenced_new_lines
                                 )
                             })
