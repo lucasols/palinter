@@ -1,6 +1,6 @@
 {
   "name": "palinter",
-  "version": "0.30.3",
+  "version": "0.30.4",
   "description": "A Project Architecture Linter written in rust",
   "main": "dist/main.js",
   "scripts": {
