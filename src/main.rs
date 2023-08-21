@@ -165,7 +165,7 @@ fn lint(config: Config, root: PathBuf) {
         std::process::exit(1);
     };
 
-    if let Err(err) = check_root_folder(&config, &root_structure) {
+    if let Err(err) = check_root_folder(&config, &root_structure, false) {
         eprintln!(
             "❌ Errors found in the project:\n\n{}\n\n",
             err.join("\n\n")

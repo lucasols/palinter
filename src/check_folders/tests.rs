@@ -382,7 +382,7 @@ fn test_cases() {
                                 };
 
                                 let result =
-                                    check_root_folder(config, &project.structure);
+                                    check_root_folder(config, &project.structure, false);
 
                                 colored::control::unset_override();
 

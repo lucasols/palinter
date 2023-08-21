@@ -45,3 +45,6 @@ delete_unused_snapshots:
 
 jestor_test_circular_dep:
 	cargo run --release -- circular-deps '@src/pages/modals/Find.tsx' --config ../jestor/web-app/palinter.yaml --root ../jestor/web-app
+
+jestor_test_config:
+	cargo run --release -- test-config ../jestor/web-app/tests/palinter-config --config ../jestor/web-app/palinter.yaml
