@@ -11,7 +11,7 @@ use std::{path::PathBuf, process};
 
 use analyze_ts_deps::circular_deps::get_detailed_file_circular_deps_result;
 use check_folders::check_root_folder;
-use clap::{arg, command, value_parser, Command};
+use clap::{arg, command, value_parser, Arg, Command};
 use internal_config::{get_config, Config};
 use load_folder_structure::load_folder_structure;
 use parse_config_file::parse_config_file;
@@ -69,9 +69,12 @@ fn main() {
                         .value_parser(value_parser!(PathBuf)),
                 )
                 .arg(
-                    arg!(-f --fix-errors "Fix the test cases")
-                        .required(false)
-                        .value_parser(value_parser!(bool)),
+                    Arg::new("fix-errors")
+                        .help("Fix the errors in the test cases")
+                        .long("fix-errors")
+                        .short('f')
+                        .num_args(0)
+                        .required(false),
                 ),
 
         )
@@ -113,7 +116,7 @@ fn main() {
         {
             let confg_path = matches.get_one::<PathBuf>("config").unwrap();
 
-            let fix_errors = matches.get_flag("fix-errors");
+            let fix_errors = matches.contains_id("fix-errors");
 
             match test_config(test_case_dir, confg_path, fix_errors) {
                 Ok(success_msg) => println!("{}", success_msg),
