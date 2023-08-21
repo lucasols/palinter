@@ -14,7 +14,7 @@ use crate::{
     parse_config_file,
     test_utils::TEST_MUTEX,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone)]
 struct TestCase {
@@ -22,27 +22,27 @@ struct TestCase {
     file_content: String,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 #[serde(untagged)]
 enum ParsedStructureChild {
     Folder(ParsedFolder),
     File(String),
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 struct ParsedFolder {
     #[serde(flatten)]
     childs: BTreeMap<String, ParsedStructureChild>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 #[serde(untagged)]
 enum ExpectedErrors {
     Single(bool),
     Multiple(Vec<String>),
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 struct ParsedProjectYaml {
     only: Option<bool>,
     structure: ParsedFolder,
@@ -57,9 +57,16 @@ struct Project {
     expected_errors: Option<Vec<String>>,
 }
 
+struct UpdateExpectedErrors {
+    test_case_path: String,
+    project_index: usize,
+    expected_errors: Vec<String>,
+}
+
 pub fn test_config(
     test_cases_dir: &PathBuf,
     config_file: &PathBuf,
+    update_expected_errors: bool,
 ) -> Result<String, String> {
     let files_content = get_test_cases(test_cases_dir).map_err(|error| {
         format!("Error getting test cases from folder: {}", error)
@@ -120,6 +127,7 @@ pub fn test_config(
     }
 
     let mut test_errors: Vec<String> = vec![];
+    let mut expected_errors_to_update: Vec<UpdateExpectedErrors> = vec![];
 
     for TestCase {
         file_name,
@@ -189,14 +197,32 @@ pub fn test_config(
                                     .collect::<Vec<String>>();
 
                                 if !do_vecs_match(&errors, collected) {
-                                    test_errors.push(format!(
-                                        "{}\n\
+                                    if update_expected_errors {
+                                        expected_errors_to_update.push(
+                                            UpdateExpectedErrors {
+                                                test_case_path: file_name.clone(),
+                                                project_index: i,
+                                                expected_errors: errors,
+                                            },
+                                        );
+
+                                        test_summary.push_str(
+                                            format!(
+                                                "\n\n🟧 Updated expected errors for test case '{}'\n",
+                                                file_name
+                                            )
+                                            .as_str(),
+                                        );
+                                    } else {
+                                        test_errors.push(format!(
+                                            "{}\n\
                                                     Expected errors: {:#?}\n\
                                                     But got:         {:#?}",
-                                        test_case,
-                                        sort_vector(collected),
-                                        sort_vector(&errors)
-                                    ));
+                                            test_case,
+                                            sort_vector(collected),
+                                            sort_vector(&errors)
+                                        ));
+                                    }
                                 }
                             } else {
                                 test_errors.push(format!(
@@ -219,6 +245,10 @@ pub fn test_config(
         }
     }
 
+    if update_expected_errors {
+        apply_expected_errors_updates(&expected_errors_to_update);
+    }
+
     if !test_errors.is_empty() {
         Err(format!(
             "\n\n{}\n\n{}\n",
@@ -230,14 +260,63 @@ pub fn test_config(
     }
 }
 
+fn apply_expected_errors_updates(
+    expected_errors_to_update: &[UpdateExpectedErrors],
+) {
+    for UpdateExpectedErrors {
+        test_case_path,
+        project_index,
+        expected_errors,
+    } in expected_errors_to_update
+    {
+        let mut test_case_content = std::fs::read_to_string(test_case_path).unwrap();
+
+        let projects_caputres = get_projects_capture(test_case_content);
+
+        for (i, project_capture) in projects_caputres.enumerate() {
+            if i == *project_index {
+                let project_yaml = project_capture.get(1).unwrap().as_str();
+
+                // replace string in range from 'expected_errors:' to the end with new expected errors
+
+                let mut new_project_yaml = project_yaml.to_string();
+
+                let expected_errors_index =
+                    new_project_yaml.find("expected_errors:").unwrap();
+
+                new_project_yaml.replace_range(
+                    expected_errors_index..,
+                    format!(
+                        "expected_errors:\n{}\n",
+                        expected_errors
+                            .iter()
+                            .map(|err| {
+                                let new_err_with_balenced_new_lines =
+                                    err.replace("\n", "\n    ");
+
+                                format!("  - |\n   \"{}\"", new_err_with_balenced_new_lines)
+                            })
+                            .collect::<Vec<String>>()
+                            .join(",\n")
+                    )
+                    .as_str(),
+                );
+
+                test_case_content = test_case_content
+                    .replace(project_yaml, new_project_yaml.as_str());
+            }
+        }
+
+        std::fs::write(test_case_path, test_case_content).unwrap();
+    }
+}
+
 fn extract_projects_from_file_content(
     test_case_content: String,
 ) -> Result<Vec<Project>, String> {
     let mut projects: Vec<Project> = Vec::new();
 
-    let projects_regex = Regex::new(r"```yaml\n([\S\s]+?)\n```").unwrap();
-
-    let projects_captures = projects_regex.captures_iter(&test_case_content);
+    let projects_captures = get_projects_capture(test_case_content);
 
     for (i, project_capture) in projects_captures.into_iter().enumerate() {
         let project_yaml = project_capture.get(1).unwrap().as_str().to_string();
@@ -261,6 +340,14 @@ fn extract_projects_from_file_content(
     }
 
     Ok(projects)
+}
+
+fn get_projects_capture(
+    test_case_content: String,
+) -> regex::CaptureMatches<'static, 'static> {
+    let projects_regex = Regex::new(r"```yaml\n([\S\s]+?)\n```").unwrap();
+
+    projects_regex.captures_iter(&test_case_content)
 }
 
 fn convert_from_parsed_folder_to_project(
@@ -400,6 +487,7 @@ mod tests {
         let test_summary = test_config(
             &PathBuf::from("./src/fixtures/cli_test_cases/test_cases_success"),
             &PathBuf::from("./src/fixtures/cli_test_cases/config.yaml"),
+            false,
         );
 
         assert_debug_snapshot!(test_summary,
@@ -416,6 +504,7 @@ mod tests {
         let test_summary = test_config(
             &PathBuf::from("./src/fixtures/cli_test_cases/test_cases_failure"),
             &PathBuf::from("./src/fixtures/cli_test_cases/config.yaml"),
+            false,
         );
 
         assert_debug_snapshot!(test_summary,
@@ -432,6 +521,7 @@ mod tests {
         let test_summary = test_config(
             &PathBuf::from("./src/fixtures/cli_test_cases/test_cases_failure_2"),
             &PathBuf::from("./src/fixtures/cli_test_cases/config.yaml"),
+            false,
         );
 
         assert_debug_snapshot!(test_summary,

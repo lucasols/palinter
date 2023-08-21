@@ -68,6 +68,11 @@ fn main() {
                         .default_value("palinter.yaml")
                         .value_parser(value_parser!(PathBuf)),
                 )
+                .arg(
+                    arg!(-f --fix-errors "Fix the test cases")
+                        .required(false)
+                        .value_parser(value_parser!(bool)),
+                ),
 
         )
         .get_matches();
@@ -108,7 +113,9 @@ fn main() {
         {
             let confg_path = matches.get_one::<PathBuf>("config").unwrap();
 
-            match test_config(test_case_dir, confg_path) {
+            let fix_errors = matches.get_flag("fix-errors");
+
+            match test_config(test_case_dir, confg_path, fix_errors) {
                 Ok(success_msg) => println!("{}", success_msg),
                 Err(err) => {
                     eprintln!("❌ Error testing config: {}", err);
