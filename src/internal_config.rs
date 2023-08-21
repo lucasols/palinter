@@ -7,7 +7,7 @@ use crate::{
         CorrectParsedFolderConfig, ParsedAnyNoneOrConditions, ParsedBlocks,
         ParsedConfig, ParsedFileConditions, ParsedFileContentMatches,
         ParsedFileContentMatchesItem, ParsedFileExpect, ParsedFolderConfig,
-        ParsedFolderExpect, ParsedRule, SingleOrMultiple,
+        ParsedFolderExpect, ParsedMatchImport, ParsedRule, SingleOrMultiple,
     },
     utils::clone_extend_vec,
 };
@@ -55,6 +55,13 @@ pub struct ContentMatches {
 }
 
 #[derive(Debug, Clone)]
+pub enum MatchImport {
+    From(String),
+    DefaultFrom(String),
+    Named { from: String, name: String },
+}
+
+#[derive(Debug, Clone)]
 pub struct TsFileExpect {
     pub not_have_unused_exports: bool,
     pub not_have_circular_deps: bool,
@@ -62,6 +69,8 @@ pub struct TsFileExpect {
     pub not_have_deps_from: Option<Vec<String>>,
     pub not_have_deps_outside: Option<Vec<String>>,
     pub not_have_exports_used_outside: Option<Vec<String>>,
+    pub have_imports: Option<Vec<MatchImport>>,
+    pub not_have_imports: Option<Vec<MatchImport>>,
 }
 
 #[derive(Debug, Clone)]
@@ -896,35 +905,73 @@ fn get_file_expect(
             "is_not_empty",
         )?,
         ts: match parsed_expected.ts {
-            Some(ts) => Some(TsFileExpect {
-                not_have_unused_exports: get_true_flag(
-                    config_path,
-                    &ts.not_have_unused_exports,
-                    "ts.not_have_unused_exports",
-                )?,
-                not_have_circular_deps: get_true_flag(
-                    config_path,
-                    &ts.not_have_circular_deps,
-                    "ts.not_have_circular_deps",
-                )?,
-                not_have_direct_circular_deps: get_true_flag(
-                    config_path,
-                    &ts.not_have_direct_circular_deps,
-                    "ts.not_have_direct_circular_deps",
-                )?,
-                not_have_deps_from: normalize_single_or_multiple_option(
-                    &ts.not_have_deps_from,
-                ),
-                not_have_deps_outside: normalize_single_or_multiple_option(
-                    &ts.not_have_deps_outside,
-                ),
-                not_have_exports_used_outside: normalize_single_or_multiple_option(
-                    &ts.not_have_exports_used_outside,
-                ),
-            }),
+            Some(ts) => {
+                if parsed_config.ts.is_none() {
+                    return Err(format!(
+                        "Config error in '{}': to use 'ts' assertions you must specify the 'ts' property",
+                        config_path
+                    ));
+                }
+
+                Some(TsFileExpect {
+                    not_have_unused_exports: get_true_flag(
+                        config_path,
+                        &ts.not_have_unused_exports,
+                        "ts.not_have_unused_exports",
+                    )?,
+                    not_have_circular_deps: get_true_flag(
+                        config_path,
+                        &ts.not_have_circular_deps,
+                        "ts.not_have_circular_deps",
+                    )?,
+                    not_have_direct_circular_deps: get_true_flag(
+                        config_path,
+                        &ts.not_have_direct_circular_deps,
+                        "ts.not_have_direct_circular_deps",
+                    )?,
+                    not_have_deps_from: normalize_single_or_multiple_option(
+                        &ts.not_have_deps_from,
+                    ),
+                    not_have_deps_outside: normalize_single_or_multiple_option(
+                        &ts.not_have_deps_outside,
+                    ),
+                    not_have_exports_used_outside:
+                        normalize_single_or_multiple_option(
+                            &ts.not_have_exports_used_outside,
+                        ),
+                    have_imports: ts.have_imports.map(|parsed_imports| {
+                        normalize_parsed_match_import(parsed_imports)
+                    }),
+                    not_have_imports: ts.not_have_imports.map(|parsed_imports| {
+                        normalize_parsed_match_import(parsed_imports)
+                    }),
+                })
+            }
             None => None,
         },
     })
+}
+
+fn normalize_parsed_match_import(
+    parsed_match_import: Vec<ParsedMatchImport>,
+) -> Vec<MatchImport> {
+    parsed_match_import
+        .iter()
+        .map(|parsed_match_import| -> MatchImport {
+            if let Some(name) = &parsed_match_import.name {
+                if name == "default" {
+                    MatchImport::DefaultFrom(parsed_match_import.from.clone())
+                } else {
+                    MatchImport::Named {
+                        name: name.clone(),
+                        from: parsed_match_import.from.clone(),
+                    }
+                }
+            } else {
+                MatchImport::From(parsed_match_import.from.clone())
+            }
+        })
+        .collect::<Vec<MatchImport>>()
 }
 
 fn normalize_content_matches(

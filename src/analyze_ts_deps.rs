@@ -225,7 +225,7 @@ fn add_aliases(path: &String) -> String {
     path.to_string()
 }
 
-fn get_file_imports(
+pub fn get_file_imports(
     resolved_path: &str,
 ) -> Result<IndexMap<String, Import>, String> {
     let mut binding = IMPORTS_CACHE.lock().unwrap();
@@ -350,7 +350,7 @@ fn visit_file(
     Ok(())
 }
 
-fn get_basic_file_deps_info(
+pub fn get_basic_file_deps_info(
     resolved_path_string: &str,
 ) -> Result<FileDepsInfo, String> {
     let file_content = get_file_content(resolved_path_string)?;

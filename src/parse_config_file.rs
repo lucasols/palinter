@@ -24,6 +24,12 @@ pub struct ParsedFileConditions {
 }
 
 #[derive(Deserialize, Debug, Clone)]
+pub struct ParsedMatchImport {
+    pub from: String,
+    pub name: Option<String>,
+}
+
+#[derive(Deserialize, Debug, Clone)]
 pub struct ParsedTsFileExpect {
     pub not_have_unused_exports: Option<bool>,
     pub not_have_circular_deps: Option<bool>,
@@ -31,6 +37,8 @@ pub struct ParsedTsFileExpect {
     pub not_have_deps_from: Option<SingleOrMultiple<String>>,
     pub not_have_deps_outside: Option<SingleOrMultiple<String>>,
     pub not_have_exports_used_outside: Option<SingleOrMultiple<String>>,
+    pub have_imports: Option<Vec<ParsedMatchImport>>,
+    pub not_have_imports: Option<Vec<ParsedMatchImport>>,
 }
 
 #[derive(Deserialize, Debug, Clone)]

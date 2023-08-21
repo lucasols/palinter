@@ -3,9 +3,10 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 
 use crate::{
     analyze_ts_deps::ts_checks::{
-        check_ts_not_have_circular_deps, check_ts_not_have_deps_from,
-        check_ts_not_have_deps_outside, check_ts_not_have_direct_circular_deps,
-        check_ts_not_have_unused_exports, check_ts_not_have_used_exports_outside,
+        check_ts_have_imports, check_ts_not_have_circular_deps,
+        check_ts_not_have_deps_from, check_ts_not_have_deps_outside,
+        check_ts_not_have_direct_circular_deps, check_ts_not_have_unused_exports,
+        check_ts_not_have_used_exports_outside, check_ts_not_have_imports,
     },
     internal_config::{
         AnyNoneOr, AnyOr, Config, ErrorMsgVars, FileConditions, FileExpect,
@@ -277,6 +278,22 @@ fn check_file_expect(
                     pass_some_expect = true;
                     check_result(
                         check_ts_not_have_direct_circular_deps(file),
+                        &expect.error_msg,
+                    );
+                }
+
+                if let Some(imports) = &ts_expect.have_imports {
+                    pass_some_expect = true;
+                    check_result(
+                        check_ts_have_imports(file, imports),
+                        &expect.error_msg,
+                    );
+                }
+
+                if let Some(not_have_imports) = &ts_expect.not_have_imports {
+                    pass_some_expect = true;
+                    check_result(
+                        check_ts_not_have_imports(file, not_have_imports),
                         &expect.error_msg,
                     );
                 }

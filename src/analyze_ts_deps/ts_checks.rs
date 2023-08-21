@@ -3,13 +3,15 @@ use globset::Glob;
 use std::path::PathBuf;
 
 use crate::{
-    analyze_ts_deps::replace_aliases, load_folder_structure::File,
-    utils::join_and_truncate_string_vec,
+    analyze_ts_deps::replace_aliases, internal_config::MatchImport,
+    load_folder_structure::File, utils::join_and_truncate_string_vec,
 };
 
 use super::{
-    add_aliases, extract_file_content_imports::ImportType, get_file_deps_result,
-    USED_FILES,
+    add_aliases,
+    extract_file_content_imports::{Import, ImportType},
+    get_basic_file_deps_info, get_file_deps_result, get_file_imports,
+    get_resolved_path, USED_FILES,
 };
 
 pub fn check_ts_not_have_unused_exports(file: &File) -> Result<(), String> {
@@ -205,6 +207,168 @@ pub fn check_ts_not_have_used_exports_outside(
             join_and_truncate_string_vec(&errors, ", ", 3),
             allowed.join(", ")
         ))
+    } else {
+        Ok(())
+    }
+}
+
+pub fn check_ts_have_imports(
+    file: &File,
+    have_imports: &Vec<MatchImport>,
+) -> Result<(), String> {
+    let file_imports = get_file_imports(
+        PathBuf::from(file.clone().relative_path).to_str().unwrap(),
+    )?;
+
+    let mut errors: Vec<String> = vec![];
+
+    for have_import in have_imports {
+        match have_import {
+            MatchImport::From(path) => {
+                if !file_imports.values().any(|Import { import_path, .. }| {
+                    match_glob_path(path, import_path)
+                }) {
+                    errors.push(format!("Should have any import from '{}'", path));
+                }
+            }
+            MatchImport::DefaultFrom(path) => {
+                if !file_imports.values().any(
+                    |Import {
+                         import_path,
+                         values,
+                         ..
+                     }| {
+                        if match_glob_path(path, import_path) {
+                            if let ImportType::Named(values) = values {
+                                values.contains(&"default".to_string())
+                            } else {
+                                false
+                            }
+                        } else {
+                            false
+                        }
+                    },
+                ) {
+                    errors.push(format!(
+                        "Should have a default import from '{}'",
+                        path
+                    ));
+                }
+            }
+            MatchImport::Named { from, name } => {
+                if !file_imports.values().any(
+                    |Import {
+                         import_path,
+                         values,
+                         ..
+                     }| {
+                        if match_glob_path(from, import_path) {
+                            if let ImportType::Named(values) = values {
+                                values.contains(name)
+                            } else {
+                                false
+                            }
+                        } else {
+                            false
+                        }
+                    },
+                ) {
+                    errors.push(format!(
+                        "Should have a named import '{}' from '{}'",
+                        name, from
+                    ));
+                }
+            }
+        }
+    }
+
+    if !errors.is_empty() {
+        Err(errors.join(", "))
+    } else {
+        Ok(())
+    }
+}
+
+fn match_glob_path(path: &String, import_path: &PathBuf) -> bool {
+    globset::Glob::new(replace_aliases(path).as_str())
+        .unwrap()
+        .compile_matcher()
+        .is_match(import_path)
+}
+
+pub fn check_ts_not_have_imports(
+    file: &File,
+    not_have_imports: &Vec<MatchImport>,
+) -> Result<(), String> {
+    let file_imports = get_file_imports(
+        PathBuf::from(file.clone().relative_path).to_str().unwrap(),
+    )?;
+
+    let mut errors: Vec<String> = vec![];
+
+    for not_have_import in not_have_imports {
+        match not_have_import {
+            MatchImport::From(path) => {
+                if file_imports.values().any(|Import { import_path, .. }| {
+                    match_glob_path(path, import_path)
+                }) {
+                    errors
+                        .push(format!("Should not have any import from '{}'", path));
+                }
+            }
+            MatchImport::DefaultFrom(path) => {
+                if file_imports.values().any(
+                    |Import {
+                         import_path,
+                         values,
+                         ..
+                     }| {
+                        if match_glob_path(path, import_path) {
+                            if let ImportType::Named(values) = values {
+                                values.contains(&"default".to_string())
+                            } else {
+                                false
+                            }
+                        } else {
+                            false
+                        }
+                    },
+                ) {
+                    errors.push(format!(
+                        "Should not have a default import from '{}'",
+                        path
+                    ));
+                }
+            }
+            MatchImport::Named { from, name } => {
+                if file_imports.values().any(
+                    |Import {
+                         import_path,
+                         values,
+                         ..
+                     }| {
+                        if match_glob_path(from, import_path) {
+                            if let ImportType::Named(values) = values {
+                                values.contains(name)
+                            } else {
+                                false
+                            }
+                        } else {
+                            false
+                        }
+                    },
+                ) {
+                    errors.push(format!(
+                        "Should not have a named import '{}' from '{}'",
+                        name, from
+                    ));
+                }
+            }
+        }
+    }
+
+    if !errors.is_empty() {
+        Err(errors.join(", "))
     } else {
         Ok(())
     }
