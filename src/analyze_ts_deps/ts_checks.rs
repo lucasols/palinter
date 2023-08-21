@@ -10,8 +10,7 @@ use crate::{
 use super::{
     add_aliases,
     extract_file_content_imports::{Import, ImportType},
-    get_basic_file_deps_info, get_file_deps_result, get_file_imports,
-    get_resolved_path, USED_FILES,
+    get_file_deps_result, get_file_imports, USED_FILES,
 };
 
 pub fn check_ts_not_have_unused_exports(file: &File) -> Result<(), String> {
