@@ -206,7 +206,9 @@ pub fn test_config(
                                                     file_name
                                                 ),
                                                 project_index: i,
-                                                expected_errors: errors,
+                                                expected_errors: sort_vector(
+                                                    &errors,
+                                                ),
                                             },
                                         );
 
@@ -293,20 +295,21 @@ fn apply_expected_errors_updates(
                 new_project_yaml.replace_range(
                     expected_errors_index..,
                     format!(
-                        "expected_errors:\n{}\n",
+                        "expected_errors:\n{}",
                         expected_errors
                             .iter()
                             .map(|err| {
-                                let new_err_with_balenced_new_lines =
-                                    err.replace('\n', "\n    ");
+                                let new_err_with_balenced_new_lines = err
+                                    .replace("\n   |", "\n       |")
+                                    .replace("\n •", "\n     •");
 
                                 format!(
-                                    "  - |\n   {}",
+                                    "  - |\n    {}",
                                     new_err_with_balenced_new_lines
                                 )
                             })
                             .collect::<Vec<String>>()
-                            .join(",\n")
+                            .join("\n")
                     )
                     .as_str(),
                 );
