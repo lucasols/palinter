@@ -359,7 +359,7 @@ You can use context variables from conditions and parent rules in the patterns:
 
 ```yaml
 - if_file:
-    has_name: '*.test.svg'
+    has_name: '*.test.tsx'
   expect:
     content_matches: export const ${1}
     # ${1} will be replaced by the value of the first capture group in the has_name pattern

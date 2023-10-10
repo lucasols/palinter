@@ -1,7 +1,7 @@
 use lazy_static::lazy_static;
 use regex::Regex;
 
-use crate::utils::{get_code_from_line, split_string_by, remove_comments_from_code};
+use crate::utils::{get_code_from_line, remove_comments_from_code, split_string_by};
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Export {
@@ -27,7 +27,10 @@ pub fn extract_file_content_exports(
 
         let line = lines[current_line - 1].trim();
 
-        if line.starts_with("export default") {
+        if line.starts_with("// palinter-ignore-unused-next-line") {
+            current_line += 1;
+            continue;
+        } else if line.starts_with("export default") {
             exports.push(Export {
                 line: current_line,
                 name: DEFAULT.to_string(),
@@ -35,7 +38,7 @@ pub fn extract_file_content_exports(
         } else {
             lazy_static! {
                 static ref SIMPLE_EXPORT: Regex = Regex::new(
-                    r#"^export\s+(let|const|class|function\*?|type|interface)\s+(\w+)"#
+                    r#"^export\s+(let|const|class|function\*?|async\s+?function\*?|type|interface)\s+(\w+)"#
                 )
                 .unwrap();
 
@@ -195,6 +198,8 @@ mod tests {
           export type Test = ''
           export let test3 = ''
           export interface Test2 {}
+          export async function test4() {}
+          export async function* test5() {}
         "#;
         let exports = extract_file_content_exports(file_content).unwrap();
         assert_eq!(
@@ -227,6 +232,14 @@ mod tests {
                 Export {
                     line: 8,
                     name: "Test2".to_string()
+                },
+                Export {
+                    line: 9,
+                    name: "test4".to_string()
+                },
+                Export {
+                    line: 10,
+                    name: "test5".to_string()
                 },
             ]
         );
@@ -388,6 +401,23 @@ mod tests {
                     name: DEFAULT.to_string()
                 }
             ],
+        );
+    }
+
+    #[test]
+    fn ignore_unused_next_line() {
+        let file_content = r#"
+          export const foo = "bar";
+          // palinter-ignore-unused-next-line
+          export const bar = "baz";
+        "#;
+        let exports = extract_file_content_exports(file_content).unwrap();
+        assert_eq!(
+            exports,
+            vec![Export {
+                line: 2,
+                name: "foo".to_string()
+            }],
         );
     }
 }

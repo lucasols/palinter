@@ -46,6 +46,12 @@ pub fn remove_comments_from_code(code: &str) -> String {
 
     RE.replace_all(code, |caps: &regex::Captures| {
         caps.get(0).map_or("".to_string(), |m| {
+            if m.as_str()
+                .starts_with("// palinter-ignore-unused-next-line")
+            {
+                return "// palinter-ignore-unused-next-line".to_string();
+            }
+
             let line_count = m.as_str().matches('\n').count();
             "\n".repeat(line_count)
         })
