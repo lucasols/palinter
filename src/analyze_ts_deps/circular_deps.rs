@@ -84,7 +84,10 @@ pub fn get_detailed_file_circular_deps_result(
 
             for (i, part) in parts.iter().enumerate() {
                 let part_to_use = if part.starts_with('|') {
-                    part.trim_matches('|').bright_yellow().to_string()
+                    part.trim_matches('|')
+                        .bright_yellow()
+                        .to_string()
+                        .replace("./", "#/")
                 } else {
                     part.to_string()
                 };
