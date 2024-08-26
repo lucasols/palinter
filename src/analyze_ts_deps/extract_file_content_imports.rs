@@ -11,6 +11,7 @@ pub enum ImportType {
     Dynamic,
     Type(Vec<String>),
     SideEffect,
+    Glob,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -156,7 +157,9 @@ pub fn extract_imports_from_file_content(
                 static ref DYNAMIC_IMPORT: Regex =
                     Regex::new(r#"import\(\s*['"](.+)['"]\s*\)"#).unwrap();
                 static ref IS_MULTILINE_DYNAMIC_IMPORT: Regex =
-                    Regex::new(r#"import\(\s*$"#).unwrap();
+                    Regex::new(r#"(import|glob)\(\s*$"#).unwrap();
+                static ref GLOB_IMPORT: Regex =
+                    Regex::new(r#"import\.meta\.glob\(\s*['"](.+)['"]"#).unwrap();
             }
 
             if line.starts_with(r"\\") {
@@ -179,6 +182,21 @@ pub fn extract_imports_from_file_content(
                     import_path: PathBuf::from(import_path),
                     line: current_line,
                     values: ImportType::Dynamic,
+                });
+
+                current_line += full_match_lines - 1;
+            }
+
+            if let Some(captures) = GLOB_IMPORT.captures(&content_to_check) {
+                let full_match_lines =
+                    captures.get(0).unwrap().as_str().lines().count();
+
+                let import_path = captures.get(1).unwrap().as_str().to_string();
+
+                imports.push(Import {
+                    import_path: PathBuf::from(&import_path),
+                    line: current_line,
+                    values: ImportType::Glob,
                 });
 
                 current_line += full_match_lines - 1;
@@ -703,7 +721,7 @@ import { strictAssertIsNotNullish } from '@utils/typeAssertions';
     fn bug_test_2() {
         let file_content = r#"
 import {
-  SheelMenuItemTabIcon,
+  ShellMenuItemTabIcon,
   ShellMenuItem,
 } from '@src/components/shellMenu/ShellMenuItem';
 import { ShellMenuItemsContainer } from '@src/components/shellMenu/ShellMenuItemsContainer';
@@ -743,7 +761,7 @@ import { useStoreSnapshot } from 't-state';
                 line: 2,
                 values: Named(
                     [
-                        "SheelMenuItemTabIcon",
+                        "ShellMenuItemTabIcon",
                         "ShellMenuItem",
                     ],
                 ),
@@ -932,6 +950,34 @@ import { useStoreSnapshot } from 't-state';
                         "useStoreSnapshot",
                     ],
                 ),
+            },
+        ]
+        "###
+        );
+    }
+
+    #[test]
+    fn glob_import() {
+        let file_content = r#"
+            const test = import.meta.glob('./test/*.ts');
+
+            const globEager = import.meta.glob('./test_2/*.ts', { eager: true });
+        "#;
+        let imports = extract_imports_from_file_content(file_content).unwrap();
+
+        assert_debug_snapshot!(
+            imports,
+            @r###"
+        [
+            Import {
+                import_path: "./test/*.ts",
+                line: 2,
+                values: Glob,
+            },
+            Import {
+                import_path: "./test_2/*.ts",
+                line: 4,
+                values: Glob,
             },
         ]
         "###

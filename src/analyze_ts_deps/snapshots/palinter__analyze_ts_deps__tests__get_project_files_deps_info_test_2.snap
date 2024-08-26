@@ -23,8 +23,8 @@ expression: results
     "./src/index.ts": DepsResult {
         deps: {
             "./src/fileA.ts",
-            "./src/fileC.ts",
             "./src/fileB.ts",
+            "./src/fileC.ts",
         },
         circular_deps: None,
     },

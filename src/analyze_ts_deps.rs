@@ -191,10 +191,10 @@ fn get_resolved_path(path: &Path) -> Result<Option<PathBuf>, String> {
             }
         }
 
-        return Err(format!(
+        Err(format!(
             "TS: Can't resolve path: {:?}",
             file_with_replaced_alias
-        ));
+        ))
     } else {
         RESOLVE_CACHE
             .lock()
@@ -374,7 +374,11 @@ fn normalize_imports(
     let mut normalized_imports: IndexMap<String, Import> = IndexMap::new();
 
     for new_import in imports {
-        let resolved_import_name = get_resolved_path(&new_import.import_path)?;
+        let resolved_import_name = if new_import.values == ImportType::Glob {
+            None
+        } else {
+            get_resolved_path(&new_import.import_path)?
+        };
 
         let use_name = pb_to_string(
             resolved_import_name.unwrap_or(new_import.import_path.clone()),
@@ -384,7 +388,7 @@ fn normalize_imports(
 
         if let Some(current_import) = current_import {
             match &current_import.values {
-                ImportType::All => {
+                ImportType::All | ImportType::Glob => {
                     continue;
                 }
                 ImportType::Named(current_named) => {
@@ -394,7 +398,9 @@ fn normalize_imports(
                         | ImportType::Type(new_named) => ImportType::Named(
                             clone_extend_vec(current_named, new_named),
                         ),
-                        ImportType::Dynamic | ImportType::SideEffect => {
+                        ImportType::Dynamic
+                        | ImportType::SideEffect
+                        | ImportType::Glob => {
                             ImportType::Named(current_named.clone())
                         }
                     };
@@ -417,7 +423,9 @@ fn normalize_imports(
                         ImportType::Type(new_types) => ImportType::Type(
                             clone_extend_vec(current_types, new_types),
                         ),
-                        ImportType::Dynamic | ImportType::SideEffect => {
+                        ImportType::Dynamic
+                        | ImportType::SideEffect
+                        | ImportType::Glob => {
                             ImportType::Named(current_types.clone())
                         }
                     };
@@ -436,7 +444,38 @@ fn normalize_imports(
                 }
             }
         } else {
-            normalized_imports.insert(use_name, new_import);
+            match &new_import.values {
+                ImportType::Glob => {
+                    let normalized_glob = if new_import.import_path.starts_with("/")
+                    {
+                        format!(".{}", new_import.import_path.to_str().unwrap())
+                    } else {
+                        new_import.import_path.to_str().unwrap().to_string()
+                    };
+
+                    let glob = globset::Glob::new(&normalized_glob)
+                        .unwrap()
+                        .compile_matcher();
+
+                    for file in FILES_CACHE.lock().unwrap().values() {
+                        if glob.is_match(file.relative_path.as_str()) {
+                            normalized_imports.insert(
+                                file.relative_path.clone(),
+                                Import {
+                                    import_path: PathBuf::from(
+                                        file.relative_path.clone(),
+                                    ),
+                                    line: new_import.line,
+                                    values: ImportType::All,
+                                },
+                            );
+                        }
+                    }
+                }
+                _ => {
+                    normalized_imports.insert(use_name, new_import);
+                }
+            }
         }
     }
 

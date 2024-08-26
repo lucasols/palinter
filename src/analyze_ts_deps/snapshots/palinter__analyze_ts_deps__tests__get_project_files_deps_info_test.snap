@@ -22,8 +22,8 @@ expression: results
         },
         "./src/index.ts": DepsResult {
             deps: {
-                "./src/fileB.ts",
                 "./src/fileA.ts",
+                "./src/fileB.ts",
                 "./src/img.svg",
             },
             circular_deps: None,

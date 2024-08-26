@@ -29,7 +29,16 @@ fn get_results(
         let deps_info =
             get_file_deps_result(&PathBuf::from(file_path.clone())).unwrap();
 
-        results.insert(file_path, deps_info);
+        let mut sorted_deps: Vec<String> = deps_info.deps.iter().cloned().collect();
+
+        sorted_deps.sort();
+
+        let deps_info_with_sorted_deps = DepsResult {
+            deps: sorted_deps.into_iter().collect(),
+            circular_deps: deps_info.circular_deps.clone(),
+        };
+
+        results.insert(file_path, deps_info_with_sorted_deps);
     }
 
     (
@@ -281,4 +290,168 @@ fn project_with_circular_deps_4() {
     );
 
     assert_debug_snapshot!(results);
+}
+
+#[test]
+fn project_with_glob_imports() {
+    let _guard = TEST_MUTEX.lock().unwrap();
+
+    _setup_test();
+
+    let (results, _) = get_results(
+        vec![
+            SimplifiedFile {
+                path: PathBuf::from("./src/index.ts"),
+                content: String::from(
+                    r#"
+                    import { a } from '@src/fileA';
+                    "#,
+                ),
+            },
+            SimplifiedFile {
+                path: PathBuf::from("./src/fileA.ts"),
+                content: String::from(
+                    r#"
+                    const test = import.meta.glob('/src/file_*.ts');
+                    "#,
+                ),
+            },
+            SimplifiedFile {
+                path: PathBuf::from("./src/file_B.ts"),
+                content: String::from(
+                    r#"
+                    export const b = 2;
+                    "#,
+                ),
+            },
+            SimplifiedFile {
+                path: PathBuf::from("./src/file_C.ts"),
+                content: String::from(
+                    r#"
+                    export const c = 2;
+                    "#,
+                ),
+            },
+        ],
+        "@src/index.ts",
+    );
+
+    assert_debug_snapshot!(results, @r###"
+    {
+        "./src/fileA.ts": DepsResult {
+            deps: {
+                "./src/file_B.ts",
+                "./src/file_C.ts",
+            },
+            circular_deps: None,
+        },
+        "./src/file_B.ts": DepsResult {
+            deps: {},
+            circular_deps: None,
+        },
+        "./src/file_C.ts": DepsResult {
+            deps: {},
+            circular_deps: None,
+        },
+        "./src/index.ts": DepsResult {
+            deps: {
+                "./src/fileA.ts",
+                "./src/file_B.ts",
+                "./src/file_C.ts",
+            },
+            circular_deps: None,
+        },
+    }
+    "###);
+}
+
+#[test]
+fn project_with_glob_imports_and_circular_deps() {
+    let _guard = TEST_MUTEX.lock().unwrap();
+
+    _setup_test();
+
+    let (results, _) = get_results(
+        vec![
+            SimplifiedFile {
+                path: PathBuf::from("./src/index.ts"),
+                content: String::from(
+                    r#"
+                    import { a } from '@src/fileA';
+                    "#,
+                ),
+            },
+            SimplifiedFile {
+                path: PathBuf::from("./src/fileA.ts"),
+                content: String::from(
+                    r#"
+                    const test = import.meta.glob('/src/file_*.ts');
+                    export const a = 1;
+                    "#,
+                ),
+            },
+            SimplifiedFile {
+                path: PathBuf::from("./src/file_B.ts"),
+                content: String::from(
+                    r#"
+                    console.log('b');
+                    "#,
+                ),
+            },
+            SimplifiedFile {
+                path: PathBuf::from("./src/file_C.ts"),
+                content: String::from(
+                    r#"
+                    import { b } from '@src/fileA';
+                    "#,
+                ),
+            },
+        ],
+        "@src/index.ts",
+    );
+
+    assert_debug_snapshot!(results, @r###"
+    {
+        "./src/fileA.ts": DepsResult {
+            deps: {
+                "./src/fileA.ts",
+                "./src/file_B.ts",
+                "./src/file_C.ts",
+            },
+            circular_deps: Some(
+                [
+                    "./src/fileA.ts",
+                ],
+            ),
+        },
+        "./src/file_B.ts": DepsResult {
+            deps: {},
+            circular_deps: None,
+        },
+        "./src/file_C.ts": DepsResult {
+            deps: {
+                "./src/fileA.ts",
+                "./src/file_B.ts",
+                "./src/file_C.ts",
+            },
+            circular_deps: Some(
+                [
+                    "./src/fileA.ts",
+                ],
+            ),
+        },
+        "./src/index.ts": DepsResult {
+            deps: {
+                "./src/fileA.ts",
+                "./src/file_B.ts",
+                "./src/file_C.ts",
+            },
+            circular_deps: Some(
+                [
+                    "./src/fileA.ts",
+                ],
+            ),
+        },
+    }
+    "###);
 }

@@ -5,9 +5,9 @@ expression: results
 {
     "./src/1.ts": DepsResult {
         deps: {
+            "./src/1.ts",
             "./src/2.ts",
             "./src/3.ts",
-            "./src/1.ts",
         },
         circular_deps: Some(
             [
@@ -17,9 +17,9 @@ expression: results
     },
     "./src/2.ts": DepsResult {
         deps: {
-            "./src/3.ts",
             "./src/1.ts",
             "./src/2.ts",
+            "./src/3.ts",
         },
         circular_deps: Some(
             [
@@ -41,13 +41,13 @@ expression: results
     },
     "./src/b.ts": DepsResult {
         deps: {
-            "./src/d.ts",
             "./src/1.ts",
             "./src/2.ts",
             "./src/3.ts",
+            "./src/b.ts",
+            "./src/d.ts",
             "./src/e.ts",
             "./src/f.ts",
-            "./src/b.ts",
         },
         circular_deps: Some(
             [
@@ -58,10 +58,10 @@ expression: results
     },
     "./src/c.ts": DepsResult {
         deps: {
-            "./src/d.ts",
             "./src/1.ts",
             "./src/2.ts",
             "./src/3.ts",
+            "./src/d.ts",
         },
         circular_deps: Some(
             [
@@ -83,13 +83,13 @@ expression: results
     },
     "./src/e.ts": DepsResult {
         deps: {
-            "./src/f.ts",
-            "./src/b.ts",
-            "./src/d.ts",
             "./src/1.ts",
             "./src/2.ts",
             "./src/3.ts",
+            "./src/b.ts",
+            "./src/d.ts",
             "./src/e.ts",
+            "./src/f.ts",
         },
         circular_deps: Some(
             [
@@ -100,11 +100,11 @@ expression: results
     },
     "./src/f.ts": DepsResult {
         deps: {
-            "./src/b.ts",
-            "./src/d.ts",
             "./src/1.ts",
             "./src/2.ts",
             "./src/3.ts",
+            "./src/b.ts",
+            "./src/d.ts",
             "./src/e.ts",
             "./src/f.ts",
         },
@@ -117,14 +117,14 @@ expression: results
     },
     "./src/index.ts": DepsResult {
         deps: {
-            "./src/b.ts",
-            "./src/d.ts",
             "./src/1.ts",
             "./src/2.ts",
             "./src/3.ts",
+            "./src/b.ts",
+            "./src/c.ts",
+            "./src/d.ts",
             "./src/e.ts",
             "./src/f.ts",
-            "./src/c.ts",
         },
         circular_deps: Some(
             [

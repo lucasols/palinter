@@ -80,16 +80,16 @@ fn main() {
 
     if let Some(matches) = cli.subcommand_matches("circular-deps") {
         if let Some(file_name) = matches.get_one::<PathBuf>("file") {
-            let confg_path = matches.get_one::<PathBuf>("config").unwrap();
+            let cfg_path = matches.get_one::<PathBuf>("config").unwrap();
 
             let root = matches.get_one::<PathBuf>("root").unwrap();
 
-            let parsed_config = match parse_config_file(confg_path) {
+            let parsed_config = match parse_config_file(cfg_path) {
                 Ok(config) => config,
                 Err(err) => {
                     println!(
                         "❌ Error parsing config file: {}, {}",
-                        confg_path.to_str().unwrap(),
+                        cfg_path.to_str().unwrap(),
                         err
                     );
                     std::process::exit(1);
@@ -112,11 +112,11 @@ fn main() {
     } else if let Some(matches) = cli.subcommand_matches("test-config") {
         if let Some(test_case_dir) = matches.get_one::<PathBuf>("test_cases_folder")
         {
-            let confg_path = matches.get_one::<PathBuf>("config").unwrap();
+            let cfg_path = matches.get_one::<PathBuf>("config").unwrap();
 
             let fix_errors = matches.contains_id("fix-errors");
 
-            match test_config(test_case_dir, confg_path, fix_errors) {
+            match test_config(test_case_dir, cfg_path, fix_errors) {
                 Ok(success_msg) => println!("{}", success_msg),
                 Err(err) => {
                     eprintln!("❌ Error testing config: {}", err);
@@ -125,16 +125,16 @@ fn main() {
             }
         }
     } else {
-        let confg_path = cli.get_one::<PathBuf>("config").unwrap().clone();
+        let cfg_path = cli.get_one::<PathBuf>("config").unwrap().clone();
 
         let root = cli.get_one::<PathBuf>("root").unwrap().clone();
 
-        let parsed_config = match parse_config_file(&confg_path) {
+        let parsed_config = match parse_config_file(&cfg_path) {
             Ok(config) => config,
             Err(err) => {
                 println!(
                     "❌ Error parsing config file '{}': {}",
-                    confg_path.to_str().unwrap(),
+                    cfg_path.to_str().unwrap(),
                     err
                 );
                 std::process::exit(1);

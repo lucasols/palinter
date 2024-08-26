@@ -5,8 +5,8 @@ expression: results
 {
     "./src/fileA.ts": DepsResult {
         deps: {
-            "./src/fileB.ts",
             "./src/fileA.ts",
+            "./src/fileB.ts",
         },
         circular_deps: Some(
             [
@@ -27,8 +27,8 @@ expression: results
     },
     "./src/index.ts": DepsResult {
         deps: {
-            "./src/fileB.ts",
             "./src/fileA.ts",
+            "./src/fileB.ts",
         },
         circular_deps: Some(
             [

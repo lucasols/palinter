@@ -17,8 +17,8 @@ expression: results
     },
     "./src/b.ts": DepsResult {
         deps: {
-            "./src/c.ts",
             "./src/b.ts",
+            "./src/c.ts",
             "./src/d.ts",
         },
         circular_deps: Some(

@@ -46,12 +46,13 @@ pub fn check_ts_not_have_unused_exports(file: &File) -> Result<(), String> {
                         unused_exports
                             .retain(|export| !values.contains(&export.name));
                     }
+                    ImportType::Glob => {}
                 }
             }
         }
 
         if !unused_exports.is_empty() {
-            return Err(format!(
+            Err(format!(
                 "File has unused exports: {}",
                 unused_exports
                     .iter()
@@ -61,7 +62,7 @@ pub fn check_ts_not_have_unused_exports(file: &File) -> Result<(), String> {
                     ))
                     .collect::<Vec<String>>()
                     .join(", ")
-            ));
+            ))
         } else {
             Ok(())
         }
