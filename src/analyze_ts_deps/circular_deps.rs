@@ -70,7 +70,7 @@ pub fn get_detailed_file_circular_deps_result(
 
         cdeps.truncate(truncate);
 
-        println!("🔁 Circular deps found:");
+        println!("🔁 {} circular deps found:", cdeps.len());
 
         if result
             .deps
