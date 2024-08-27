@@ -31,5 +31,5 @@ structure:
       file.txt: ''
 
 expected_errors:
-  - "Folder ./src/folder:\n • should have at least 2 childs, found 1"
+  - "Folder ./src/folder:\n • should have at least 2 children, found 1"
 ```

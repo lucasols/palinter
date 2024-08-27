@@ -97,7 +97,7 @@ structure:
       export const fileC = 'hello world'
 
 expected_errors:
-  - "File ./contentAtMost/file.ts:\n • content should match at most 1 of the configured `content_matches` patterns"
+  - "File ./contentAtMost/file.ts:\n • content should match at most 1 of the configured `content_matches` patterns but found 2"
 ```
 
 ```yaml
@@ -128,7 +128,7 @@ structure:
       export const B = 'hello world'
 
 expected_errors:
-  - "File ./contentAtLeast/file.ts:\n • content should match at least 2 of the configured `content_matches` patterns"
+  - "File ./contentAtLeast/file.ts:\n • content should match at least 2 of the configured `content_matches` patterns but found 1"
 ```
 
 ### Content at least 2
@@ -154,7 +154,7 @@ structure:
       export function C() {}
 
 expected_errors:
-  - "File ./contentAtLeast2/file.ts:\n • content should match at least 2 of the configured `content_matches` patterns"
+  - "File ./contentAtLeast2/file.ts:\n • content should match at least 2 of the configured `content_matches` patterns but found 1"
 ```
 
 ### Matches some
