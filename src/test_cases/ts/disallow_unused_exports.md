@@ -63,7 +63,7 @@ structure:
 expected_errors:
   - |
     File ./src/fileA.ts:
-     • File has unused exports: 'b' in ./src/fileA.ts:2
+     • File has unused exports: b in ./src/fileA.ts:2
 ```
 
 ```yaml
