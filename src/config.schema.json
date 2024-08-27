@@ -1,0 +1,263 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "blocks": {
+      "type": ["object", "null"],
+      "additionalProperties": {
+        "oneOf": [
+          { "$ref": "#/definitions/rule" },
+          {
+            "type": "array",
+            "items": { "$ref": "#/definitions/rule" }
+          }
+        ]
+      }
+    },
+    "error_msg_vars": {
+      "type": ["object", "null"],
+      "additionalProperties": { "type": "string" }
+    },
+    "analyze_content_of_files_types": {
+      "type": ["array", "null"],
+      "items": { "type": "string" }
+    },
+    "ignore": {
+      "type": ["array", "null"],
+      "items": { "type": "string" }
+    },
+    "ts": {
+      "type": ["object", "null"],
+      "properties": {
+        "aliases": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "unused_exports_entry_points": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "required": ["aliases", "unused_exports_entry_points"]
+    },
+    "./": { "$ref": "#/definitions/folderConfig" }
+  },
+  "required": ["./"],
+  "additionalProperties": false,
+  "definitions": {
+    "rule": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "if_file": { "$ref": "#/definitions/conditions" },
+            "expect": {
+              "oneOf": [
+                { "$ref": "#/definitions/fileExpect" },
+                {
+                  "type": "array",
+                  "items": { "$ref": "#/definitions/fileExpect" }
+                },
+                {
+                  "type": "string",
+                  "enum": ["none", "any"]
+                }
+              ]
+            },
+            "expect_one_of": {
+              "type": "array",
+              "items": { "$ref": "#/definitions/fileExpect" }
+            },
+            "error_msg": { "type": "string" },
+            "non_recursive": { "type": "boolean" },
+            "not_touch": { "type": "boolean" },
+            "ignore_in_config_tests": { "type": "boolean" }
+          },
+          "required": ["if_file"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "if_folder": { "$ref": "#/definitions/conditions" },
+            "expect": {
+              "oneOf": [
+                { "$ref": "#/definitions/folderExpect" },
+                {
+                  "type": "array",
+                  "items": { "$ref": "#/definitions/folderExpect" }
+                },
+                {
+                  "type": "string",
+                  "enum": ["none", "any"]
+                }
+              ]
+            },
+            "expect_one_of": {
+              "type": "array",
+              "items": { "$ref": "#/definitions/folderExpect" }
+            },
+            "error_msg": { "type": "string" },
+            "non_recursive": { "type": "boolean" },
+            "not_touch": { "type": "boolean" }
+          },
+          "required": ["if_folder"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "one_of": {
+              "type": "array",
+              "items": { "$ref": "#/definitions/rule" }
+            },
+            "error_msg": { "type": "string" }
+          },
+          "required": ["one_of"]
+        },
+        { "type": "string" }
+      ]
+    },
+    "conditions": {
+      "oneOf": [
+        { "type": "string", "enum": ["any", "none"] },
+        { "type": "object", "additionalProperties": true }
+      ]
+    },
+    "fileExpect": {
+      "type": "object",
+      "properties": {
+        "name_case_is": { "type": "string" },
+        "extension_is": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } }
+          ]
+        },
+        "have_sibling_file": { "type": "string" },
+        "content_matches": { "$ref": "#/definitions/contentMatches" },
+        "content_matches_any": { "$ref": "#/definitions/contentMatches" },
+        "content_not_matches": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } }
+          ]
+        },
+        "name_is": { "type": "string" },
+        "name_is_not": { "type": "string" },
+        "is_not_empty": { "type": "boolean" },
+        "ts": { "$ref": "#/definitions/tsFileExpect" },
+        "error_msg": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "folderExpect": {
+      "type": "object",
+      "properties": {
+        "name_case_is": { "type": "string" },
+        "name_is": { "type": "string" },
+        "name_is_not": { "type": "string" },
+        "root_files_has": { "type": "string" },
+        "root_files_has_not": { "type": "string" },
+        "have_min_children": { "type": "integer", "minimum": 0 },
+        "child_rules": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/rule" }
+        },
+        "error_msg": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "contentMatches": {
+      "oneOf": [
+        { "type": "string" },
+        {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              { "type": "string" },
+              {
+                "type": "object",
+                "properties": {
+                  "all": { "type": "array", "items": { "type": "string" } },
+                  "any": { "type": "array", "items": { "type": "string" } },
+                  "at_least": { "type": "integer", "minimum": 0 },
+                  "at_most": { "type": "integer", "minimum": 0 }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "tsFileExpect": {
+      "type": "object",
+      "properties": {
+        "not_have_unused_exports": { "type": "boolean" },
+        "not_have_circular_deps": { "type": "boolean" },
+        "not_have_direct_circular_deps": { "type": "boolean" },
+        "not_have_deps_from": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } }
+          ]
+        },
+        "not_have_deps_outside": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } }
+          ]
+        },
+        "not_have_exports_used_outside": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } }
+          ]
+        },
+        "have_imports": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "from": { "type": "string" },
+              "name": { "type": "string" }
+            },
+            "required": ["from"]
+          }
+        },
+        "not_have_imports": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "from": { "type": "string" },
+              "name": { "type": "string" }
+            },
+            "required": ["from"]
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "folderConfig": {
+      "type": "object",
+      "properties": {
+        "has_files_in_root": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "rules": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/rule" }
+        },
+        "optional": { "type": "boolean" },
+        "allow_unexpected_files": { "type": "boolean" },
+        "allow_unexpected_folders": { "type": "boolean" },
+        "allow_unexpected": { "type": "boolean" },
+        "unexpected_files_error_msg": { "type": "string" },
+        "unexpected_folders_error_msg": { "type": "string" },
+        "unexpected_error_msg": { "type": "string" },
+        "append_error_msg": { "type": "string" }
+      },
+      "additionalProperties": { "$ref": "#/definitions/folderConfig" }
+    }
+  }
+}
