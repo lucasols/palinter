@@ -9,7 +9,7 @@
 
       - if_folder: any
         expect:
-          have_min_childs: 2
+          have_min_children: 2
 ```
 
 # Projects
