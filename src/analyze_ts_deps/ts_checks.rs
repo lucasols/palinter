@@ -66,6 +66,8 @@ pub fn check_ts_not_have_unused_exports(file: &File) -> Result<(), String> {
         } else {
             Ok(())
         }
+    } else if file_has_ignore_comment(file, "not-have-unused-exports") {
+        Ok(())
     } else {
         Err("File is not being used in the project".to_string())
     }
