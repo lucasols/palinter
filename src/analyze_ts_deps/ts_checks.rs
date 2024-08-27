@@ -57,11 +57,11 @@ pub fn check_ts_not_have_unused_exports(file: &File) -> Result<(), String> {
                 unused_exports
                     .iter()
                     .map(|export| format!(
-                        "'{}' in line {}",
-                        export.name, export.line
+                        "'{}' in {}:{}",
+                        export.name, file.relative_path, export.line
                     ))
                     .collect::<Vec<String>>()
-                    .join(", ")
+                    .join(" , ")
             ))
         } else {
             Ok(())

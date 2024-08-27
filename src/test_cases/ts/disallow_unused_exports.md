@@ -61,7 +61,9 @@ structure:
       import { a } from '@src/fileA';
 
 expected_errors:
-  - "File ./src/fileA.ts:\n • File has unused exports: 'b' in line 2"
+  - |
+    File ./src/fileA.ts:
+     • File has unused exports: 'b' in ./src/fileA.ts:2
 ```
 
 ```yaml
@@ -78,5 +80,7 @@ structure:
       export type Test = 'ok';
 
 expected_errors:
-  - "File ./src/fileC.ts:\n • File is not being used in the project"
+  - |
+    File ./src/fileC.ts:
+     • File is not being used in the project
 ```

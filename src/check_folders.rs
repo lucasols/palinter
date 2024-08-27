@@ -754,7 +754,7 @@ fn check_folder_childs(
                             &sub_folder_inherited_folders_rules,
                             &context_conditions,
                             error_msg_vars,
-                            is_test_config
+                            is_test_config,
                         ) {
                             if !errors_found.is_empty() {
                                 folder_has_error = true;
