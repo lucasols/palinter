@@ -1,6 +1,5 @@
 ---
 source: src/analyze_ts_deps/tests.rs
-assertion_line: 104
 expression: results
 ---
 (
@@ -36,10 +35,12 @@ expression: results
                 Export {
                     line: 2,
                     name: "a",
+                    ignored: false,
                 },
                 Export {
                     line: 3,
                     name: "b",
+                    ignored: false,
                 },
             ],
         },

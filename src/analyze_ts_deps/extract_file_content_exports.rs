@@ -7,6 +7,7 @@ use crate::utils::{get_code_from_line, remove_comments_from_code, split_string_b
 pub struct Export {
     pub line: usize,
     pub name: String,
+    pub ignored: bool,
 }
 
 const DEFAULT: &str = "default";
@@ -22,18 +23,23 @@ pub fn extract_file_content_exports(
     let lines_iter = file_content.lines();
     let lines = lines_iter.clone().collect::<Vec<&str>>();
 
+    let mut ignore_exports_in_line = 0;
+
     while current_line < lines.len() {
         current_line += 1;
 
         let line = lines[current_line - 1].trim();
 
         if line.starts_with("// palinter-ignore-unused-next-line") {
-            current_line += 1;
+            ignore_exports_in_line = current_line + 1;
             continue;
-        } else if line.starts_with("export default") {
+        }
+
+        if line.starts_with("export default") {
             exports.push(Export {
                 line: current_line,
                 name: DEFAULT.to_string(),
+                ignored: ignore_exports_in_line == current_line,
             });
         } else {
             lazy_static! {
@@ -63,6 +69,7 @@ pub fn extract_file_content_exports(
                 exports.push(Export {
                     line: current_line,
                     name: captures.get(2).unwrap().as_str().to_string(),
+                    ignored: ignore_exports_in_line == current_line,
                 });
                 continue;
             }
@@ -97,6 +104,7 @@ pub fn extract_file_content_exports(
                         exports.push(Export {
                             line: current_line,
                             name,
+                            ignored: ignore_exports_in_line == current_line,
                         });
                     }
 
@@ -127,6 +135,7 @@ pub fn extract_file_content_exports(
                         exports.push(Export {
                             line: current_line,
                             name,
+                            ignored: ignore_exports_in_line == current_line,
                         });
                     }
 
@@ -156,7 +165,8 @@ mod tests {
             exports,
             vec![Export {
                 line: 2,
-                name: DEFAULT.to_string()
+                name: DEFAULT.to_string(),
+                ignored: false,
             }],
         );
     }
@@ -174,15 +184,18 @@ mod tests {
             vec![
                 Export {
                     line: 2,
-                    name: "foo".to_string()
+                    name: "foo".to_string(),
+                    ignored: false,
                 },
                 Export {
                     line: 3,
-                    name: "bar".to_string()
+                    name: "bar".to_string(),
+                    ignored: false,
                 },
                 Export {
                     line: 4,
-                    name: "baz".to_string()
+                    name: "baz".to_string(),
+                    ignored: false,
                 },
             ]
         );
@@ -207,39 +220,48 @@ mod tests {
             vec![
                 Export {
                     line: 2,
-                    name: "foo".to_string()
+                    name: "foo".to_string(),
+                    ignored: false,
                 },
                 Export {
                     line: 3,
-                    name: "bar".to_string()
+                    name: "bar".to_string(),
+                    ignored: false,
                 },
                 Export {
                     line: 4,
-                    name: "bar2".to_string()
+                    name: "bar2".to_string(),
+                    ignored: false,
                 },
                 Export {
                     line: 5,
-                    name: "baz".to_string()
+                    name: "baz".to_string(),
+                    ignored: false,
                 },
                 Export {
                     line: 6,
-                    name: "Test".to_string()
+                    name: "Test".to_string(),
+                    ignored: false,
                 },
                 Export {
                     line: 7,
-                    name: "test3".to_string()
+                    name: "test3".to_string(),
+                    ignored: false,
                 },
                 Export {
                     line: 8,
-                    name: "Test2".to_string()
+                    name: "Test2".to_string(),
+                    ignored: false,
                 },
                 Export {
                     line: 9,
-                    name: "test4".to_string()
+                    name: "test4".to_string(),
+                    ignored: false,
                 },
                 Export {
                     line: 10,
-                    name: "test5".to_string()
+                    name: "test5".to_string(),
+                    ignored: false,
                 },
             ]
         );
@@ -261,35 +283,43 @@ mod tests {
             vec![
                 Export {
                     line: 2,
-                    name: "name1".to_string()
+                    name: "name1".to_string(),
+                    ignored: false,
                 },
                 Export {
                     line: 2,
-                    name: "bar".to_string()
+                    name: "bar".to_string(),
+                    ignored: false,
                 },
                 Export {
                     line: 3,
-                    name: "name2".to_string()
+                    name: "name2".to_string(),
+                    ignored: false,
                 },
                 Export {
                     line: 3,
-                    name: "name3".to_string()
+                    name: "name3".to_string(),
+                    ignored: false,
                 },
                 Export {
                     line: 4,
-                    name: "test".to_string()
+                    name: "test".to_string(),
+                    ignored: false,
                 },
                 Export {
                     line: 5,
-                    name: "test2".to_string()
+                    name: "test2".to_string(),
+                    ignored: false,
                 },
                 Export {
                     line: 6,
-                    name: "test3".to_string()
+                    name: "test3".to_string(),
+                    ignored: false,
                 },
                 Export {
                     line: 6,
-                    name: "test4".to_string()
+                    name: "test4".to_string(),
+                    ignored: false,
                 },
             ]
         );
@@ -311,19 +341,23 @@ mod tests {
             vec![
                 Export {
                     line: 2,
-                    name: "name1".to_string()
+                    name: "name1".to_string(),
+                    ignored: false,
                 },
                 Export {
                     line: 2,
-                    name: "bar".to_string()
+                    name: "bar".to_string(),
+                    ignored: false,
                 },
                 Export {
                     line: 5,
-                    name: "name2".to_string()
+                    name: "name2".to_string(),
+                    ignored: false,
                 },
                 Export {
                     line: 5,
-                    name: "name3".to_string()
+                    name: "name3".to_string(),
+                    ignored: false,
                 },
             ]
         );
@@ -341,7 +375,8 @@ mod tests {
             exports,
             vec![Export {
                 line: 2,
-                name: "foo".to_string()
+                name: "foo".to_string(),
+                ignored: false,
             }],
         );
     }
@@ -362,15 +397,18 @@ mod tests {
             vec![
                 Export {
                     line: 2,
-                    name: "foo".to_string()
+                    name: "foo".to_string(),
+                    ignored: false,
                 },
                 Export {
                     line: 2,
-                    name: "bar".to_string()
+                    name: "bar".to_string(),
+                    ignored: false,
                 },
                 Export {
                     line: 2,
-                    name: "test".to_string()
+                    name: "test".to_string(),
+                    ignored: false,
                 }
             ],
         );
@@ -390,15 +428,18 @@ mod tests {
             vec![
                 Export {
                     line: 2,
-                    name: "foo".to_string()
+                    name: "foo".to_string(),
+                    ignored: false,
                 },
                 Export {
                     line: 3,
-                    name: "test".to_string()
+                    name: "test".to_string(),
+                    ignored: false,
                 },
                 Export {
                     line: 4,
-                    name: DEFAULT.to_string()
+                    name: DEFAULT.to_string(),
+                    ignored: false,
                 }
             ],
         );
@@ -414,10 +455,18 @@ mod tests {
         let exports = extract_file_content_exports(file_content).unwrap();
         assert_eq!(
             exports,
-            vec![Export {
-                line: 2,
-                name: "foo".to_string()
-            }],
+            vec![
+                Export {
+                    line: 2,
+                    name: "foo".to_string(),
+                    ignored: false,
+                },
+                Export {
+                    line: 4,
+                    name: "bar".to_string(),
+                    ignored: true,
+                }
+            ],
         );
     }
 }

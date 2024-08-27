@@ -53,7 +53,6 @@ pub struct ParsedFileExpect {
     pub name_is_not: Option<String>,
     pub is_not_empty: Option<bool>,
     pub ts: Option<ParsedTsFileExpect>,
-    pub has_parent_folder: Option<Vec<ParsedFolderExpect>>,
 
     pub error_msg: Option<String>,
 
@@ -200,7 +199,6 @@ pub type ParsedBlocks = Option<BTreeMap<String, SingleOrMultiple<ParsedRule>>>;
 pub struct ParsedConfig {
     pub blocks: ParsedBlocks,
     pub error_msg_vars: Option<BTreeMap<String, String>>,
-    pub to_have_files: Option<Vec<String>>,
     pub analyze_content_of_files_types: Option<Vec<String>>,
     pub ignore: Option<Vec<String>>,
     pub ts: Option<ParsedTsConfig>,
