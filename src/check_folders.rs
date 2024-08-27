@@ -82,7 +82,7 @@ fn append_expect_error(
                 let custom_err_msg =
                     replace_error_msg_vars(error_msg_vars, expect_error_msg);
 
-                Err(format!("{}\n   | {}", custom_err_msg, error.dimmed()))
+                Err(format!("{}\n   | {}", custom_err_msg, error))
             } else {
                 Err(error)
             }
