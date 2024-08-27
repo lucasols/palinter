@@ -155,11 +155,11 @@ pub fn extract_imports_from_file_content(
         } else {
             lazy_static! {
                 static ref DYNAMIC_IMPORT: Regex =
-                    Regex::new(r#"import\(\s*['"](.+)['"]\s*\)"#).unwrap();
+                    Regex::new(r#"import\(\s*['"](.+?)['"]\s*\)"#).unwrap();
                 static ref IS_MULTILINE_DYNAMIC_IMPORT: Regex =
                     Regex::new(r#"(import|glob)\(\s*$"#).unwrap();
                 static ref GLOB_IMPORT: Regex =
-                    Regex::new(r#"import\.meta\.glob\(\s*['"](.+)['"]"#).unwrap();
+                    Regex::new(r#"import\.meta\.glob\(\s*['"](.+?)['"]"#).unwrap();
             }
 
             if line.starts_with(r"\\") {
@@ -977,6 +977,42 @@ import { useStoreSnapshot } from 't-state';
             Import {
                 import_path: "./test_2/*.ts",
                 line: 4,
+                values: Glob,
+            },
+        ]
+        "###
+        );
+    }
+
+    #[test]
+    fn glob_import_2() {
+        let file_content = r#"
+
+const compactFieldComponents = import.meta.glob(
+    '/src/tableFields/fields/*/Compact*Field.tsx',
+    { eager: true },
+);
+
+const tableBodyCellViewerComponents = import.meta.glob(
+    '/src/tableFields/fields/*/Table*CellViewer.tsx',
+    { eager: true },
+);
+"#;
+
+        let imports = extract_imports_from_file_content(file_content).unwrap();
+
+        assert_debug_snapshot!(
+            imports,
+            @r###"
+        [
+            Import {
+                import_path: "/src/tableFields/fields/*/Compact*Field.tsx",
+                line: 3,
+                values: Glob,
+            },
+            Import {
+                import_path: "/src/tableFields/fields/*/Table*CellViewer.tsx",
+                line: 8,
                 values: Glob,
             },
         ]

@@ -41,7 +41,7 @@ pub fn get_code_from_line(lines_iter: &Lines, line: usize) -> String {
 
 pub fn remove_comments_from_code(code: &str) -> String {
     lazy_static! {
-        static ref RE: Regex = Regex::new(r#"//.+|/\*[\s\S]+?\*/"#).unwrap();
+        static ref RE: Regex = Regex::new(r#"//.+|(^|\s)/\*[\s\S]+?\*/"#).unwrap();
     }
 
     RE.replace_all(code, |caps: &regex::Captures| {
@@ -127,6 +127,26 @@ const test =
 
 
 let ok = 1
+"#
+        );
+    }
+
+    #[test]
+    fn bug_removing_non_comments() {
+        let code = r#"
+const compactFieldComponents = import.meta.glob(
+    '/src/tableFields/fields/*/Compact*Field.tsx',
+    { eager: true },
+);
+"#;
+
+        assert_eq!(
+            remove_comments_from_code(code),
+            r#"
+const compactFieldComponents = import.meta.glob(
+    '/src/tableFields/fields/*/Compact*Field.tsx',
+    { eager: true },
+);
 "#
         );
     }

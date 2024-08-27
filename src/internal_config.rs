@@ -590,15 +590,15 @@ fn normalize_rules(
                     }
                 }
             }
-            ParsedRule::Block(block_sring) => {
+            ParsedRule::Block(block_string) => {
                 let (block_id, custom_error, custom_not_touch, custom_non_recursive) = {
-                    if block_sring.contains("::") {
+                    if block_string.contains("::") {
                         let mut block_id = String::new();
                         let mut custom_error: Option<String> = None;
                         let mut custom_not_touch = None;
                         let mut custom_non_recursive = None;
 
-                        for (i, part) in block_sring.split("::").enumerate() {
+                        for (i, part) in block_string.split("::").enumerate() {
                             if i == 0 {
                                 block_id = part.to_string();
                             } else if part.starts_with("error_msg=") {
@@ -628,7 +628,7 @@ fn normalize_rules(
                             custom_non_recursive,
                         )
                     } else {
-                        (block_sring.clone(), None, None, None)
+                        (block_string.clone(), None, None, None)
                     }
                 };
 
@@ -840,7 +840,7 @@ fn get_folder_expect(
         name_is_not: parsed_expected.name_is_not,
         root_files_has: parsed_expected.root_files_has,
         root_files_has_not: parsed_expected.root_files_has_not,
-        have_min_children: parsed_expected.have_min_childs,
+        have_min_children: parsed_expected.have_min_children,
         child_rules: parsed_expected
             .child_rules
             .map(
@@ -859,7 +859,7 @@ fn get_folder_expect(
                                 .any(|expect| expect.child_rules.is_some())
                             {
                                 return Err(format!(
-                                    "Config error in '{}': 'childs_rules' cannot be used inside another 'childs_rules'",
+                                    "Config error in '{}': 'children_rules' cannot be used inside another 'children_rules'",
                                     config_path
                                 ));
                             }
@@ -1131,9 +1131,9 @@ pub fn normalize_folder_config(
                     sub_folder_name.split('/').collect::<Vec<&str>>();
 
                 if compound_path_parts.len() > 2 {
-                    let fisrt_part = format!("/{}", compound_path_parts[1]);
+                    let first_part = format!("/{}", compound_path_parts[1]);
 
-                    if config.folders.contains_key(&fisrt_part) {
+                    if config.folders.contains_key(&first_part) {
                         return Err(format!(
                             "Config error: Duplicate compound folder path: '{}' in '{}', compound folder paths should not conflict with existing ones",
                             sub_folder_name, folder_path
@@ -1144,7 +1144,7 @@ pub fn normalize_folder_config(
                         format!("/{}", compound_path_parts[2..].join("/"));
 
                     sub_folders_config.insert(
-                        fisrt_part,
+                        first_part,
                         normalize_folder_config(
                             &ParsedFolderConfig::Ok(CorrectParsedFolderConfig {
                                 rules: None,
