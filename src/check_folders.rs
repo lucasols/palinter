@@ -19,7 +19,7 @@ use crate::{
 
 use self::checks::{
     check_content, check_content_not_matches, check_file_is_not_empty,
-    check_folder_min_childs, check_negated_path_pattern,
+    check_folder_min_children, check_negated_path_pattern,
     check_negated_root_files_has_pattern, check_path_pattern,
     check_root_files_find_pattern, check_root_files_has_pattern,
     expand_to_capture_case_variation, extension_is, has_sibling_file, name_case_is,
@@ -94,7 +94,7 @@ fn replace_error_msg_vars(
     error_msg_vars: &Option<BTreeMap<String, String>>,
     expect_error_msg: &String,
 ) -> String {
-    let custom_err_msg = if let Some(vars) = error_msg_vars {
+    if let Some(vars) = error_msg_vars {
         let mut err_msg = expect_error_msg.clone();
 
         for (var, value) in vars {
@@ -104,8 +104,7 @@ fn replace_error_msg_vars(
         err_msg
     } else {
         expect_error_msg.to_string()
-    };
-    custom_err_msg
+    }
 }
 
 fn append_error_to_vec(
@@ -300,7 +299,7 @@ fn check_file_expect(
             }
 
             if cfg!(debug_assertions) && !pass_some_expect {
-                panic!("Unexpect expect {:#?}", expect);
+                panic!("Unexpected expect {:#?}", expect);
             }
         }
     }
@@ -439,10 +438,10 @@ fn check_folder_expected(
                     )?;
                 }
 
-                if let Some(min_childs) = &expect.have_min_childs {
+                if let Some(min_children) = &expect.have_min_children {
                     pass_some_expect = true;
                     append_error_to_vec(
-                        check_folder_min_childs(folder, *min_childs),
+                        check_folder_min_children(folder, *min_children),
                         &expect.error_msg,
                         error_msg_vars,
                     )?;
@@ -451,7 +450,7 @@ fn check_folder_expected(
                 if let Some((folder_rules, file_rules)) = &expect.child_rules {
                     pass_some_expect = true;
 
-                    check_folder_childs(
+                    check_folder_children(
                         folder,
                         Some(&FolderConfig {
                             file_rules: file_rules.clone(),
@@ -479,7 +478,7 @@ fn check_folder_expected(
                 }
 
                 if cfg!(debug_assertions) && !pass_some_expect {
-                    panic!("Unexpect expect {:#?}", expect);
+                    panic!("Unexpected expect {:#?}", expect);
                 }
             }
 
@@ -522,7 +521,7 @@ pub fn to_folder_config_name(name: &String) -> String {
     }
 }
 
-fn check_folder_childs(
+fn check_folder_children(
     folder: &Folder,
     folder_config: Option<&FolderConfig>,
     folder_path: String,
@@ -568,7 +567,7 @@ fn check_folder_childs(
         })
         .unwrap_or_default();
 
-    for child in &folder.childs {
+    for child in &folder.children {
         match child {
             FolderChild::FileChild(file) => {
                 let mut file_touched = false;
@@ -723,7 +722,7 @@ fn check_folder_childs(
 
                 let mut folder_touched = false;
                 let mut folder_has_error = false;
-                let mut childs_was_checked = false;
+                let mut children_was_checked = false;
 
                 let mut check_folder_rule = |rule: &FolderRule| {
                     let folder_matches =
@@ -741,7 +740,7 @@ fn check_folder_childs(
                                 .iter()
                                 .any(|rule| rule.child_rules.is_some())
                             {
-                                childs_was_checked = true;
+                                children_was_checked = true;
                             }
                         }
 
@@ -785,8 +784,8 @@ fn check_folder_childs(
                     }
                 }
 
-                for inheridte_rule in &inherited_folders_rules {
-                    check_folder_rule(&inheridte_rule.rule);
+                for inherited_rule in &inherited_folders_rules {
+                    check_folder_rule(&inherited_rule.rule);
                 }
 
                 if folder_has_error {
@@ -839,8 +838,8 @@ fn check_folder_childs(
                         ..sub_folder_cfg.clone()
                     });
 
-                if !childs_was_checked {
-                    if let Err(extra_errors) = check_folder_childs(
+                if !children_was_checked {
+                    if let Err(extra_errors) = check_folder_children(
                         sub_folder,
                         new_sub_folder_cfg.as_ref(),
                         parent_path,
@@ -876,7 +875,7 @@ pub fn check_root_folder(
     folder: &Folder,
     is_test_config: bool,
 ) -> Result<(), Vec<String>> {
-    check_folder_childs(
+    check_folder_children(
         folder,
         Some(&config.root_folder),
         String::from("."),

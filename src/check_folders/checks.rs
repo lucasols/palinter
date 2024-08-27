@@ -178,7 +178,7 @@ pub fn has_sibling_file(
     let (pattern, regex) =
         normalize_check_pattern(condition_captures, sibling_file_pattern);
 
-    for child in &folder.childs {
+    for child in &folder.children {
         if let FolderChild::FileChild(file) = child {
             if regex.is_match(&file.name_with_ext) {
                 return Ok(());
@@ -363,7 +363,7 @@ pub fn check_root_files_find_pattern(
     let mut num_of_matches = 0;
     let mut last_match: Option<Vec<Capture>> = None;
 
-    for child in &folder.childs {
+    for child in &folder.children {
         if let FolderChild::FileChild(file) = child {
             if let Ok(captures) = regex_match(&regex, &file.name_with_ext) {
                 num_of_matches += 1;
@@ -410,7 +410,7 @@ pub fn check_root_files_has_pattern(
 
     let regex = get_regex_from_path_pattern(pattern.clone())?;
 
-    for child in &folder.childs {
+    for child in &folder.children {
         if let FolderChild::FileChild(file) = child {
             if regex.is_match(&file.name_with_ext) {
                 return Ok(pattern);
@@ -465,11 +465,11 @@ pub fn check_content_not_matches(
     Ok(())
 }
 
-pub fn check_folder_min_childs(
+pub fn check_folder_min_children(
     folder: &Folder,
     min_childs: usize,
 ) -> Result<(), String> {
-    let num_of_childs = folder.childs.len();
+    let num_of_childs = folder.children.len();
 
     if num_of_childs < min_childs {
         return Err(format!(

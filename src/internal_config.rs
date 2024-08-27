@@ -111,7 +111,7 @@ pub struct FolderExpect {
     pub name_is_not: Option<String>,
     pub root_files_has: Option<String>,
     pub root_files_has_not: Option<String>,
-    pub have_min_childs: Option<usize>,
+    pub have_min_children: Option<usize>,
     pub child_rules: Option<(Vec<FolderRule>, Vec<FileRule>)>,
 
     pub error_msg: Option<String>,
@@ -840,7 +840,7 @@ fn get_folder_expect(
         name_is_not: parsed_expected.name_is_not,
         root_files_has: parsed_expected.root_files_has,
         root_files_has_not: parsed_expected.root_files_has_not,
-        have_min_childs: parsed_expected.have_min_childs,
+        have_min_children: parsed_expected.have_min_childs,
         child_rules: parsed_expected
             .child_rules
             .map(

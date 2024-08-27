@@ -25,7 +25,7 @@ pub enum FolderChild {
 #[derive(Debug, PartialEq)]
 pub struct Folder {
     pub name: String,
-    pub childs: Vec<FolderChild>,
+    pub children: Vec<FolderChild>,
 }
 
 pub fn load_folder_structure(
@@ -114,7 +114,7 @@ pub fn load_folder_structure(
 
     Ok(Folder {
         name: folder_name,
-        childs,
+        children: childs,
     })
 }
 
@@ -135,7 +135,7 @@ fn get_file_content(
 pub fn get_flattened_files_structure(folder: &Folder) -> HashMap<String, File> {
     let mut result: HashMap<String, File> = HashMap::new();
 
-    for child in &folder.childs {
+    for child in &folder.children {
         match child {
             FolderChild::FileChild(file) => {
                 result.insert(file.clone().relative_path, file.clone());

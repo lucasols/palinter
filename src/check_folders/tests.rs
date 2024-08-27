@@ -117,7 +117,7 @@ fn convert_from_parsed_folder_to_project(
 
     Folder {
         name: normalize_folder_config_name(&folder_name),
-        childs,
+        children: childs,
     }
 }
 
@@ -381,8 +381,11 @@ fn test_cases() {
                                     }
                                 };
 
-                                let result =
-                                    check_root_folder(config, &project.structure, false);
+                                let result = check_root_folder(
+                                    config,
+                                    &project.structure,
+                                    false,
+                                );
 
                                 colored::control::unset_override();
 
@@ -545,7 +548,7 @@ fn test_case_folder_structure_is_equal_to_loaded_structure() {
         loaded,
         Folder {
             name: "analyze_file_contents".to_string(),
-            childs: parsed_structure.structure.childs,
+            children: parsed_structure.structure.children,
         }
     );
 }

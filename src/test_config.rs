@@ -178,7 +178,8 @@ pub fn test_config(
                         }
                     };
 
-                    let result = check_root_folder(&config, &project.structure, true);
+                    let result =
+                        check_root_folder(&config, &project.structure, true);
 
                     colored::control::unset_override();
 
@@ -420,7 +421,7 @@ fn convert_from_parsed_folder_to_project(
 
     Folder {
         name: normalize_folder_config_name(&folder_name),
-        childs,
+        children: childs,
     }
 }
 
