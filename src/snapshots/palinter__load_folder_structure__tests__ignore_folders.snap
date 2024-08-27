@@ -5,7 +5,7 @@ expression: folder
 Ok(
     Folder {
         name: "ignore_folder",
-        childs: [
+        children: [
             FileChild(
                 File {
                     basename: "not_ignore",

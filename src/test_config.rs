@@ -576,11 +576,11 @@ mod tests {
             only: true,
             structure: Folder {
                 name: ".",
-                childs: [
+                children: [
                     Folder(
                         Folder {
                             name: "src",
-                            childs: [
+                            children: [
                                 FileChild(
                                     File {
                                         basename: "test",

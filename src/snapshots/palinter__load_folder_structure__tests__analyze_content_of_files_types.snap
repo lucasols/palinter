@@ -5,11 +5,11 @@ expression: folder
 Ok(
     Folder {
         name: "analyze_file_contents",
-        childs: [
+        children: [
             Folder(
                 Folder {
                     name: "dist",
-                    childs: [
+                    children: [
                         FileChild(
                             File {
                                 basename: "test",
@@ -29,7 +29,7 @@ Ok(
             Folder(
                 Folder {
                     name: "folder",
-                    childs: [
+                    children: [
                         FileChild(
                             File {
                                 basename: "test",

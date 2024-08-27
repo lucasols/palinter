@@ -5,7 +5,7 @@ expression: folder
 Ok(
     Folder {
         name: "analyze_file_contents",
-        childs: [
+        children: [
             FileChild(
                 File {
                     basename: "test",
