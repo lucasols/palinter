@@ -143,6 +143,7 @@ pub struct OneOfFile {
 }
 
 #[derive(Debug, Default, Clone)]
+#[allow(dead_code)]
 pub struct OneOfFolder {
     pub rules: Vec<FolderRule>,
     pub error_msg: String,
@@ -800,7 +801,6 @@ fn normalize_rules(
         },
     ))
 }
-
 fn check_expect_one_of<T>(
     config_path: &String,
     expect_one_of_len: usize,
