@@ -57,8 +57,10 @@ pub fn check_ts_not_have_unused_exports(file: &File) -> Result<(), String> {
                 unused_exports
                     .iter()
                     .map(|export| format!(
-                        "'{}' in {}:{}",
-                        export.name, file.relative_path, export.line
+                        "{} in {}:{}",
+                        export.name.bright_cyan().bold(),
+                        file.relative_path.bright_magenta().bold(),
+                        format!("{}", export.line).bright_magenta().bold()
                     ))
                     .collect::<Vec<String>>()
                     .join(" , ")
