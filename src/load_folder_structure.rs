@@ -34,12 +34,17 @@ pub fn load_folder_structure(
     root: &PathBuf,
     is_root: bool,
 ) -> Result<Folder, String> {
-    let mut childs: Vec<FolderChild> = vec![];
+    let mut children: Vec<FolderChild> = vec![];
 
     let mut builder = globset::GlobSetBuilder::new();
 
     for pattern in &config.ignore {
         builder.add(Glob::new(pattern).unwrap());
+    }
+
+    if is_root {
+        builder.add(Glob::new("**/node_modules").unwrap());
+        builder.add(Glob::new("**/.git").unwrap());
     }
 
     let ignore_paths_set = builder.build().unwrap();
@@ -63,19 +68,15 @@ pub fn load_folder_structure(
         if path.is_dir() {
             if is_root
                 && config.root_folder.folder_rules.is_empty()
-                && config
-                    .root_folder
-                    .sub_folders_config
-                    .get(&format!(
-                        "/{}",
-                        path.file_name().unwrap().to_str().unwrap()
-                    ))
-                    .is_none()
+                && !config.root_folder.sub_folders_config.contains_key(&format!(
+                    "/{}",
+                    path.file_name().unwrap().to_str().unwrap()
+                ))
             {
                 continue;
             }
 
-            childs.push(FolderChild::Folder(load_folder_structure(
+            children.push(FolderChild::Folder(load_folder_structure(
                 &path, config, root, false,
             )?));
         } else {
@@ -95,7 +96,7 @@ pub fn load_folder_structure(
                 relative_path: format!("./{}", relative_path.to_str().unwrap()),
             };
 
-            childs.push(FolderChild::FileChild(file));
+            children.push(FolderChild::FileChild(file));
         }
     }
 
@@ -114,7 +115,7 @@ pub fn load_folder_structure(
 
     Ok(Folder {
         name: folder_name,
-        children: childs,
+        children,
     })
 }
 

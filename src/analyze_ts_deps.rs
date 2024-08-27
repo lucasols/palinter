@@ -124,6 +124,10 @@ fn get_resolved_path(path: &Path) -> Result<Option<PathBuf>, String> {
         return Ok(None);
     }
 
+    if path.to_str().unwrap().contains("?") {
+        return Ok(None);
+    }
+
     if let Some(resolved_path) = RESOLVE_CACHE.lock().unwrap().get(path) {
         return Ok(Some(resolved_path.clone()));
     }
@@ -533,6 +537,11 @@ fn get_used_project_files_deps_info(
     for entry in entry_points {
         if let Some(resolved_path) = get_resolved_path(&entry)? {
             visit_file(&resolved_path, &mut result)?;
+        } else {
+            return Err(format!(
+                "TS: Can't resolve unused_exports_entry_points path: {:?}",
+                entry
+            ));
         }
     }
 
