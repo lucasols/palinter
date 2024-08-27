@@ -71,7 +71,22 @@ pub fn check_ts_not_have_unused_exports(file: &File) -> Result<(), String> {
     }
 }
 
+fn file_has_ignore_comment(file: &File, ignore_comment: &str) -> bool {
+    let ignore_comment = format!("palinter-ignore-{}", ignore_comment);
+
+    if let Some(content) = &file.content {
+        content.contains(&format!("// {}", ignore_comment))
+            || content.contains(&format!("/* {}", ignore_comment))
+    } else {
+        false
+    }
+}
+
 pub fn check_ts_not_have_circular_deps(file: &File) -> Result<(), String> {
+    if file_has_ignore_comment(file, "not-have-circular-deps") {
+        return Ok(());
+    }
+
     let deps_info =
         get_file_deps_result(&PathBuf::from(file.clone().relative_path))?;
 
@@ -97,6 +112,10 @@ pub fn check_ts_not_have_circular_deps(file: &File) -> Result<(), String> {
 }
 
 pub fn check_ts_not_have_direct_circular_deps(file: &File) -> Result<(), String> {
+    if file_has_ignore_comment(file, "not-have-direct-circular-deps") {
+        return Ok(());
+    }
+
     let deps_info =
         get_file_deps_result(&PathBuf::from(file.clone().relative_path))?;
 

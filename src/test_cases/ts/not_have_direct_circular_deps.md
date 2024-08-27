@@ -63,3 +63,24 @@ expected_errors:
   - "File ./src/a.ts:\n • File has direct circular dependencies (run cmd `palinter circular-deps [file]` to get more info)"
   - "File ./src/b.ts:\n • File has direct circular dependencies (run cmd `palinter circular-deps [file]` to get more info)"
 ```
+
+```yaml
+structure:
+  /src:
+    index.ts: |
+      import '@src/a';
+    a.ts: |
+      // palinter-ignore-not-have-direct-circular-deps
+      import '@src/b';
+    b.ts: |
+      import '@src/a';
+      import '@utils/c';
+  /utils:
+    c.ts: |
+      import '@utils/d';
+    d.ts: |
+      import '@utils/c';
+
+expected_errors:
+  - "File ./src/b.ts:\n • File has direct circular dependencies (run cmd `palinter circular-deps [file]` to get more info)"
+```
