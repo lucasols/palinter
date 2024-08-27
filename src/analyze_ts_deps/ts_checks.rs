@@ -19,7 +19,12 @@ pub fn check_ts_not_have_unused_exports(file: &File) -> Result<(), String> {
     let deps_info = used_files.get(&file.relative_path);
 
     if let Some(deps_info) = deps_info {
-        let mut unused_exports = deps_info.exports.clone();
+        let mut unused_exports = deps_info
+            .exports
+            .iter()
+            .filter(|export| !export.ignored)
+            .cloned()
+            .collect::<Vec<_>>();
 
         for (other_used_file, other_deps_info) in used_files.iter() {
             if unused_exports.is_empty() {
@@ -58,12 +63,12 @@ pub fn check_ts_not_have_unused_exports(file: &File) -> Result<(), String> {
                     .iter()
                     .map(|export| format!(
                         "{} in {}:{}",
-                        export.name.bright_cyan().bold(),
+                        export.name.blue().bold(),
                         file.relative_path.bright_magenta().bold(),
                         format!("{}", export.line).bright_magenta().bold()
                     ))
                     .collect::<Vec<String>>()
-                    .join(" , ")
+                    .join(" ・ ")
             ))
         } else {
             Ok(())
