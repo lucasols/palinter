@@ -3,7 +3,7 @@ use std::str::Lines;
 use lazy_static::lazy_static;
 use regex::Regex;
 
-pub fn wrap_vec_string_itens_in(vec: &[String], wrap: &str) -> Vec<String> {
+pub fn wrap_vec_string_items_in(vec: &[String], wrap: &str) -> Vec<String> {
     vec.iter()
         .map(|s| format!("{}{}{}", wrap, s, wrap))
         .collect()

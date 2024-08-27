@@ -2,7 +2,7 @@ use crate::{
     check_folders::{Folder, FolderChild},
     internal_config::{ContentMatches, NameCase, RootFilesFindPattern},
     load_folder_structure::File,
-    utils::wrap_vec_string_itens_in,
+    utils::wrap_vec_string_items_in,
 };
 use convert_case::{Case, Casing};
 use regex::{escape, Regex};
@@ -58,7 +58,7 @@ pub fn extension_is(
     if !extension_is.contains(&file_extension) {
         return Err(format!(
             "should have extension {}",
-            wrap_vec_string_itens_in(extension_is, "'").join(" or ")
+            wrap_vec_string_items_in(extension_is, "'").join(" or ")
         ));
     }
 
@@ -72,10 +72,10 @@ pub struct Capture {
 }
 
 impl Capture {
-    pub fn new(name: &str, value: &String) -> Self {
+    pub fn new(name: &str, value: &str) -> Self {
         Self {
             name: format!("${{{}}}", name),
-            value: value.clone(),
+            value: value.to_string(),
         }
     }
 }
@@ -281,16 +281,18 @@ pub fn check_content(
                 } else {
                     if num_of_matches < content_match.at_least {
                         return Err(format!(
-                            "content should match at least {} of the configured `content_matches` patterns",
-                            content_match.at_least
+                            "content should match at least {} of the configured `content_matches` patterns but found {}",
+                            content_match.at_least,
+                            num_of_matches
                         ));
                     }
 
                     if let Some(at_most) = content_match.at_most {
                         if num_of_matches > at_most {
                             return Err(format!(
-                                "content should match at most {} of the configured `content_matches` patterns",
-                                at_most
+                                "content should match at most {} of the configured `content_matches` patterns but found {}",
+                                at_most,
+                                num_of_matches
                             ));
                         }
                     }
@@ -313,16 +315,18 @@ pub fn check_content(
                     } else {
                         if pattern_matches < content_match.at_least {
                             return Err(format!(
-                                "content should match at least {} of the configured `content_matches` patterns",
-                                content_match.at_least
+                                "content should match at least {} of the configured `content_matches` patterns but found {}",
+                                content_match.at_least,
+                                pattern_matches
                             ));
                         }
 
                         if let Some(at_most) = content_match.at_most {
                             if pattern_matches > at_most {
                                 return Err(format!(
-                                    "content should match at most {} of the configured `content_matches` patterns",
-                                    at_most
+                                    "content should match at most {} of the configured `content_matches` patterns but found {}",
+                                    at_most,
+                                    pattern_matches
                                 ));
                             }
                         }
@@ -467,14 +471,14 @@ pub fn check_content_not_matches(
 
 pub fn check_folder_min_children(
     folder: &Folder,
-    min_childs: usize,
+    min_children: usize,
 ) -> Result<(), String> {
-    let num_of_childs = folder.children.len();
+    let num_of_children = folder.children.len();
 
-    if num_of_childs < min_childs {
+    if num_of_children < min_children {
         return Err(format!(
-            "should have at least {} childs, found {}",
-            min_childs, num_of_childs
+            "should have at least {} children, found {}",
+            min_children, num_of_children
         ));
     }
 
@@ -482,12 +486,12 @@ pub fn check_folder_min_children(
 }
 
 pub fn check_file_is_not_empty(file: &File) -> Result<(), String> {
-    let is_emtpy = file
+    let is_empty = file
         .content
         .as_ref()
         .map_or(true, |content| content.trim().is_empty());
 
-    if is_emtpy {
+    if is_empty {
         Err("file is empty".to_string())
     } else {
         Ok(())
