@@ -216,10 +216,12 @@ fn filter_map_named_import_value(captured_string: &str) -> Option<String> {
         captured_string.trim().to_string()
     };
 
-    if value.is_empty() {
+    let non_type_value = value.replace("type ", "");
+
+    if non_type_value.is_empty() {
         None
     } else {
-        Some(value)
+        Some(non_type_value)
     }
 }
 
@@ -1017,6 +1019,27 @@ const tableBodyCellViewerComponents = import.meta.glob(
             },
         ]
         "###
+        );
+    }
+
+    #[test]
+    fn named_type_import() {
+        let file_content = r#"
+          import { a, type Test, type Test2 as Test3 } from '@src/foo';
+        "#;
+        let imports = extract_imports_from_file_content(file_content).unwrap();
+
+        assert_eq!(
+            imports,
+            vec![Import {
+                import_path: PathBuf::from("@src/foo"),
+                line: 2,
+                values: ImportType::Named(vec![
+                    "a".to_string(),
+                    "Test".to_string(),
+                    "Test2".to_string()
+                ]),
+            }],
         );
     }
 }

@@ -84,3 +84,26 @@ expected_errors:
     File ./src/fileC.ts:
      • File is not being used in the project
 ```
+
+```yaml
+# distinguish between unused exports with the same name
+
+structure:
+  /src:
+    index.ts: |
+      import '@src/fileA';
+    fileA.ts: |
+      import { a, type Test } from '@src/fileB';
+    fileB.ts: |
+      export const a = 1;
+      import { b } from '@src/fileC';
+      export type Test = 'ok';
+    fileC.ts: |
+      export type Test = 'ok';
+      export const b = 2;
+
+expected_errors:
+  - |
+    File ./src/fileC.ts:
+     • File has unused exports: Test in ./src/fileC.ts:1
+```
