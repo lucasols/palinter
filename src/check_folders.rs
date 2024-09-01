@@ -464,6 +464,7 @@ fn check_folder_expected(
                             unexpected_folders_error_msg: None,
                             unexpected_error_msg: None,
                             append_error_msg: None,
+                            select_all_children: false,
                         }),
                         folder_path.to_string(),
                         inherited_files_rules.to_vec(),
@@ -474,6 +475,9 @@ fn check_folder_expected(
                         ),
                         error_msg_vars,
                         is_test_config,
+                        false,
+                        false,
+                        false,
                     )?;
                 }
 
@@ -530,6 +534,9 @@ fn check_folder_children(
     context_conditions: Vec<Capture>,
     error_msg_vars: &ErrorMsgVars,
     is_test_config: bool,
+    inherited_select_all_children: bool,
+    inherited_allow_unconfigured_files: bool,
+    inherited_allow_unconfigured_folders: bool,
 ) -> Result<(), Vec<String>> {
     let mut errors: Vec<String> = Vec::new();
 
@@ -542,11 +549,14 @@ fn check_folder_children(
         .map(|append_err| format!("\n   | {}", &append_err.dimmed()))
         .unwrap_or_default();
 
-    let allow_unconfigured_folders = folder_config.map_or(false, |folder_config| {
-        folder_config.allow_unexpected_folders
-    });
+    let allow_unconfigured_folders = folder_config
+        .map_or(inherited_allow_unconfigured_folders, |folder_config| {
+            folder_config.allow_unexpected_folders
+        });
     let allow_unconfigured_files = folder_config
-        .map_or(false, |folder_config| folder_config.allow_unexpected_files);
+        .map_or(inherited_allow_unconfigured_files, |folder_config| {
+            folder_config.allow_unexpected_files
+        });
 
     let mut folders_missing_check = folder_config
         .map(|folder_config| {
@@ -828,6 +838,9 @@ fn check_folder_children(
                     continue;
                 }
 
+                let select_all_children: bool =
+                    sub_folder_cfg.map_or(false, |cfg| cfg.select_all_children);
+
                 let new_sub_folder_cfg =
                     sub_folder_cfg.map(|sub_folder_cfg| FolderConfig {
                         append_error_msg: sub_folder_cfg
@@ -838,7 +851,10 @@ fn check_folder_children(
                         ..sub_folder_cfg.clone()
                     });
 
-                if !children_was_checked {
+                if !children_was_checked
+                    || select_all_children
+                    || inherited_select_all_children
+                {
                     if let Err(extra_errors) = check_folder_children(
                         sub_folder,
                         new_sub_folder_cfg.as_ref(),
@@ -848,6 +864,19 @@ fn check_folder_children(
                         Vec::new(),
                         error_msg_vars,
                         is_test_config,
+                        select_all_children || inherited_select_all_children,
+                        if inherited_select_all_children {
+                            allow_unconfigured_files
+                                || inherited_allow_unconfigured_files
+                        } else {
+                            false
+                        },
+                        if inherited_select_all_children {
+                            allow_unconfigured_folders
+                                || inherited_allow_unconfigured_folders
+                        } else {
+                            false
+                        },
                     ) {
                         errors.extend(extra_errors);
                     }
@@ -884,6 +913,9 @@ pub fn check_root_folder(
         Vec::new(),
         &config.error_msg_vars,
         is_test_config,
+        false,
+        false,
+        false,
     )
 }
 

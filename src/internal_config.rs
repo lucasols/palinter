@@ -4,10 +4,11 @@ use serde_yaml::Value;
 
 use crate::{
     parse_config_file::{
-        CorrectParsedFolderConfig, ParsedAnyNoneOrConditions, ParsedBlocks,
-        ParsedConfig, ParsedFileConditions, ParsedFileContentMatches,
-        ParsedFileContentMatchesItem, ParsedFileExpect, ParsedFolderConfig,
-        ParsedFolderExpect, ParsedMatchImport, ParsedRule, SingleOrMultiple,
+        parse_config_string, CorrectParsedFolderConfig, ParseFrom,
+        ParsedAnyNoneOrConditions, ParsedBlocks, ParsedConfig, ParsedFileConditions,
+        ParsedFileContentMatches, ParsedFileContentMatchesItem, ParsedFileExpect,
+        ParsedFolderConfig, ParsedFolderExpect, ParsedMatchImport, ParsedRule,
+        SingleOrMultiple,
     },
     utils::clone_extend_vec,
 };
@@ -168,6 +169,7 @@ pub struct FolderConfig {
     pub unexpected_folders_error_msg: Option<String>,
     pub unexpected_error_msg: Option<String>,
     pub append_error_msg: Option<String>,
+    pub select_all_children: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -1072,6 +1074,7 @@ pub fn normalize_folder_config(
     folder_path: String,
     normalize_blocks: &NormalizedBlocks,
     parsed_config: &ParsedConfig,
+    select_all_children: bool,
 ) -> Result<FolderConfig, String> {
     match folder_config {
         ParsedFolderConfig::Error(wrong_value) => Err(format!(
@@ -1127,6 +1130,14 @@ pub fn normalize_folder_config(
                     ));
                 }
 
+                let select_all_children = sub_folder_name.ends_with("/*");
+
+                let sub_folder_name = if select_all_children {
+                    sub_folder_name.strip_suffix("/*").unwrap()
+                } else {
+                    sub_folder_name
+                };
+
                 let compound_path_parts =
                     sub_folder_name.split('/').collect::<Vec<&str>>();
 
@@ -1165,18 +1176,20 @@ pub fn normalize_folder_config(
                             folder_path.clone(),
                             normalize_blocks,
                             parsed_config,
+                            select_all_children,
                         )?,
                     );
                 } else {
                     let folder_path = format!("{}{}", folder_path, sub_folder_name);
 
                     sub_folders_config.insert(
-                        sub_folder_name.clone(),
+                        sub_folder_name.to_string(),
                         normalize_folder_config(
                             sub_folder_config,
                             folder_path,
                             normalize_blocks,
                             parsed_config,
+                            select_all_children,
                         )?,
                     );
                 }
@@ -1205,6 +1218,7 @@ pub fn normalize_folder_config(
                     .allow_unexpected_folders
                     .unwrap_or(default_allow_unexpected_files_or_folders),
                 optional: get_true_flag(&folder_path, &config.optional, "optional")?,
+                select_all_children,
             })
         }
     }
@@ -1268,6 +1282,7 @@ pub fn get_config(parsed_config: &ParsedConfig) -> Result<Config, String> {
             String::from("."),
             normalized_block,
             parsed_config,
+            false,
         )?,
         ignore: HashSet::from_iter(
             [
@@ -1282,4 +1297,245 @@ pub fn get_config(parsed_config: &ParsedConfig) -> Result<Config, String> {
             unused_exports_entry_points: ts.unused_exports_entry_points.clone(),
         }),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use insta::assert_debug_snapshot;
+
+    use super::*;
+
+    fn config_from_string(config_string: &String) -> Result<Config, String> {
+        let parsed_config = parse_config_string(config_string, ParseFrom::Yaml)?;
+
+        get_config(&parsed_config)
+    }
+
+    #[test]
+    fn config_with_select_all_children() {
+        let config_string = r#"
+        ./:
+          /level1/*:
+            allow_unexpected: true
+
+            rules:
+              - if_file:
+                  has_extension: svg
+                expect:
+                  name_case_is: kebab-case
+              - if_folder: any
+                expect: any
+        "#;
+
+        let config = config_from_string(&config_string.to_string()).unwrap();
+
+        assert_debug_snapshot!(
+            config.root_folder,
+            @r###"
+        FolderConfig {
+            sub_folders_config: {
+                "/level1": FolderConfig {
+                    sub_folders_config: {},
+                    file_rules: [
+                        FileRule {
+                            conditions: Or(
+                                FileConditions {
+                                    has_extension: Some(
+                                        [
+                                            "svg",
+                                        ],
+                                    ),
+                                    has_name: None,
+                                    not_has_name: None,
+                                },
+                            ),
+                            expect: Or(
+                                [
+                                    FileExpect {
+                                        name_case_is: Some(
+                                            Kebab,
+                                        ),
+                                        extension_is: None,
+                                        have_sibling_file: None,
+                                        content_matches: None,
+                                        content_matches_some: None,
+                                        content_not_matches: None,
+                                        name_is: None,
+                                        name_is_not: None,
+                                        ts: None,
+                                        is_not_empty: false,
+                                        error_msg: None,
+                                    },
+                                ],
+                            ),
+                            non_recursive: false,
+                            not_touch: false,
+                            ignore_in_config_tests: false,
+                            error_msg: None,
+                        },
+                    ],
+                    folder_rules: [
+                        FolderRule {
+                            conditions: Any,
+                            expect: Any,
+                            non_recursive: false,
+                            not_touch: false,
+                            error_msg: None,
+                        },
+                    ],
+                    optional: false,
+                    one_of_blocks: OneOfBlocks {
+                        file_blocks: [],
+                        folder_blocks: [],
+                    },
+                    allow_unexpected_files: true,
+                    allow_unexpected_folders: true,
+                    unexpected_files_error_msg: None,
+                    unexpected_folders_error_msg: None,
+                    unexpected_error_msg: None,
+                    append_error_msg: None,
+                    select_all_children: true,
+                },
+            },
+            file_rules: [],
+            folder_rules: [],
+            optional: false,
+            one_of_blocks: OneOfBlocks {
+                file_blocks: [],
+                folder_blocks: [],
+            },
+            allow_unexpected_files: true,
+            allow_unexpected_folders: true,
+            unexpected_files_error_msg: None,
+            unexpected_folders_error_msg: None,
+            unexpected_error_msg: None,
+            append_error_msg: None,
+            select_all_children: false,
+        }
+        "###
+        );
+    }
+
+    #[test]
+    fn config_with_select_all_children_2() {
+        let config_string = r#"
+        ./:
+          /level1/level2/*:
+            allow_unexpected: true
+
+            rules:
+              - if_file:
+                  has_extension: svg
+                expect:
+                  name_case_is: kebab-case
+              - if_folder: any
+                expect: any
+        "#;
+
+        let config = config_from_string(&config_string.to_string()).unwrap();
+
+        assert_debug_snapshot!(
+            config.root_folder,
+            @r###"
+        FolderConfig {
+            sub_folders_config: {
+                "/level1": FolderConfig {
+                    sub_folders_config: {
+                        "/level2": FolderConfig {
+                            sub_folders_config: {},
+                            file_rules: [
+                                FileRule {
+                                    conditions: Or(
+                                        FileConditions {
+                                            has_extension: Some(
+                                                [
+                                                    "svg",
+                                                ],
+                                            ),
+                                            has_name: None,
+                                            not_has_name: None,
+                                        },
+                                    ),
+                                    expect: Or(
+                                        [
+                                            FileExpect {
+                                                name_case_is: Some(
+                                                    Kebab,
+                                                ),
+                                                extension_is: None,
+                                                have_sibling_file: None,
+                                                content_matches: None,
+                                                content_matches_some: None,
+                                                content_not_matches: None,
+                                                name_is: None,
+                                                name_is_not: None,
+                                                ts: None,
+                                                is_not_empty: false,
+                                                error_msg: None,
+                                            },
+                                        ],
+                                    ),
+                                    non_recursive: false,
+                                    not_touch: false,
+                                    ignore_in_config_tests: false,
+                                    error_msg: None,
+                                },
+                            ],
+                            folder_rules: [
+                                FolderRule {
+                                    conditions: Any,
+                                    expect: Any,
+                                    non_recursive: false,
+                                    not_touch: false,
+                                    error_msg: None,
+                                },
+                            ],
+                            optional: false,
+                            one_of_blocks: OneOfBlocks {
+                                file_blocks: [],
+                                folder_blocks: [],
+                            },
+                            allow_unexpected_files: true,
+                            allow_unexpected_folders: true,
+                            unexpected_files_error_msg: None,
+                            unexpected_folders_error_msg: None,
+                            unexpected_error_msg: None,
+                            append_error_msg: None,
+                            select_all_children: false,
+                        },
+                    },
+                    file_rules: [],
+                    folder_rules: [],
+                    optional: false,
+                    one_of_blocks: OneOfBlocks {
+                        file_blocks: [],
+                        folder_blocks: [],
+                    },
+                    allow_unexpected_files: true,
+                    allow_unexpected_folders: true,
+                    unexpected_files_error_msg: None,
+                    unexpected_folders_error_msg: None,
+                    unexpected_error_msg: None,
+                    append_error_msg: None,
+                    select_all_children: true,
+                },
+            },
+            file_rules: [],
+            folder_rules: [],
+            optional: false,
+            one_of_blocks: OneOfBlocks {
+                file_blocks: [],
+                folder_blocks: [],
+            },
+            allow_unexpected_files: true,
+            allow_unexpected_folders: true,
+            unexpected_files_error_msg: None,
+            unexpected_folders_error_msg: None,
+            unexpected_error_msg: None,
+            append_error_msg: None,
+            select_all_children: false,
+        }
+        "###
+        );
+    }
 }

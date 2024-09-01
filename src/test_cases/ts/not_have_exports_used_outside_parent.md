@@ -1,5 +1,3 @@
-ignore
-
 # Config
 
 ```yaml
@@ -14,13 +12,14 @@ ts:
     allow_unexpected_files: true
 
     /ComponentFolder:
+      allow_unexpected_files: true
       optional: true
       rules:
         - if_file:
             not_has_name: ComponentFolder.tsx
           expect:
             ts:
-              not_have_exports_used_outside: ./*
+              not_have_exports_used_outside: '@src/ComponentFolder/*'
     /tests:
       allow_unexpected: true
 ```
@@ -37,7 +36,7 @@ structure:
 
     /ComponentFolder:
       ComponentFolder.tsx: |
-        import { a } from '@src/ComponentFolder/Subcomponent';
+        import { a } from '@src/ComponentFolder/SubComponent';
         export const c = a;
       SubComponent.tsx: |
         export const a = 2;
@@ -61,17 +60,17 @@ structure:
 
     /ComponentFolder:
       ComponentFolder.tsx: |
-        import { a } from '@src/ComponentFolder/Subcomponent';
+        import { a } from '@src/ComponentFolder/SubComponent';
         export const c = a;
       SubComponent.tsx: |
         export const a = 2;
     /tests:
       fileC.ts: |
-        import { a } from '@src/ComponentFolder/SubComponent';
+        import { c } from '@src/ComponentFolder/SubComponent';
         export const c = a;
 
 expected_errors:
   - |
-    File ./src/tests/SubComponent.tsx:
+    File ./src/ComponentFolder/SubComponent.tsx:
      • disallowed used exports in files '@src/tests/fileC.ts', this file can only be imported from '@src/ComponentFolder/*'
 ```

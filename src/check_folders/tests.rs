@@ -1,4 +1,5 @@
 use colored::Colorize;
+use jsonschema::JSONSchema;
 use regex::Regex;
 use serde::Deserialize;
 use std::{
@@ -57,7 +58,7 @@ enum ParsedStructureChild {
 #[derive(Deserialize, Debug)]
 struct ParsedFolder {
     #[serde(flatten)]
-    childs: BTreeMap<String, ParsedStructureChild>,
+    children: BTreeMap<String, ParsedStructureChild>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -79,8 +80,8 @@ fn convert_from_parsed_folder_to_project(
     folder_name: String,
     path: &str,
 ) -> Folder {
-    let childs = parsed
-        .childs
+    let children = parsed
+        .children
         .iter()
         .map(|(child_name, child)| match child {
             ParsedStructureChild::File(file_content) => {
@@ -117,7 +118,7 @@ fn convert_from_parsed_folder_to_project(
 
     Folder {
         name: normalize_folder_config_name(&folder_name),
-        children: childs,
+        children,
     }
 }
 
@@ -189,6 +190,29 @@ fn extract_config_and_projects_from_test_case(
             },
         );
 
+        if expect_config_error.is_none() {
+            let cfg_schema =
+                serde_json::from_str(include_str!("../config.schema.json"))
+                    .map_err(|e| format!("Schema parsing error: {}", e))?;
+
+            let cfg_data = serde_yaml::from_str(&config_string)
+                .map_err(|e| format!("Config data parsing error: {}", e))?;
+
+            let compiled_schema =
+                JSONSchema::compile(&cfg_schema).map_err(|e| e.to_string())?;
+
+            if let Err(errors) = compiled_schema.validate(&cfg_data) {
+                let errors: Vec<_> = errors.collect();
+
+                if !errors.is_empty() {
+                    return Err(format!(
+                        "Schema validation for cfg failed: {:?}",
+                        errors
+                    ));
+                }
+            };
+        }
+
         configs.push(ProjectConfig {
             expect_config_error,
             config,
@@ -251,7 +275,7 @@ fn test_cases() {
 
     let is_dev = std::env::var("DEVTEST").is_ok();
 
-    let mut test_sumary: String;
+    let mut test_summary: String;
 
     let mut ignored_test_cases = 0;
 
@@ -276,7 +300,7 @@ fn test_cases() {
             .cloned()
             .collect();
 
-        test_sumary = format!("\n🟩 Running {} test cases\n", to_test.len());
+        test_summary = format!("\n🟩 Running {} test cases\n", to_test.len());
 
         to_test
     } else {
@@ -284,7 +308,7 @@ fn test_cases() {
             panic!("Only test cases are not allowed in production, use 'DEVTEST=1' to run them")
         }
 
-        test_sumary = format!(
+        test_summary = format!(
             "\n🟧 Running only test cases with 'only' prefix -> {}\n",
             only_files_content_to_test
                 .clone()
@@ -298,9 +322,9 @@ fn test_cases() {
     };
 
     if ignored_test_cases > 0 {
-        test_sumary = format!(
+        test_summary = format!(
             "{}\n🟧 Ignored {} test cases\n",
-            test_sumary, ignored_test_cases
+            test_summary, ignored_test_cases
         );
     }
 
@@ -340,9 +364,9 @@ fn test_cases() {
                                 if !is_dev {
                                     panic!("Only test cases are not allowed in production, use 'DEVTEST=1' to run them");
                                 } else {
-                                    test_sumary = format!(
+                                    test_summary = format!(
                                         "{}\n🟧 Running projects with only flag!\n",
-                                        test_sumary
+                                        test_summary
                                     );
                                 }
                             }
@@ -462,9 +486,9 @@ fn test_cases() {
     }
 
     if !test_errors.is_empty() {
-        panic!("\n\n{}\n\n{}\n", test_errors.join("\n\n"), test_sumary);
+        panic!("\n\n{}\n\n{}\n", test_errors.join("\n\n"), test_summary);
     } else {
-        println!("{}\n", test_sumary);
+        println!("{}\n", test_summary);
     }
 }
 
@@ -535,6 +559,7 @@ fn test_case_folder_structure_is_equal_to_loaded_structure() {
             unexpected_folders_error_msg: None,
             append_error_msg: None,
             unexpected_error_msg: None,
+            select_all_children: false,
         },
         ts_config: None,
         error_msg_vars: None,
