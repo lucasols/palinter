@@ -2,10 +2,9 @@
 
 ```yaml
 ./:
-  /level1/*:
+  /level1:
     allow_unexpected: true
 
-    # this selects all children in the folder instead of only folder roor children
     rules:
       - if_file:
           has_extension: svg
@@ -21,6 +20,7 @@
 structure:
   /level1:
     /level2:
+      # this folder will be checked even if not explicitly configured
       /level3:
         camelCase.tsx: ''
         kebab_case.svg: ''

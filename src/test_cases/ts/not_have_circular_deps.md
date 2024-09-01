@@ -101,3 +101,23 @@ structure:
 expected_errors:
   - "File ./src/fileA.ts:\n • File has circular dependencies: ./src/fileA.ts (run cmd `palinter circular-deps [file]` to get more info)"
 ```
+
+```yaml
+# check for unused ignore comment
+
+structure:
+  /src:
+    index.ts: |
+      import '@src/fileA';
+    fileA.ts: |
+      import { a, type Test } from '@src/fileB';
+    fileB.ts: |
+      // palinter-ignore-not-have-circular-deps
+      export const a = 1;
+      export type Test = 'ok';
+
+expected_errors:
+  - |
+    File ./src/fileB.ts:
+     • Unused ignore comment '// palinter-ignore-not-have-circular-deps', remove it
+```

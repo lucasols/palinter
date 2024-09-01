@@ -84,3 +84,29 @@ structure:
 expected_errors:
   - "File ./src/b.ts:\n • File has direct circular dependencies (run cmd `palinter circular-deps [file]` to get more info)"
 ```
+
+```yaml
+# check for unused ignore comment
+
+structure:
+  /src:
+    index.ts: |
+      import '@src/fileA';
+    fileA.ts: |
+      import { a, type Test } from '@src/fileB';
+    fileB.ts: |
+      // palinter-ignore-not-have-direct-circular-deps
+      import '@utils/c';
+      export const a = 1;
+      export type Test = 'ok';
+  /utils:
+    c.ts: |
+      import '@utils/d';
+    d.ts: |
+      import '@utils/c';
+
+expected_errors:
+  - |
+    File ./src/fileB.ts:
+     • Unused ignore comment '// palinter-ignore-not-have-direct-circular-deps', remove it
+```

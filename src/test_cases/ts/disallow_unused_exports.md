@@ -107,3 +107,43 @@ expected_errors:
     File ./src/fileC.ts:
      • File has unused exports: Test in ./src/fileC.ts:1
 ```
+
+```yaml
+# check for unused file ignore comment
+
+structure:
+  /src:
+    index.ts: |
+      import '@src/fileA';
+    fileA.ts: |
+      import { a, type Test } from '@src/fileB';
+    fileB.ts: |
+      // palinter-ignore-not-have-unused-exports
+      export const a = 1;
+      export type Test = 'ok';
+
+expected_errors:
+  - |
+    File ./src/fileB.ts:
+     • Unused ignore comment '// palinter-ignore-not-have-unused-exports', remove it
+```
+
+```yaml
+# check for unused file ignore next line comment
+
+structure:
+  /src:
+    index.ts: |
+      import '@src/fileA';
+    fileA.ts: |
+      import { a, type Test } from '@src/fileB';
+    fileB.ts: |
+      export const a = 1;
+      // palinter-ignore-unused-next-line
+      export type Test = 'ok';
+
+expected_errors:
+  - |
+    File ./src/fileB.ts:
+     • Unused ignore comments '// palinter-ignore-unused-next-line', remove them: Test in ./src/fileB.ts:2
+```

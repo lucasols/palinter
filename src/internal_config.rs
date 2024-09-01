@@ -169,7 +169,6 @@ pub struct FolderConfig {
     pub unexpected_folders_error_msg: Option<String>,
     pub unexpected_error_msg: Option<String>,
     pub append_error_msg: Option<String>,
-    pub select_all_children: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -1074,7 +1073,6 @@ pub fn normalize_folder_config(
     folder_path: String,
     normalize_blocks: &NormalizedBlocks,
     parsed_config: &ParsedConfig,
-    select_all_children: bool,
 ) -> Result<FolderConfig, String> {
     match folder_config {
         ParsedFolderConfig::Error(wrong_value) => Err(format!(
@@ -1130,14 +1128,6 @@ pub fn normalize_folder_config(
                     ));
                 }
 
-                let select_all_children = sub_folder_name.ends_with("/*");
-
-                let sub_folder_name = if select_all_children {
-                    sub_folder_name.strip_suffix("/*").unwrap()
-                } else {
-                    sub_folder_name
-                };
-
                 let compound_path_parts =
                     sub_folder_name.split('/').collect::<Vec<&str>>();
 
@@ -1176,7 +1166,6 @@ pub fn normalize_folder_config(
                             folder_path.clone(),
                             normalize_blocks,
                             parsed_config,
-                            select_all_children,
                         )?,
                     );
                 } else {
@@ -1189,7 +1178,6 @@ pub fn normalize_folder_config(
                             folder_path,
                             normalize_blocks,
                             parsed_config,
-                            select_all_children,
                         )?,
                     );
                 }
@@ -1218,7 +1206,6 @@ pub fn normalize_folder_config(
                     .allow_unexpected_folders
                     .unwrap_or(default_allow_unexpected_files_or_folders),
                 optional: get_true_flag(&folder_path, &config.optional, "optional")?,
-                select_all_children,
             })
         }
     }
@@ -1282,7 +1269,6 @@ pub fn get_config(parsed_config: &ParsedConfig) -> Result<Config, String> {
             String::from("."),
             normalized_block,
             parsed_config,
-            false,
         )?,
         ignore: HashSet::from_iter(
             [
@@ -1315,7 +1301,7 @@ mod tests {
     fn config_with_select_all_children() {
         let config_string = r#"
         ./:
-          /level1/*:
+          /level1:
             allow_unexpected: true
 
             rules:
@@ -1394,7 +1380,6 @@ mod tests {
                     unexpected_folders_error_msg: None,
                     unexpected_error_msg: None,
                     append_error_msg: None,
-                    select_all_children: true,
                 },
             },
             file_rules: [],
@@ -1410,7 +1395,6 @@ mod tests {
             unexpected_folders_error_msg: None,
             unexpected_error_msg: None,
             append_error_msg: None,
-            select_all_children: false,
         }
         "###
         );
@@ -1420,7 +1404,7 @@ mod tests {
     fn config_with_select_all_children_2() {
         let config_string = r#"
         ./:
-          /level1/level2/*:
+          /level1/level2:
             allow_unexpected: true
 
             rules:
@@ -1501,7 +1485,6 @@ mod tests {
                             unexpected_folders_error_msg: None,
                             unexpected_error_msg: None,
                             append_error_msg: None,
-                            select_all_children: false,
                         },
                     },
                     file_rules: [],
@@ -1517,7 +1500,6 @@ mod tests {
                     unexpected_folders_error_msg: None,
                     unexpected_error_msg: None,
                     append_error_msg: None,
-                    select_all_children: true,
                 },
             },
             file_rules: [],
@@ -1533,7 +1515,6 @@ mod tests {
             unexpected_folders_error_msg: None,
             unexpected_error_msg: None,
             append_error_msg: None,
-            select_all_children: false,
         }
         "###
         );

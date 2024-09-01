@@ -9,6 +9,7 @@ use crate::{
 
 use super::{
     add_aliases,
+    extract_file_content_exports::Export,
     extract_file_content_imports::{Import, ImportType},
     get_file_deps_result, get_file_imports, USED_FILES,
 };
@@ -25,6 +26,15 @@ pub fn check_ts_not_have_unused_exports(file: &File) -> Result<(), String> {
             .filter(|export| !export.ignored)
             .cloned()
             .collect::<Vec<_>>();
+        let ignored_exports = deps_info
+            .exports
+            .iter()
+            .filter(|export| export.ignored)
+            .cloned()
+            .collect::<Vec<_>>();
+        let mut used_ignored_exports: Vec<Export> = Vec::new();
+
+        let all_ignored_exports_count = ignored_exports.len();
 
         for (other_used_file, other_deps_info) in used_files.iter() {
             if unused_exports.is_empty() {
@@ -41,19 +51,65 @@ pub fn check_ts_not_have_unused_exports(file: &File) -> Result<(), String> {
                 match &related_import.values {
                     ImportType::All | ImportType::Dynamic => {
                         unused_exports = vec![];
+                        used_ignored_exports.extend(ignored_exports.clone());
                     }
                     ImportType::Named(values) => {
                         unused_exports
                             .retain(|export| !values.contains(&export.name));
+
+                        let related_ignored_exports = ignored_exports
+                            .iter()
+                            .filter(|export| values.contains(&export.name))
+                            .cloned()
+                            .collect::<Vec<_>>();
+
+                        used_ignored_exports.extend(related_ignored_exports);
                     }
                     ImportType::SideEffect => {}
                     ImportType::Type(values) => {
                         unused_exports
                             .retain(|export| !values.contains(&export.name));
+
+                        let related_ignored_exports = ignored_exports
+                            .iter()
+                            .filter(|export| values.contains(&export.name))
+                            .cloned()
+                            .collect::<Vec<_>>();
+
+                        used_ignored_exports.extend(related_ignored_exports);
                     }
                     ImportType::Glob => {}
                 }
             }
+        }
+
+        let count_of_ignore_next_line_comments = if let Some(content) = &file.content
+        {
+            content
+                .matches("// palinter-ignore-unused-next-line")
+                .count()
+        } else {
+            0
+        };
+
+        if count_of_ignore_next_line_comments > all_ignored_exports_count {
+            return Err("Unused ignore comment '// palinter-ignore-unused-next-line', remove it".to_string());
+        }
+
+        if !used_ignored_exports.is_empty() {
+            return Err(format!(
+                "Unused ignore comments '// palinter-ignore-unused-next-line', remove them: {}",
+                used_ignored_exports
+                    .iter()
+                    .map(|export| format!(
+                        "{} in {}:{}",
+                        export.name.blue().bold(),
+                        file.relative_path.bright_magenta().bold(),
+                        format!("{}", export.line - 1).bright_magenta().bold()
+                    ))
+                    .collect::<Vec<String>>()
+                    .join(" ・ ")
+            ));
         }
 
         if !unused_exports.is_empty() {
@@ -70,6 +126,11 @@ pub fn check_ts_not_have_unused_exports(file: &File) -> Result<(), String> {
                     .collect::<Vec<String>>()
                     .join(" ・ ")
             ))
+        } else if file_has_ignore_comment(file, "not-have-unused-exports") {
+            Err(
+                "Unused ignore comment '// palinter-ignore-not-have-unused-exports', remove it"
+                    .to_string(),
+            )
         } else {
             Ok(())
         }
@@ -92,10 +153,6 @@ fn file_has_ignore_comment(file: &File, ignore_comment: &str) -> bool {
 }
 
 pub fn check_ts_not_have_circular_deps(file: &File) -> Result<(), String> {
-    if file_has_ignore_comment(file, "not-have-circular-deps") {
-        return Ok(());
-    }
-
     let deps_info =
         get_file_deps_result(&PathBuf::from(file.clone().relative_path))?;
 
@@ -114,22 +171,36 @@ pub fn check_ts_not_have_circular_deps(file: &File) -> Result<(), String> {
             &" (run cmd `palinter circular-deps [file]` to get more info)".dimmed(),
         );
 
+        if file_has_ignore_comment(file, "not-have-circular-deps") {
+            return Ok(());
+        }
+
         Err(format!("File has circular dependencies: {}", circular_deps))
+    } else if file_has_ignore_comment(file, "not-have-circular-deps") {
+        Err(
+            "Unused ignore comment '// palinter-ignore-not-have-circular-deps', remove it"
+                .to_string(),
+        )
     } else {
         Ok(())
     }
 }
 
 pub fn check_ts_not_have_direct_circular_deps(file: &File) -> Result<(), String> {
-    if file_has_ignore_comment(file, "not-have-direct-circular-deps") {
-        return Ok(());
-    }
-
     let deps_info =
         get_file_deps_result(&PathBuf::from(file.clone().relative_path))?;
 
     if deps_info.deps.contains(&file.relative_path) {
+        if file_has_ignore_comment(file, "not-have-direct-circular-deps") {
+            return Ok(());
+        }
+
         Err("File has direct circular dependencies (run cmd `palinter circular-deps [file]` to get more info)".to_string())
+    } else if file_has_ignore_comment(file, "not-have-direct-circular-deps") {
+        Err(
+            "Unused ignore comment '// palinter-ignore-not-have-direct-circular-deps', remove it"
+                .to_string(),
+        )
     } else {
         Ok(())
     }

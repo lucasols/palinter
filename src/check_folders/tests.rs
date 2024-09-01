@@ -559,7 +559,6 @@ fn test_case_folder_structure_is_equal_to_loaded_structure() {
             unexpected_folders_error_msg: None,
             append_error_msg: None,
             unexpected_error_msg: None,
-            select_all_children: false,
         },
         ts_config: None,
         error_msg_vars: None,

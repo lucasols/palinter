@@ -464,7 +464,6 @@ fn check_folder_expected(
                             unexpected_folders_error_msg: None,
                             unexpected_error_msg: None,
                             append_error_msg: None,
-                            select_all_children: false,
                         }),
                         folder_path.to_string(),
                         inherited_files_rules.to_vec(),
@@ -815,10 +814,12 @@ fn check_folder_children(
                     format!("{}/{}", folder_path, sub_folder.name)
                 };
 
+                let mut folder_is_not_expected = false;
+
                 if sub_folder_cfg.is_some() {
-                    folder_touched = true;
                     folders_missing_check.remove(&sub_folder.name);
                 } else if !folder_touched && !allow_unconfigured_folders {
+                    folder_is_not_expected = true;
                     errors.push(format!(
                         "Folder {} is not expected in folder {}{}{}",
                         format!("/{}", sub_folder.name).bright_red(),
@@ -834,13 +835,6 @@ fn check_folder_children(
                     ));
                 }
 
-                if !folder_touched {
-                    continue;
-                }
-
-                let select_all_children: bool =
-                    sub_folder_cfg.map_or(false, |cfg| cfg.select_all_children);
-
                 let new_sub_folder_cfg =
                     sub_folder_cfg.map(|sub_folder_cfg| FolderConfig {
                         append_error_msg: sub_folder_cfg
@@ -851,10 +845,7 @@ fn check_folder_children(
                         ..sub_folder_cfg.clone()
                     });
 
-                if !children_was_checked
-                    || select_all_children
-                    || inherited_select_all_children
-                {
+                if !folder_is_not_expected {
                     if let Err(extra_errors) = check_folder_children(
                         sub_folder,
                         new_sub_folder_cfg.as_ref(),
@@ -864,7 +855,7 @@ fn check_folder_children(
                         Vec::new(),
                         error_msg_vars,
                         is_test_config,
-                        select_all_children || inherited_select_all_children,
+                        true,
                         if inherited_select_all_children {
                             allow_unconfigured_files
                                 || inherited_allow_unconfigured_files
