@@ -4,11 +4,10 @@ use serde_yaml::Value;
 
 use crate::{
     parse_config_file::{
-        parse_config_string, CorrectParsedFolderConfig, ParseFrom,
-        ParsedAnyNoneOrConditions, ParsedBlocks, ParsedConfig, ParsedFileConditions,
-        ParsedFileContentMatches, ParsedFileContentMatchesItem, ParsedFileExpect,
-        ParsedFolderConfig, ParsedFolderExpect, ParsedMatchImport, ParsedRule,
-        SingleOrMultiple,
+        CorrectParsedFolderConfig, ParsedAnyNoneOrConditions, ParsedBlocks,
+        ParsedConfig, ParsedFileConditions, ParsedFileContentMatches,
+        ParsedFileContentMatchesItem, ParsedFileExpect, ParsedFolderConfig,
+        ParsedFolderExpect, ParsedMatchImport, ParsedRule, SingleOrMultiple,
     },
     utils::clone_extend_vec,
 };
@@ -1288,6 +1287,8 @@ pub fn get_config(parsed_config: &ParsedConfig) -> Result<Config, String> {
 #[cfg(test)]
 mod tests {
     use insta::assert_debug_snapshot;
+
+    use crate::parse_config_file::{parse_config_string, ParseFrom};
 
     use super::*;
 
