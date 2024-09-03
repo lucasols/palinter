@@ -530,11 +530,31 @@ fn get_used_project_files_deps_info(
 ) -> Result<(), String> {
     let mut result: HashMap<String, FileDepsInfo> = HashMap::new();
 
+    let (mut non_glob_entry_points, glob_entry_points): (
+        Vec<PathBuf>,
+        Vec<PathBuf>,
+    ) = entry_points
+        .into_iter()
+        .partition(|entry| !entry.to_str().unwrap_or("").contains('*'));
+
+    for entry in glob_entry_points {
+        let glob = globset::Glob::new(entry.to_str().unwrap())
+            .unwrap()
+            .compile_matcher();
+
+        for file in flattened_root_structure.values() {
+            if glob.is_match(file.relative_path.as_str()) {
+                non_glob_entry_points
+                    .push(PathBuf::from(file.relative_path.clone()));
+            }
+        }
+    }
+
     FILES_CACHE.lock().unwrap().extend(flattened_root_structure);
 
     *ALIASES.lock().unwrap() = aliases;
 
-    for entry in entry_points {
+    for entry in non_glob_entry_points {
         if let Some(resolved_path) = get_resolved_path(&entry)? {
             visit_file(&resolved_path, &mut result)?;
         } else {
