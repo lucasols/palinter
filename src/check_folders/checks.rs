@@ -111,9 +111,11 @@ fn regex_match(regex: &Regex, str: &str) -> Result<Vec<Capture>, String> {
             .iter()
             .enumerate()
             .skip(1)
-            .map(|(i, capture)| Capture {
-                name: capture_names[i].clone(),
-                value: capture.unwrap().as_str().to_string(),
+            .filter_map(|(i, capture)| {
+                capture.map(|capture| Capture {
+                    name: capture_names[i].clone(),
+                    value: capture.as_str().to_string(),
+                })
             })
             .collect();
 
