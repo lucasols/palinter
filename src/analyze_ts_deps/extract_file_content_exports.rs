@@ -101,6 +101,10 @@ pub fn extract_file_content_exports(
                             None => name_part,
                         };
 
+                        if name.is_empty() {
+                            continue;
+                        }
+
                         exports.push(Export {
                             line: current_line,
                             name,
@@ -465,6 +469,51 @@ mod tests {
                     line: 4,
                     name: "bar".to_string(),
                     ignored: true,
+                }
+            ],
+        );
+    }
+
+    #[test]
+    fn extract_export_bug() {
+        let file_content = r#"
+            export const {
+                getCurrentStackedModals,
+                useStackedModals,
+                preventClosingOfStackedModals,
+                stackedModalEvents,
+                closeModal: closeStackedModal,
+            } = stackedModalsMethods;
+        "#;
+        let exports = extract_file_content_exports(file_content).unwrap();
+
+        assert_eq!(
+            exports,
+            vec![
+                Export {
+                    line: 2,
+                    name: "getCurrentStackedModals".to_string(),
+                    ignored: false,
+                },
+                Export {
+                    line: 2,
+                    name: "useStackedModals".to_string(),
+                    ignored: false,
+                },
+                Export {
+                    line: 2,
+                    name: "preventClosingOfStackedModals".to_string(),
+                    ignored: false,
+                },
+                Export {
+                    line: 2,
+                    name: "stackedModalEvents".to_string(),
+                    ignored: false,
+                },
+                Export {
+                    line: 2,
+                    name: "closeStackedModal".to_string(),
+                    ignored: false,
                 }
             ],
         );
