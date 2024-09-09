@@ -125,7 +125,16 @@
     "fileExpect": {
       "type": "object",
       "properties": {
-        "name_case_is": { "type": "string" },
+        "name_case_is": {
+          "type": "string",
+          "enum": [
+            "camelCase",
+            "kebab-case",
+            "snake_case",
+            "PascalCase",
+            "CONSTANT_CASE"
+          ]
+        },
         "extension_is": {
           "oneOf": [
             { "type": "string" },

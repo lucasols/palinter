@@ -10,7 +10,7 @@ use regex::{escape, Regex};
 pub fn name_case_is(name: &str, name_case_is: &NameCase) -> Result<(), String> {
     match name_case_is {
         NameCase::Kebab => {
-            let kebab_case_regex = Regex::new(r"^[a-z][a-z0-9-.]+$").unwrap();
+            let kebab_case_regex = Regex::new(r"^[a-z0-9][a-z0-9-.]+$").unwrap();
 
             if !kebab_case_regex.is_match(name) {
                 return Err("should be named in kebab-case".to_string());
@@ -24,7 +24,7 @@ pub fn name_case_is(name: &str, name_case_is: &NameCase) -> Result<(), String> {
             }
         }
         NameCase::Snake => {
-            let snake_case_regex = Regex::new(r"^[a-z][a-z0-9_.]+$").unwrap();
+            let snake_case_regex = Regex::new(r"^[a-z0-9][a-z0-9_.]+$").unwrap();
 
             if !snake_case_regex.is_match(name) {
                 return Err("should be named in snake_case".to_string());
