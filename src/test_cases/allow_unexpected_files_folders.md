@@ -47,6 +47,6 @@ structure:
         unconfiguredFile.tsx: ''
 
 expected_errors:
-  - "File unconfiguredFile.tsx is not expected in folder ./folder/subFolder"
-  - "Folder /extraSubFolder is not expected in folder ./folder/subFolder"
+  - 'File unconfiguredFile.tsx is not expected in folder ./folder/subFolder'
+  - 'Folder /extraSubFolder is not expected in folder ./folder/subFolder'
 ```

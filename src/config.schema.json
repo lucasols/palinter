@@ -93,7 +93,7 @@
             },
             "not_touch": {
               "type": "boolean",
-              "description": "If true, do not modify matched files"
+              "description": "If true, matching this rule does not consider file as a expected file"
             },
             "ignore_in_config_tests": {
               "type": "boolean",
@@ -138,7 +138,7 @@
             },
             "not_touch": {
               "type": "boolean",
-              "description": "If true, do not modify matched folders"
+              "description": "If true, matching this rule does not consider folder as expected folder"
             }
           },
           "required": ["if_folder"]

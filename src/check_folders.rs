@@ -858,13 +858,11 @@ fn check_folder_children(
                         true,
                         if inherited_select_all_children {
                             allow_unconfigured_files
-                                || inherited_allow_unconfigured_files
                         } else {
                             false
                         },
                         if inherited_select_all_children {
                             allow_unconfigured_folders
-                                || inherited_allow_unconfigured_folders
                         } else {
                             false
                         },
