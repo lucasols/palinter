@@ -4,6 +4,7 @@
   "properties": {
     "blocks": {
       "type": ["object", "null"],
+      "description": "Reusable rule blocks that can be referenced in other parts of the configuration",
       "additionalProperties": {
         "oneOf": [
           { "$ref": "#/definitions/rule" },
@@ -16,31 +17,40 @@
     },
     "error_msg_vars": {
       "type": ["object", "null"],
+      "description": "Variables that can be used in error messages",
       "additionalProperties": { "type": "string" }
     },
     "analyze_content_of_files_types": {
       "type": ["array", "null"],
+      "description": "File types whose content should be analyzed",
       "items": { "type": "string" }
     },
     "ignore": {
       "type": ["array", "null"],
+      "description": "Patterns for files or directories to ignore",
       "items": { "type": "string" }
     },
     "ts": {
       "type": ["object", "null"],
+      "description": "TypeScript-specific configuration",
       "properties": {
         "aliases": {
           "type": "object",
+          "description": "Import aliases for TypeScript",
           "additionalProperties": { "type": "string" }
         },
         "unused_exports_entry_points": {
           "type": "array",
+          "description": "Entry points for unused exports analysis",
           "items": { "type": "string" }
         }
       },
       "required": ["aliases", "unused_exports_entry_points"]
     },
-    "./": { "$ref": "#/definitions/folderConfig" }
+    "./": {
+      "$ref": "#/definitions/folderConfig",
+      "description": "Configuration for the root folder"
+    }
   },
   "required": ["./"],
   "additionalProperties": false,
@@ -50,7 +60,10 @@
         {
           "type": "object",
           "properties": {
-            "if_file": { "$ref": "#/definitions/fileConditions" },
+            "if_file": {
+              "$ref": "#/definitions/fileConditions",
+              "description": "Conditions for matching files"
+            },
             "expect": {
               "oneOf": [
                 { "$ref": "#/definitions/fileExpect" },
@@ -62,23 +75,40 @@
                   "type": "string",
                   "enum": ["none", "any"]
                 }
-              ]
+              ],
+              "description": "Expectations for matched files"
             },
             "expect_one_of": {
               "type": "array",
-              "items": { "$ref": "#/definitions/fileExpect" }
+              "items": { "$ref": "#/definitions/fileExpect" },
+              "description": "List of possible expectations, of which one must be met"
             },
-            "error_msg": { "type": "string" },
-            "non_recursive": { "type": "boolean" },
-            "not_touch": { "type": "boolean" },
-            "ignore_in_config_tests": { "type": "boolean" }
+            "error_msg": {
+              "type": "string",
+              "description": "Custom error message for this rule"
+            },
+            "non_recursive": {
+              "type": "boolean",
+              "description": "If true, do not apply this rule recursively"
+            },
+            "not_touch": {
+              "type": "boolean",
+              "description": "If true, do not modify matched files"
+            },
+            "ignore_in_config_tests": {
+              "type": "boolean",
+              "description": "If true, ignore this rule in configuration tests"
+            }
           },
           "required": ["if_file"]
         },
         {
           "type": "object",
           "properties": {
-            "if_folder": { "$ref": "#/definitions/folderConditions" },
+            "if_folder": {
+              "$ref": "#/definitions/folderConditions",
+              "description": "Conditions for matching folders"
+            },
             "expect": {
               "oneOf": [
                 { "$ref": "#/definitions/folderExpect" },
@@ -90,15 +120,26 @@
                   "type": "string",
                   "enum": ["none", "any"]
                 }
-              ]
+              ],
+              "description": "Expectations for matched folders"
             },
             "expect_one_of": {
               "type": "array",
-              "items": { "$ref": "#/definitions/folderExpect" }
+              "items": { "$ref": "#/definitions/folderExpect" },
+              "description": "List of possible expectations, of which one must be met"
             },
-            "error_msg": { "type": "string" },
-            "non_recursive": { "type": "boolean" },
-            "not_touch": { "type": "boolean" }
+            "error_msg": {
+              "type": "string",
+              "description": "Custom error message for this rule"
+            },
+            "non_recursive": {
+              "type": "boolean",
+              "description": "If true, do not apply this rule recursively"
+            },
+            "not_touch": {
+              "type": "boolean",
+              "description": "If true, do not modify matched folders"
+            }
           },
           "required": ["if_folder"]
         },
@@ -107,18 +148,29 @@
           "properties": {
             "one_of": {
               "type": "array",
-              "items": { "$ref": "#/definitions/rule" }
+              "items": { "$ref": "#/definitions/rule" },
+              "description": "List of rules, of which one must be satisfied"
             },
-            "error_msg": { "type": "string" }
+            "error_msg": {
+              "type": "string",
+              "description": "Custom error message if none of the rules are satisfied"
+            }
           },
           "required": ["one_of"]
         },
-        { "type": "string" }
+        {
+          "type": "string",
+          "description": "Reference to a predefined block"
+        }
       ]
     },
     "fileConditions": {
       "oneOf": [
-        { "type": "string", "enum": ["any", "none"] },
+        {
+          "type": "string",
+          "enum": ["any", "none"],
+          "description": "Match any file or no file"
+        },
         {
           "type": "object",
           "properties": {
@@ -126,18 +178,32 @@
               "oneOf": [
                 { "type": "string" },
                 { "type": "array", "items": { "type": "string" } }
-              ]
+              ],
+              "description": "File extension(s) to match"
             },
-            "has_name": { "type": "string" },
-            "not_has_name": { "type": "string" },
-            "is_ts": { "type": "boolean" }
+            "has_name": {
+              "type": "string",
+              "description": "File name to match"
+            },
+            "not_has_name": {
+              "type": "string",
+              "description": "File name to exclude"
+            },
+            "is_ts": {
+              "type": "boolean",
+              "description": "If true, match TypeScript files"
+            }
           }
         }
       ]
     },
     "folderConditions": {
       "oneOf": [
-        { "type": "string", "enum": ["any", "none"] },
+        {
+          "type": "string",
+          "enum": ["any", "none"],
+          "description": "Match any folder or no folder"
+        },
         {
           "type": "object",
           "properties": {
@@ -149,16 +215,34 @@
                 "snake_case",
                 "PascalCase",
                 "CONSTANT_CASE"
-              ]
+              ],
+              "description": "Naming convention for the folder"
             },
-            "has_name": { "type": "string" },
-            "not_has_name": { "type": "string" },
+            "has_name": {
+              "type": "string",
+              "description": "Folder name to match"
+            },
+            "not_has_name": {
+              "type": "string",
+              "description": "Folder name to exclude"
+            },
             "root_files_find_pattern": {
               "type": "object",
               "properties": {
-                "pattern": { "type": "string" },
-                "at_least": { "type": "integer", "minimum": 0 },
-                "at_most": { "type": "integer", "minimum": 0 }
+                "pattern": {
+                  "type": "string",
+                  "description": "Pattern to match files in the root of the folder"
+                },
+                "at_least": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Minimum number of matching files"
+                },
+                "at_most": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Maximum number of matching files"
+                }
               },
               "required": ["pattern"]
             }
@@ -177,63 +261,135 @@
             "snake_case",
             "PascalCase",
             "CONSTANT_CASE"
-          ]
+          ],
+          "description": "Expected naming convention for the file"
         },
         "extension_is": {
           "oneOf": [
             { "type": "string" },
             { "type": "array", "items": { "type": "string" } }
-          ]
+          ],
+          "description": "Expected file extension(s)"
         },
-        "have_sibling_file": { "type": "string" },
-        "content_matches": { "$ref": "#/definitions/contentMatches" },
-        "content_matches_any": { "$ref": "#/definitions/contentMatches" },
+        "have_sibling_file": {
+          "type": "string",
+          "description": "Name of a sibling file that should exist"
+        },
+        "content_matches": {
+          "$ref": "#/definitions/contentMatches",
+          "description": "Patterns that the file content should match"
+        },
+        "content_matches_any": {
+          "$ref": "#/definitions/contentMatches",
+          "description": "Patterns of which at least one should match in the file content"
+        },
         "content_not_matches": {
           "oneOf": [
             { "type": "string" },
             { "type": "array", "items": { "type": "string" } }
-          ]
+          ],
+          "description": "Patterns that should not appear in the file content"
         },
-        "name_is": { "type": "string" },
-        "name_is_not": { "type": "string" },
-        "is_not_empty": { "type": "boolean" },
-        "ts": { "$ref": "#/definitions/tsFileExpect" },
-        "error_msg": { "type": "string" }
+        "name_is": {
+          "type": "string",
+          "description": "Expected exact file name"
+        },
+        "name_is_not": {
+          "type": "string",
+          "description": "File name that should not be used"
+        },
+        "is_not_empty": {
+          "type": "boolean",
+          "description": "If true, the file should not be empty"
+        },
+        "ts": {
+          "$ref": "#/definitions/tsFileExpect",
+          "description": "TypeScript-specific expectations"
+        },
+        "error_msg": {
+          "type": "string",
+          "description": "Custom error message if expectations are not met"
+        }
       },
       "additionalProperties": false
     },
     "folderExpect": {
       "type": "object",
       "properties": {
-        "name_case_is": { "type": "string" },
-        "name_is": { "type": "string" },
-        "name_is_not": { "type": "string" },
-        "root_files_has": { "type": "string" },
-        "root_files_has_not": { "type": "string" },
-        "have_min_children": { "type": "integer", "minimum": 0 },
+        "name_case_is": {
+          "type": "string",
+          "description": "Expected naming convention for the folder"
+        },
+        "name_is": {
+          "type": "string",
+          "description": "Expected exact folder name"
+        },
+        "name_is_not": {
+          "type": "string",
+          "description": "Folder name that should not be used"
+        },
+        "root_files_has": {
+          "type": "string",
+          "description": "File that should exist in the root of the folder"
+        },
+        "root_files_has_not": {
+          "type": "string",
+          "description": "File that should not exist in the root of the folder"
+        },
+        "have_min_children": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Minimum number of child files/folders"
+        },
         "child_rules": {
           "type": "array",
-          "items": { "$ref": "#/definitions/rule" }
+          "items": { "$ref": "#/definitions/rule" },
+          "description": "Rules to apply to the folder's children"
         },
-        "error_msg": { "type": "string" }
+        "error_msg": {
+          "type": "string",
+          "description": "Custom error message if expectations are not met"
+        }
       },
       "additionalProperties": false
     },
     "contentMatches": {
       "oneOf": [
-        { "type": "string" },
+        {
+          "type": "string",
+          "description": "Single pattern to match in the content"
+        },
         {
           "type": "array",
           "items": {
             "oneOf": [
-              { "type": "string" },
+              {
+                "type": "string",
+                "description": "Pattern to match in the content"
+              },
               {
                 "type": "object",
                 "properties": {
-                  "all": { "type": "array", "items": { "type": "string" } },
-                  "any": { "type": "array", "items": { "type": "string" } },
-                  "at_least": { "type": "integer", "minimum": 0 },
-                  "at_most": { "type": "integer", "minimum": 0 }
+                  "all": {
+                    "type": "array",
+                    "items": { "type": "string" },
+                    "description": "All of these patterns must match"
+                  },
+                  "any": {
+                    "type": "array",
+                    "items": { "type": "string" },
+                    "description": "At least one of these patterns must match"
+                  },
+                  "at_least": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "Minimum number of matches"
+                  },
+                  "at_most": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "Maximum number of matches"
+                  }
                 }
               }
             ]
@@ -244,48 +400,74 @@
     "tsFileExpect": {
       "type": "object",
       "properties": {
-        "not_have_unused_exports": { "type": "boolean" },
-        "not_have_circular_deps": { "type": "boolean" },
-        "not_have_direct_circular_deps": { "type": "boolean" },
+        "not_have_unused_exports": {
+          "type": "boolean",
+          "description": "If true, the file should not have unused exports"
+        },
+        "not_have_circular_deps": {
+          "type": "boolean",
+          "description": "If true, the file should not have circular dependencies"
+        },
+        "not_have_direct_circular_deps": {
+          "type": "boolean",
+          "description": "If true, the file should not have direct circular dependencies"
+        },
         "not_have_deps_from": {
           "oneOf": [
             { "type": "string" },
             { "type": "array", "items": { "type": "string" } }
-          ]
+          ],
+          "description": "Paths from which the file should not have dependencies"
         },
         "not_have_deps_outside": {
           "oneOf": [
             { "type": "string" },
             { "type": "array", "items": { "type": "string" } }
-          ]
+          ],
+          "description": "Paths outside of which the file should not have dependencies"
         },
         "not_have_exports_used_outside": {
           "oneOf": [
             { "type": "string" },
             { "type": "array", "items": { "type": "string" } }
-          ]
+          ],
+          "description": "Paths outside of which the file's exports should not be used"
         },
         "have_imports": {
           "type": "array",
           "items": {
             "type": "object",
             "properties": {
-              "from": { "type": "string" },
-              "name": { "type": "string" }
+              "from": {
+                "type": "string",
+                "description": "Module from which to import"
+              },
+              "name": {
+                "type": "string",
+                "description": "Name of the import"
+              }
             },
             "required": ["from"]
-          }
+          },
+          "description": "Imports that the file should have"
         },
         "not_have_imports": {
           "type": "array",
           "items": {
             "type": "object",
             "properties": {
-              "from": { "type": "string" },
-              "name": { "type": "string" }
+              "from": {
+                "type": "string",
+                "description": "Module from which not to import"
+              },
+              "name": {
+                "type": "string",
+                "description": "Name of the import that should not exist"
+              }
             },
             "required": ["from"]
-          }
+          },
+          "description": "Imports that the file should not have"
         }
       },
       "additionalProperties": false
@@ -295,20 +477,46 @@
       "properties": {
         "has_files_in_root": {
           "type": "array",
-          "items": { "type": "string" }
+          "items": { "type": "string" },
+          "description": "Files that should exist in the root of the folder"
         },
         "rules": {
           "type": "array",
-          "items": { "$ref": "#/definitions/rule" }
+          "items": { "$ref": "#/definitions/rule" },
+          "description": "Rules to apply to the folder"
         },
-        "optional": { "type": "boolean" },
-        "allow_unexpected_files": { "type": "boolean" },
-        "allow_unexpected_folders": { "type": "boolean" },
-        "allow_unexpected": { "type": "boolean" },
-        "unexpected_files_error_msg": { "type": "string" },
-        "unexpected_folders_error_msg": { "type": "string" },
-        "unexpected_error_msg": { "type": "string" },
-        "append_error_msg": { "type": "string" }
+        "optional": {
+          "type": "boolean",
+          "description": "If true, the folder is optional"
+        },
+        "allow_unexpected_files": {
+          "type": "boolean",
+          "description": "If true, allow unexpected files in the folder"
+        },
+        "allow_unexpected_folders": {
+          "type": "boolean",
+          "description": "If true, allow unexpected folders"
+        },
+        "allow_unexpected": {
+          "type": "boolean",
+          "description": "If true, allow both unexpected files and folders"
+        },
+        "unexpected_files_error_msg": {
+          "type": "string",
+          "description": "Custom error message for unexpected files"
+        },
+        "unexpected_folders_error_msg": {
+          "type": "string",
+          "description": "Custom error message for unexpected folders"
+        },
+        "unexpected_error_msg": {
+          "type": "string",
+          "description": "Custom error message for any unexpected items"
+        },
+        "append_error_msg": {
+          "type": "string",
+          "description": "Message to append to all error messages for this folder"
+        }
       },
       "additionalProperties": { "$ref": "#/definitions/folderConfig" }
     }
