@@ -55,6 +55,14 @@ analyze_content_of_files_types: ['ts', 'tsx']
           content_matches_any:
             - '#111'
             - '#222'
+  /contentMatchesRegex:
+    optional: true
+    rules:
+      - if_file:
+          has_name: '(?P<base_name>[a-z-]+).tsx'
+        expect:
+          content_matches:
+            - 'regex:export const ${base_name_PascalCase} = '
 ```
 
 # Projects
@@ -184,4 +192,13 @@ structure:
 
 expected_errors:
   - "File ./contentMatchesSome/file.svg:\n • configured `content_matches` patterns not found in the file content"
+```
+
+```yaml
+structure:
+  /contentMatchesRegex:
+    file-name.tsx: |
+      export const FileName = 'ok';
+
+expected_errors: false
 ```

@@ -68,6 +68,7 @@ pub fn extension_is(
 #[derive(Debug, Default, Clone)]
 pub struct Capture {
     pub name: String,
+    pub raw_name: String,
     pub value: String,
 }
 
@@ -76,6 +77,7 @@ impl Capture {
         Self {
             name: format!("${{{}}}", name),
             value: value.to_string(),
+            raw_name: name.to_string(),
         }
     }
 }
@@ -93,14 +95,25 @@ pub fn path_pattern_match(
     }
 }
 
+struct RegexCapture {
+    name: String,
+    raw_name: String,
+}
+
 fn regex_match(regex: &Regex, str: &str) -> Result<Vec<Capture>, String> {
-    let mut capture_names: Vec<String> = vec![];
+    let mut capture_names: Vec<RegexCapture> = vec![];
 
     for (i, capture_name) in regex.capture_names().enumerate() {
         if let Some(capture_name) = capture_name {
-            capture_names.push(format!("${{{}}}", capture_name));
+            capture_names.push(RegexCapture {
+                name: format!("${{{}}}", capture_name),
+                raw_name: capture_name.to_string(),
+            });
         } else {
-            capture_names.push(format!("${{{}}}", i));
+            capture_names.push(RegexCapture {
+                name: format!("${{{}}}", i),
+                raw_name: i.to_string(),
+            });
         }
     }
 
@@ -113,8 +126,9 @@ fn regex_match(regex: &Regex, str: &str) -> Result<Vec<Capture>, String> {
             .skip(1)
             .filter_map(|(i, capture)| {
                 capture.map(|capture| Capture {
-                    name: capture_names[i].clone(),
+                    name: capture_names[i].name.clone(),
                     value: capture.as_str().to_string(),
+                    raw_name: capture_names[i].raw_name.clone(),
                 })
             })
             .collect();
@@ -159,6 +173,13 @@ fn replace_with_captures(
     let mut result = pattern.to_owned();
 
     let mut captures = captures.to_vec();
+
+    for capture in captures.clone().iter() {
+        captures.extend(expand_to_capture_case_variation(
+            &capture.raw_name,
+            capture.value.clone(),
+        ));
+    }
 
     if let Some(folder_name) = context_vars.folder_name {
         captures
