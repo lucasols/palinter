@@ -50,7 +50,7 @@
         {
           "type": "object",
           "properties": {
-            "if_file": { "$ref": "#/definitions/conditions" },
+            "if_file": { "$ref": "#/definitions/fileConditions" },
             "expect": {
               "oneOf": [
                 { "$ref": "#/definitions/fileExpect" },
@@ -78,7 +78,7 @@
         {
           "type": "object",
           "properties": {
-            "if_folder": { "$ref": "#/definitions/conditions" },
+            "if_folder": { "$ref": "#/definitions/folderConditions" },
             "expect": {
               "oneOf": [
                 { "$ref": "#/definitions/folderExpect" },
@@ -116,10 +116,54 @@
         { "type": "string" }
       ]
     },
-    "conditions": {
+    "fileConditions": {
       "oneOf": [
         { "type": "string", "enum": ["any", "none"] },
-        { "type": "object", "additionalProperties": true }
+        {
+          "type": "object",
+          "properties": {
+            "has_extension": {
+              "oneOf": [
+                { "type": "string" },
+                { "type": "array", "items": { "type": "string" } }
+              ]
+            },
+            "has_name": { "type": "string" },
+            "not_has_name": { "type": "string" },
+            "is_ts": { "type": "boolean" }
+          }
+        }
+      ]
+    },
+    "folderConditions": {
+      "oneOf": [
+        { "type": "string", "enum": ["any", "none"] },
+        {
+          "type": "object",
+          "properties": {
+            "has_name_case": {
+              "type": "string",
+              "enum": [
+                "camelCase",
+                "kebab-case",
+                "snake_case",
+                "PascalCase",
+                "CONSTANT_CASE"
+              ]
+            },
+            "has_name": { "type": "string" },
+            "not_has_name": { "type": "string" },
+            "root_files_find_pattern": {
+              "type": "object",
+              "properties": {
+                "pattern": { "type": "string" },
+                "at_least": { "type": "integer", "minimum": 0 },
+                "at_most": { "type": "integer", "minimum": 0 }
+              },
+              "required": ["pattern"]
+            }
+          }
+        }
       ]
     },
     "fileExpect": {
