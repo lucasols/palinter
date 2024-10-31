@@ -1,5 +1,6 @@
 mod analyze_ts_deps;
 mod check_folders;
+mod cli;
 mod internal_config;
 mod load_folder_structure;
 mod parse_config_file;
@@ -11,7 +12,8 @@ use std::{path::PathBuf, process};
 
 use analyze_ts_deps::circular_deps::get_detailed_file_circular_deps_result;
 use check_folders::{check_root_folder, Problems};
-use clap::{arg, command, value_parser, Command};
+
+use cli::{get_cli_command, CliCommand};
 use internal_config::{get_config, Config};
 use load_folder_structure::load_folder_structure;
 use parse_config_file::parse_config_file;
@@ -20,74 +22,14 @@ use test_config::test_config;
 use crate::analyze_ts_deps::load_used_project_files_deps_info_from_cfg;
 
 fn main() {
-    let cli = command!()
-        .arg(
-            arg!(-c --config <config> "Path to the config file")
-                .default_value("palinter.yaml")
-                .value_parser(value_parser!(PathBuf)),
-        )
-        .arg(
-            arg!(-r --root <root> "Path to the root folder of the project")
-                .default_value(".")
-                .value_parser(value_parser!(PathBuf)),
-        )
-        .arg(
-            arg!(--"allow-warnings" "Allow warnings"),
-        )
-        .subcommand(
-            Command::new("circular-deps")
-                .about("Check for circular dependencies in a file")
-                .arg(
-                    arg!([file] "Path to the file to check")
-                        .required(true)
-                        .value_parser(value_parser!(PathBuf)),
-                )
-                .arg(
-                    arg!(-c --config <config> "Path to the config file")
-                        .default_value("palinter.yaml")
-                        .value_parser(value_parser!(PathBuf)),
-                )
-                .arg(
-                    arg!(-r --root <root> "Path to the root folder of the project")
-                        .default_value(".")
-                        .value_parser(value_parser!(PathBuf)),
-                )
-                .arg(
-                    arg!(-t --truncate <truncate> "Truncate the output to the first n elements")
-                        .default_value("10")
-                        .value_parser(value_parser!(usize)),
-                ),
-        )
-        .subcommand(
-            Command::new("test-config")
-                .about("Test the config file with test cases")
-                .arg(
-                    arg!([test_cases_folder] "Path to the folder with the test cases")
-                        .required(true)
-                        .value_parser(value_parser!(PathBuf)),
-                )
-                .arg(
-                    arg!(-c --config <config> "Path to the config file")
-                        .default_value("palinter.yaml")
-                        .value_parser(value_parser!(PathBuf)),
-                )
-                .arg(
-                    arg!(
-                        -f
-                        --"fix-errors"
-                        "Fix the errors in the test cases")
-                ),
-
-        )
-        .get_matches();
-
-    if let Some(matches) = cli.subcommand_matches("circular-deps") {
-        if let Some(file_name) = matches.get_one::<PathBuf>("file") {
-            let cfg_path = matches.get_one::<PathBuf>("config").unwrap();
-
-            let root = matches.get_one::<PathBuf>("root").unwrap();
-
-            let parsed_config = match parse_config_file(cfg_path) {
+    match get_cli_command() {
+        CliCommand::CircularDeps {
+            file_name,
+            cfg_path,
+            root,
+            truncate,
+        } => {
+            let parsed_config = match parse_config_file(&cfg_path) {
                 Ok(config) => config,
                 Err(err) => {
                     println!(
@@ -102,53 +44,47 @@ fn main() {
             let config = get_config(&parsed_config).unwrap();
 
             if let Err(err) = get_detailed_file_circular_deps_result(
-                file_name,
-                root,
-                config,
-                *matches.get_one::<usize>("truncate").unwrap(),
+                &file_name, &root, config, truncate,
             ) {
                 eprintln!("❌ Error getting circular deps: {}", err);
 
                 std::process::exit(1);
             }
         }
-    } else if let Some(matches) = cli.subcommand_matches("test-config") {
-        if let Some(test_case_dir) = matches.get_one::<PathBuf>("test_cases_folder")
-        {
-            let cfg_path = matches.get_one::<PathBuf>("config").unwrap();
 
-            let fix_errors = matches.contains_id("fix-errors");
-
-            match test_config(test_case_dir, cfg_path, fix_errors) {
-                Ok(success_msg) => println!("{}", success_msg),
-                Err(err) => {
-                    eprintln!("❌ Error testing config: {}", err);
-                    std::process::exit(1);
-                }
-            }
-        }
-    } else {
-        let cfg_path = cli.get_one::<PathBuf>("config").unwrap().clone();
-
-        let root = cli.get_one::<PathBuf>("root").unwrap().clone();
-
-        let allow_warnings = cli.contains_id("allow-warnings");
-
-        let parsed_config = match parse_config_file(&cfg_path) {
-            Ok(config) => config,
+        CliCommand::TestConfig {
+            test_cases_folder,
+            cfg_path,
+            fix_errors,
+        } => match test_config(&test_cases_folder, &cfg_path, fix_errors) {
+            Ok(success_msg) => println!("{}", success_msg),
             Err(err) => {
-                println!(
-                    "❌ Error parsing config file '{}': {}",
-                    cfg_path.to_str().unwrap(),
-                    err
-                );
+                eprintln!("❌ Error testing config: {}", err);
                 std::process::exit(1);
             }
-        };
+        },
 
-        let config = get_config(&parsed_config).unwrap();
+        CliCommand::Lint {
+            root,
+            cfg_path,
+            allow_warnings,
+        } => {
+            let parsed_config = match parse_config_file(&cfg_path) {
+                Ok(config) => config,
+                Err(err) => {
+                    println!(
+                        "❌ Error parsing config file '{}': {}",
+                        cfg_path.to_str().unwrap(),
+                        err
+                    );
+                    std::process::exit(1);
+                }
+            };
 
-        lint(config, root, allow_warnings);
+            let config = get_config(&parsed_config).unwrap();
+
+            lint(config, root, allow_warnings);
+        }
     }
 }
 
@@ -185,7 +121,7 @@ fn lint(config: Config, root: PathBuf, allow_warnings: bool) {
 
         if !warnings.is_empty() {
             eprintln!(
-                "🟡 Warnings found in the project:\n\n{}\n\n",
+                "🟠 Warnings found in the project:\n\n{}\n\n",
                 warnings.join("\n\n")
             );
         }
