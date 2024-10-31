@@ -34,6 +34,7 @@ struct Project {
     only: bool,
     structure: Folder,
     expected_errors: Option<Vec<String>>,
+    expected_warnings: Option<Vec<String>>,
 }
 
 #[derive(Debug)]
@@ -72,7 +73,8 @@ enum ExpectedErrors {
 struct ParsedProjectYaml {
     only: Option<bool>,
     structure: ParsedFolder,
-    expected_errors: ExpectedErrors,
+    expected_errors: Option<ExpectedErrors>,
+    expected_warnings: Option<Vec<String>>,
 }
 
 fn convert_from_parsed_folder_to_project(
@@ -136,10 +138,14 @@ fn parse_project_yaml(project_yaml: String) -> Result<Project, serde_yaml::Error
         only: parsed_project_yaml.only.unwrap_or(false),
         structure,
         expected_errors: match parsed_project_yaml.expected_errors {
-            ExpectedErrors::Single(true) => None,
-            ExpectedErrors::Single(false) => None,
-            ExpectedErrors::Multiple(errors) => Some(errors),
+            None => None,
+            Some(expected_errors) => match expected_errors {
+                ExpectedErrors::Single(true) => None,
+                ExpectedErrors::Single(false) => None,
+                ExpectedErrors::Multiple(errors) => Some(errors),
+            },
         },
+        expected_warnings: parsed_project_yaml.expected_warnings,
     })
 }
 
@@ -409,6 +415,7 @@ fn test_cases() {
                                     config,
                                     &project.structure,
                                     false,
+                                    false,
                                 );
 
                                 colored::control::unset_override();
@@ -419,9 +426,17 @@ fn test_cases() {
                                     i + 1
                                 );
 
+                                let Problems { errors, warnings } = match result {
+                                    Ok(_) => Problems {
+                                        errors: vec![],
+                                        warnings: vec![],
+                                    },
+                                    Err(problems) => problems,
+                                };
+
                                 match &project.expected_errors {
                                     Some(expected_errors) => {
-                                        if let Err(errors) = result {
+                                        if errors.is_empty() {
                                             let collected = &expected_errors
                                                 .iter()
                                                 .map(|err| err.trim().to_string())
@@ -445,12 +460,42 @@ fn test_cases() {
                                         }
                                     }
                                     None => {
-                                        if let Err(error) = result {
+                                        if !errors.is_empty() {
                                             test_errors.push(format!(
                                                 "{} Expected Ok but got errors: {:#?}",
-                                                test_case, error
+                                                test_case, errors
                                             ));
                                         }
+                                    }
+                                }
+
+                                if let Some(expected_warnings) =
+                                    &project.expected_warnings
+                                {
+                                    if !warnings.is_empty() {
+                                        let collected = &warnings
+                                            .iter()
+                                            .map(|err| err.trim().to_string())
+                                            .collect::<Vec<String>>();
+
+                                        if !do_vecs_match(
+                                            expected_warnings,
+                                            collected,
+                                        ) {
+                                            test_errors.push(format!(
+                                                "{}\n\
+                                                    Expected warnings: {:#?}\n\
+                                                    But got:          {:#?}",
+                                                test_case,
+                                                sort_vector(expected_warnings),
+                                                sort_vector(&warnings)
+                                            ));
+                                        }
+                                    } else {
+                                        test_errors.push(format!(
+                                            "{} Expected warnings but no warnings were found",
+                                            test_case
+                                        ));
                                     }
                                 }
                             }
@@ -536,6 +581,7 @@ fn test_case_folder_structure_is_equal_to_loaded_structure() {
     .unwrap();
 
     let config = Config {
+        allow_warnings: false,
         analyze_content_of_files_types: vec!["js".to_string()],
         ignore: HashSet::from_iter(vec![
             ".DS_Store".to_string(),
@@ -551,6 +597,7 @@ fn test_case_folder_structure_is_equal_to_loaded_structure() {
                 error_msg: None,
                 non_recursive: false,
                 not_touch: false,
+                is_warning: false,
             }],
             one_of_blocks: OneOfBlocks::default(),
             optional: false,

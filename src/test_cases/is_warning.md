@@ -1,6 +1,8 @@
 # Config
 
 ```yaml
+allow_warnings: true
+
 ./:
   /errorInRule:
     rules:

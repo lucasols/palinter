@@ -153,7 +153,6 @@ pub enum ParsedRule {
         error_msg: Option<String>,
         non_recursive: Option<bool>,
         not_touch: Option<bool>,
-        ignore_in_config_tests: Option<bool>,
         is_warning: Option<bool>,
     },
     OneOf {
@@ -201,6 +200,7 @@ pub type ParsedBlocks = Option<BTreeMap<String, SingleOrMultiple<ParsedRule>>>;
 #[derive(Deserialize, Debug, Clone)]
 pub struct ParsedConfig {
     pub blocks: ParsedBlocks,
+    pub allow_warnings: Option<bool>,
     pub error_msg_vars: Option<BTreeMap<String, String>>,
     pub analyze_content_of_files_types: Option<Vec<String>>,
     pub ignore: Option<Vec<String>>,

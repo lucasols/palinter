@@ -136,7 +136,6 @@ pub struct FolderRule {
     pub not_touch: bool,
     pub error_msg: Option<String>,
     pub is_warning: bool,
-    pub ignore_in_config_tests: bool,
 }
 
 #[derive(Debug, Default, Clone)]
@@ -188,6 +187,7 @@ pub struct Config {
     pub ignore: HashSet<String>,
     pub ts_config: Option<TsConfig>,
     pub error_msg_vars: ErrorMsgVars,
+    pub allow_warnings: bool,
 }
 
 fn normalize_single_or_multiple<T: Clone>(
@@ -475,7 +475,6 @@ fn normalize_rules(
                 expect_one_of,
                 not_touch,
                 is_warning,
-                ignore_in_config_tests,
             } => {
                 let conditions = match parsed_conditions {
                     ParsedAnyNoneOrConditions::AnyOrNone(any) => {
@@ -567,11 +566,6 @@ fn normalize_rules(
                             is_warning,
                             "is_warning",
                         )?,
-                        ignore_in_config_tests: get_true_flag(
-                            config_path,
-                            ignore_in_config_tests,
-                            "ignore_in_config_tests",
-                        )?,
                     });
                 }
 
@@ -609,11 +603,6 @@ fn normalize_rules(
                                     config_path,
                                     is_warning,
                                     "is_warning",
-                                )?,
-                                ignore_in_config_tests: get_true_flag(
-                                    config_path,
-                                    ignore_in_config_tests,
-                                    "ignore_in_config_tests",
                                 )?,
                             });
                         }
@@ -704,7 +693,6 @@ fn normalize_rules(
                             not_touch,
                             error_msg,
                             is_warning,
-                            ignore_in_config_tests,
                         } => ParsedRule::Folder {
                             conditions: conditions.clone(),
                             expect: expect.clone(),
@@ -713,7 +701,6 @@ fn normalize_rules(
                             not_touch: custom_not_touch.or(*not_touch),
                             error_msg: custom_error.clone().or(error_msg.clone()),
                             is_warning: *is_warning,
-                            ignore_in_config_tests: *ignore_in_config_tests,
                         },
                         _ => rule.clone(),
                     })
@@ -1304,6 +1291,11 @@ pub fn get_config(parsed_config: &ParsedConfig) -> Result<Config, String> {
     }
 
     Ok(Config {
+        allow_warnings: get_true_flag(
+            &String::from("."),
+            &parsed_config.allow_warnings,
+            "allow_warnings",
+        )?,
         error_msg_vars: parsed_config.error_msg_vars.clone(),
         root_folder: normalize_folder_config(
             &parsed_config.root_folder,

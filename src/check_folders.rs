@@ -357,9 +357,21 @@ fn folder_matches_condition(
     }
 }
 
-#[allow(clippy::too_many_arguments)]
+#[derive(Debug)]
+pub struct Problems {
+    pub errors: Vec<String>,
+    pub warnings: Vec<String>,
+}
 
+#[derive(Debug)]
+enum FolderExpectError {
+    Errors(Vec<String>),
+    ChildProblems(Problems),
+}
+
+#[allow(clippy::too_many_arguments)]
 fn check_folder_expected(
+    allow_warnings: bool,
     folder: &Folder,
     expected: &AnyNoneOr<Vec<FolderExpect>>,
     conditions_result: &ConditionsResult,
@@ -369,9 +381,11 @@ fn check_folder_expected(
     context_conditions: &[Capture],
     error_msg_vars: &ErrorMsgVars,
     is_test_config: bool,
-) -> Result<(), Vec<String>> {
+) -> Result<(), FolderExpectError> {
     match expected {
-        AnyNoneOr::None => Err(vec!["Folder is not expected".to_string()]),
+        AnyNoneOr::None => Err(FolderExpectError::Errors(vec![
+            "Folder is not expected".to_string(),
+        ])),
         AnyNoneOr::Any => Ok(()),
         AnyNoneOr::Or(expected) => {
             let mut pass_some_expect = false;
@@ -386,7 +400,8 @@ fn check_folder_expected(
                         name_case_is(&folder.name, file_name_case_is),
                         &expect.error_msg,
                         error_msg_vars,
-                    )?;
+                    )
+                    .map_err(FolderExpectError::Errors)?;
                 }
 
                 if let Some(name_is) = &expect.name_is {
@@ -395,7 +410,8 @@ fn check_folder_expected(
                         check_path_pattern(&folder.name, name_is, &captures),
                         &expect.error_msg,
                         error_msg_vars,
-                    )?;
+                    )
+                    .map_err(FolderExpectError::Errors)?;
                 }
 
                 if let Some(name_is_not) = &expect.name_is_not {
@@ -408,7 +424,8 @@ fn check_folder_expected(
                         ),
                         &expect.error_msg,
                         error_msg_vars,
-                    )?;
+                    )
+                    .map_err(FolderExpectError::Errors)?;
                 }
 
                 if let Some(root_files_has) = &expect.root_files_has {
@@ -422,7 +439,8 @@ fn check_folder_expected(
                         .map(|_| ()),
                         &expect.error_msg,
                         error_msg_vars,
-                    )?;
+                    )
+                    .map_err(FolderExpectError::Errors)?;
                 }
 
                 if let Some(root_files_has_not) = &expect.root_files_has_not {
@@ -435,7 +453,8 @@ fn check_folder_expected(
                         ),
                         &expect.error_msg,
                         error_msg_vars,
-                    )?;
+                    )
+                    .map_err(FolderExpectError::Errors)?;
                 }
 
                 if let Some(min_children) = &expect.have_min_children {
@@ -444,13 +463,15 @@ fn check_folder_expected(
                         check_folder_min_children(folder, *min_children),
                         &expect.error_msg,
                         error_msg_vars,
-                    )?;
+                    )
+                    .map_err(FolderExpectError::Errors)?;
                 }
 
                 if let Some((folder_rules, file_rules)) = &expect.child_rules {
                     pass_some_expect = true;
 
                     check_folder_children(
+                        allow_warnings,
                         folder,
                         Some(&FolderConfig {
                             file_rules: file_rules.clone(),
@@ -477,7 +498,8 @@ fn check_folder_expected(
                         false,
                         false,
                         false,
-                    )?;
+                    )
+                    .map_err(FolderExpectError::ChildProblems)?;
                 }
 
                 if cfg!(debug_assertions) && !pass_some_expect {
@@ -525,6 +547,7 @@ pub fn to_folder_config_name(name: &String) -> String {
 }
 
 fn check_folder_children(
+    allow_warnings: bool,
     folder: &Folder,
     folder_config: Option<&FolderConfig>,
     folder_path: String,
@@ -536,8 +559,9 @@ fn check_folder_children(
     inherited_select_all_children: bool,
     inherited_allow_unconfigured_files: bool,
     inherited_allow_unconfigured_folders: bool,
-) -> Result<(), Vec<String>> {
+) -> Result<(), Problems> {
     let mut errors: Vec<String> = Vec::new();
+    let mut warnings: Vec<String> = Vec::new();
 
     let append_error = folder_config
         .and_then(|fc| {
@@ -608,7 +632,14 @@ fn check_folder_children(
                             error_msg_vars,
                         ) {
                             for error in expect_errors {
-                                errors.push(format!(
+                                let problem_vec =
+                                    if allow_warnings && rule.is_warning {
+                                        &mut warnings
+                                    } else {
+                                        &mut errors
+                                    };
+
+                                problem_vec.push(format!(
                                     "{}{}{}",
                                     file_error_prefix,
                                     if let Some(custom_error) = &rule.error_msg {
@@ -753,7 +784,8 @@ fn check_folder_children(
                             }
                         }
 
-                        if let Err(errors_found) = check_folder_expected(
+                        if let Err(folder_expect_error) = check_folder_expected(
+                            allow_warnings,
                             sub_folder,
                             &rule.expect,
                             &conditions_result,
@@ -764,23 +796,43 @@ fn check_folder_children(
                             error_msg_vars,
                             is_test_config,
                         ) {
-                            if !errors_found.is_empty() {
-                                folder_has_error = true;
+                            match folder_expect_error {
+                                FolderExpectError::Errors(problems_found) => {
+                                    if !problems_found.is_empty() {
+                                        folder_has_error = true;
 
-                                for error in errors_found {
-                                    errors.push(format!(
-                                        "{}{}{}",
-                                        folder_error_prefix,
-                                        if let Some(custom_error) = &rule.error_msg {
-                                            format!(
-                                                "{}\n   | {}",
-                                                custom_error, error
-                                            )
-                                        } else {
-                                            error
-                                        },
-                                        append_error
-                                    ));
+                                        let problem_vec =
+                                            if rule.is_warning && allow_warnings {
+                                                &mut warnings
+                                            } else {
+                                                &mut errors
+                                            };
+
+                                        push_to_folder_problem_vec(
+                                            problems_found,
+                                            problem_vec,
+                                            &folder_error_prefix,
+                                            rule,
+                                            &append_error,
+                                        );
+                                    }
+                                }
+                                FolderExpectError::ChildProblems(child_problems) => {
+                                    push_to_folder_problem_vec(
+                                        child_problems.errors,
+                                        &mut errors,
+                                        &folder_error_prefix,
+                                        rule,
+                                        &append_error,
+                                    );
+
+                                    push_to_folder_problem_vec(
+                                        child_problems.warnings,
+                                        &mut warnings,
+                                        &folder_error_prefix,
+                                        rule,
+                                        &append_error,
+                                    );
                                 }
                             }
                         }
@@ -846,7 +898,11 @@ fn check_folder_children(
                     });
 
                 if !folder_is_not_expected {
-                    if let Err(extra_errors) = check_folder_children(
+                    if let Err(Problems {
+                        errors: extra_errors,
+                        warnings: extra_warnings,
+                    }) = check_folder_children(
+                        allow_warnings,
                         sub_folder,
                         new_sub_folder_cfg.as_ref(),
                         parent_path,
@@ -868,6 +924,7 @@ fn check_folder_children(
                         },
                     ) {
                         errors.extend(extra_errors);
+                        warnings.extend(extra_warnings);
                     }
                 }
             }
@@ -881,10 +938,31 @@ fn check_folder_children(
         ));
     }
 
-    if !errors.is_empty() {
-        Err(errors)
+    if !errors.is_empty() || !warnings.is_empty() {
+        Err(Problems { errors, warnings })
     } else {
         Ok(())
+    }
+}
+
+fn push_to_folder_problem_vec(
+    problems_found: Vec<String>,
+    problem_vec: &mut Vec<String>,
+    folder_error_prefix: &String,
+    rule: &FolderRule,
+    append_error: &String,
+) {
+    for error in problems_found {
+        problem_vec.push(format!(
+            "{}{}{}",
+            folder_error_prefix,
+            if let Some(custom_error) = &rule.error_msg {
+                format!("{}\n   | {}", custom_error, error)
+            } else {
+                error
+            },
+            append_error
+        ));
     }
 }
 
@@ -892,8 +970,10 @@ pub fn check_root_folder(
     config: &Config,
     folder: &Folder,
     is_test_config: bool,
-) -> Result<(), Vec<String>> {
+    allow_warnings: bool,
+) -> Result<(), Problems> {
     check_folder_children(
+        allow_warnings || config.allow_warnings,
         folder,
         Some(&config.root_folder),
         String::from("."),

@@ -8,7 +8,7 @@ use std::{
 
 use crate::{
     analyze_ts_deps::{_setup_test, load_used_project_files_deps_info_from_cfg},
-    check_folders::{check_root_folder, normalize_folder_config_name},
+    check_folders::{check_root_folder, normalize_folder_config_name, Problems},
     internal_config::get_config,
     load_folder_structure::{File, Folder, FolderChild},
     parse_config_file,
@@ -179,7 +179,7 @@ pub fn test_config(
                     };
 
                     let result =
-                        check_root_folder(&config, &project.structure, true);
+                        check_root_folder(&config, &project.structure, true, false);
 
                     colored::control::unset_override();
 
@@ -191,7 +191,7 @@ pub fn test_config(
 
                     match &project.expected_errors {
                         Some(expected_errors) => {
-                            if let Err(errors) = result {
+                            if let Err(Problems { errors, .. }) = result {
                                 let collected = &expected_errors
                                     .iter()
                                     .map(|err| err.trim().to_string())

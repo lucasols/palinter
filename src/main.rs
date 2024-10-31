@@ -10,7 +10,7 @@ mod utils;
 use std::{path::PathBuf, process};
 
 use analyze_ts_deps::circular_deps::get_detailed_file_circular_deps_result;
-use check_folders::check_root_folder;
+use check_folders::{check_root_folder, Problems};
 use clap::{arg, command, value_parser, Command};
 use internal_config::{get_config, Config};
 use load_folder_structure::load_folder_structure;
@@ -132,6 +132,8 @@ fn main() {
 
         let root = cli.get_one::<PathBuf>("root").unwrap().clone();
 
+        let allow_warnings = cli.contains_id("allow-warnings");
+
         let parsed_config = match parse_config_file(&cfg_path) {
             Ok(config) => config,
             Err(err) => {
@@ -146,11 +148,11 @@ fn main() {
 
         let config = get_config(&parsed_config).unwrap();
 
-        lint(config, root);
+        lint(config, root, allow_warnings);
     }
 }
 
-fn lint(config: Config, root: PathBuf) {
+fn lint(config: Config, root: PathBuf, allow_warnings: bool) {
     let measure_time = std::time::Instant::now();
 
     let root_structure = match load_folder_structure(&root, &config, &root, true) {
@@ -168,12 +170,29 @@ fn lint(config: Config, root: PathBuf) {
         std::process::exit(1);
     };
 
-    if let Err(err) = check_root_folder(&config, &root_structure, false) {
-        eprintln!(
-            "❌ Errors found in the project:\n\n{}\n\n",
-            err.join("\n\n")
-        );
-        std::process::exit(1);
+    if let Err(Problems { errors, warnings }) =
+        check_root_folder(&config, &root_structure, false, allow_warnings)
+    {
+        let mut should_exit = false;
+
+        if !errors.is_empty() {
+            should_exit = true;
+            eprintln!(
+                "❌ Errors found in the project:\n\n{}\n\n",
+                errors.join("\n\n")
+            );
+        }
+
+        if !warnings.is_empty() {
+            eprintln!(
+                "🟡 Warnings found in the project:\n\n{}\n\n",
+                warnings.join("\n\n")
+            );
+        }
+
+        if should_exit {
+            std::process::exit(1);
+        }
     }
 
     println!("\n✨ The project architecture is valid!");

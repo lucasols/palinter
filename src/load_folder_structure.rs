@@ -163,6 +163,7 @@ mod tests {
     #[test]
     fn ignore_folders() {
         let config = Config {
+            allow_warnings: false,
             analyze_content_of_files_types: vec![],
             ignore: HashSet::from_iter(vec![
                 "dist".to_string(),
@@ -180,7 +181,6 @@ mod tests {
                     non_recursive: false,
                     not_touch: false,
                     is_warning: false,
-                    ignore_in_config_tests: false,
                 }],
                 unexpected_files_error_msg: None,
                 unexpected_folders_error_msg: None,
@@ -204,6 +204,7 @@ mod tests {
     #[test]
     fn analyze_content_of_files_types() {
         let config = Config {
+            allow_warnings: false,
             analyze_content_of_files_types: vec!["js".to_string()],
             ignore: HashSet::from_iter(vec![".DS_Store".to_string()]),
             root_folder: FolderConfig {
@@ -217,7 +218,6 @@ mod tests {
                     non_recursive: false,
                     not_touch: false,
                     is_warning: false,
-                    ignore_in_config_tests: false,
                 }],
                 unexpected_files_error_msg: None,
                 unexpected_folders_error_msg: None,
@@ -241,6 +241,7 @@ mod tests {
     #[test]
     fn ignore_unconfigured_folder() {
         let config = Config {
+            allow_warnings: false,
             analyze_content_of_files_types: vec!["js".to_string()],
             ignore: HashSet::from_iter(vec![".DS_Store".to_string()]),
             root_folder: FolderConfig {
