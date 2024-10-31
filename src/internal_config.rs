@@ -1393,6 +1393,7 @@ mod tests {
                             not_touch: false,
                             ignore_in_config_tests: false,
                             error_msg: None,
+                            is_warning: false,
                         },
                     ],
                     folder_rules: [
@@ -1402,6 +1403,7 @@ mod tests {
                             non_recursive: false,
                             not_touch: false,
                             error_msg: None,
+                            is_warning: false,
                         },
                     ],
                     optional: false,
@@ -1498,6 +1500,7 @@ mod tests {
                                     not_touch: false,
                                     ignore_in_config_tests: false,
                                     error_msg: None,
+                                    is_warning: false,
                                 },
                             ],
                             folder_rules: [
@@ -1507,6 +1510,7 @@ mod tests {
                                     non_recursive: false,
                                     not_touch: false,
                                     error_msg: None,
+                                    is_warning: false,
                                 },
                             ],
                             optional: false,
