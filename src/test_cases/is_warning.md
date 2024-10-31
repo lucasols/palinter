@@ -32,29 +32,27 @@ allow_warnings: true
 ```yaml
 structure:
   /errorInRule:
-    level-3.tsx: ''
-    /level-3: {}
+    warning-file.tsx: ''
+    /error-folder: {}
+    okFile.tsx: ''
   /errorInExpect:
-    level-3.tsx: ''
-    /level-3: {}
+    /okFolder: {}
+    error-file.tsx: ''
+    /warning-folder: {}
 
 expected_errors:
   - |
-    Folder ./errorInExpect/level-3:
-     • Custom folder error message in expect
-       | should be named in camelCase
+    Folder ./errorInRule/error-folder:
+     • should be named in camelCase
   - |
-    File ./errorInRule/level-3.tsx:
-     • custom file error message
-      | should be named in camelCase
+    File ./errorInExpect/error-file.tsx:
+     • should be named in camelCase
 
 expected_warnings:
   - |
-    File ./errorInExpect/level-3.tsx:
-     • Custom file error message in expect http://example.com
-       | should be named in camelCase
+    Folder ./errorInExpect/warning-folder:
+     • should be named in camelCase
   - |
-    Folder ./errorInRule/level-3:
-    • custom folder error message
-      | should be named in camelCase
+    File ./errorInRule/warning-file.tsx:
+     • should be named in camelCase
 ```

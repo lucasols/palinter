@@ -436,7 +436,7 @@ fn test_cases() {
 
                                 match &project.expected_errors {
                                     Some(expected_errors) => {
-                                        if errors.is_empty() {
+                                        if !errors.is_empty() {
                                             let collected = &expected_errors
                                                 .iter()
                                                 .map(|err| err.trim().to_string())
@@ -479,7 +479,10 @@ fn test_cases() {
                                             .collect::<Vec<String>>();
 
                                         if !do_vecs_match(
-                                            expected_warnings,
+                                            &expected_warnings
+                                                .iter()
+                                                .map(|s| s.trim().to_string())
+                                                .collect::<Vec<String>>(),
                                             collected,
                                         ) {
                                             test_errors.push(format!(
