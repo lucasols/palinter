@@ -98,6 +98,10 @@
             "ignore_in_config_tests": {
               "type": "boolean",
               "description": "If true, ignore this rule in configuration tests"
+            },
+            "is_warning": {
+              "type": "boolean",
+              "description": "If true show errors as warning if --allow-warnings flag is used"
             }
           },
           "required": ["if_file"]

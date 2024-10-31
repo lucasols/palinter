@@ -31,6 +31,9 @@ fn main() {
                 .default_value(".")
                 .value_parser(value_parser!(PathBuf)),
         )
+        .arg(
+            arg!(--"allow-warnings" "Allow warnings"),
+        )
         .subcommand(
             Command::new("circular-deps")
                 .about("Check for circular dependencies in a file")

@@ -141,6 +141,7 @@ pub enum ParsedRule {
         non_recursive: Option<bool>,
         not_touch: Option<bool>,
         ignore_in_config_tests: Option<bool>,
+        is_warning: Option<bool>,
     },
     Folder {
         #[serde(rename = "if_folder")]
@@ -152,6 +153,8 @@ pub enum ParsedRule {
         error_msg: Option<String>,
         non_recursive: Option<bool>,
         not_touch: Option<bool>,
+        ignore_in_config_tests: Option<bool>,
+        is_warning: Option<bool>,
     },
     OneOf {
         #[serde(rename = "one_of")]

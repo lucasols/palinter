@@ -125,6 +125,7 @@ pub struct FileRule {
     pub not_touch: bool,
     pub ignore_in_config_tests: bool,
     pub error_msg: Option<String>,
+    pub is_warning: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -134,6 +135,8 @@ pub struct FolderRule {
     pub non_recursive: bool,
     pub not_touch: bool,
     pub error_msg: Option<String>,
+    pub is_warning: bool,
+    pub ignore_in_config_tests: bool,
 }
 
 #[derive(Debug, Default, Clone)]
@@ -305,6 +308,7 @@ fn normalize_rules(
                 expect_one_of,
                 not_touch,
                 ignore_in_config_tests,
+                is_warning,
             } => {
                 let conditions = match parsed_conditions {
                     ParsedAnyNoneOrConditions::AnyOrNone(any) => {
@@ -399,6 +403,11 @@ fn normalize_rules(
                             ignore_in_config_tests,
                             "ignore_in_config_tests",
                         )?,
+                        is_warning: get_true_flag(
+                            config_path,
+                            is_warning,
+                            "is_warning",
+                        )?,
                     });
                 };
 
@@ -436,6 +445,11 @@ fn normalize_rules(
                                     ignore_in_config_tests,
                                     "ignore_in_config_tests",
                                 )?,
+                                is_warning: get_true_flag(
+                                    config_path,
+                                    is_warning,
+                                    "is_warning",
+                                )?,
                             });
                         }
 
@@ -460,6 +474,8 @@ fn normalize_rules(
                 non_recursive,
                 expect_one_of,
                 not_touch,
+                is_warning,
+                ignore_in_config_tests,
             } => {
                 let conditions = match parsed_conditions {
                     ParsedAnyNoneOrConditions::AnyOrNone(any) => {
@@ -546,6 +562,16 @@ fn normalize_rules(
                             non_recursive,
                             "non_recursive",
                         )?,
+                        is_warning: get_true_flag(
+                            config_path,
+                            is_warning,
+                            "is_warning",
+                        )?,
+                        ignore_in_config_tests: get_true_flag(
+                            config_path,
+                            ignore_in_config_tests,
+                            "ignore_in_config_tests",
+                        )?,
                     });
                 }
 
@@ -578,6 +604,16 @@ fn normalize_rules(
                                     config_path,
                                     non_recursive,
                                     "non_recursive",
+                                )?,
+                                is_warning: get_true_flag(
+                                    config_path,
+                                    is_warning,
+                                    "is_warning",
+                                )?,
+                                ignore_in_config_tests: get_true_flag(
+                                    config_path,
+                                    ignore_in_config_tests,
+                                    "ignore_in_config_tests",
                                 )?,
                             });
                         }
@@ -649,6 +685,7 @@ fn normalize_rules(
                             not_touch,
                             error_msg,
                             ignore_in_config_tests,
+                            is_warning,
                         } => ParsedRule::File {
                             conditions: conditions.clone(),
                             expect: expect.clone(),
@@ -656,8 +693,8 @@ fn normalize_rules(
                             non_recursive: custom_non_recursive.or(*non_recursive),
                             not_touch: custom_not_touch.or(*not_touch),
                             error_msg: custom_error.clone().or(error_msg.clone()),
-                            ignore_in_config_tests: custom_non_recursive
-                                .or(*ignore_in_config_tests),
+                            ignore_in_config_tests: *ignore_in_config_tests,
+                            is_warning: *is_warning,
                         },
                         ParsedRule::Folder {
                             conditions,
@@ -666,6 +703,8 @@ fn normalize_rules(
                             non_recursive,
                             not_touch,
                             error_msg,
+                            is_warning,
+                            ignore_in_config_tests,
                         } => ParsedRule::Folder {
                             conditions: conditions.clone(),
                             expect: expect.clone(),
@@ -673,6 +712,8 @@ fn normalize_rules(
                             non_recursive: custom_non_recursive.or(*non_recursive),
                             not_touch: custom_not_touch.or(*not_touch),
                             error_msg: custom_error.clone().or(error_msg.clone()),
+                            is_warning: *is_warning,
+                            ignore_in_config_tests: *ignore_in_config_tests,
                         },
                         _ => rule.clone(),
                     })
@@ -1099,6 +1140,7 @@ pub fn normalize_folder_config(
                         non_recursive: Some(true),
                         not_touch: None,
                         ignore_in_config_tests: None,
+                        is_warning: None,
                     })
                     .collect();
 
