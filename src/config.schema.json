@@ -49,7 +49,8 @@
           "items": { "type": "string" }
         }
       },
-      "required": ["aliases", "unused_exports_entry_points"]
+      "required": ["aliases", "unused_exports_entry_points"],
+      "additionalProperties": false
     },
     "./": {
       "$ref": "#/definitions/folderConfig",
@@ -108,7 +109,8 @@
               "description": "If true show errors as warning if --allow-warnings flag is used"
             }
           },
-          "required": ["if_file"]
+          "required": ["if_file"],
+          "additionalProperties": false
         },
         {
           "type": "object",
@@ -147,9 +149,14 @@
             "not_touch": {
               "type": "boolean",
               "description": "If true, matching this rule does not consider folder as expected folder"
+            },
+            "is_warning": {
+              "type": "boolean",
+              "description": "If true show errors as warning if --allow-warnings flag is used"
             }
           },
-          "required": ["if_folder"]
+          "required": ["if_folder"],
+          "additionalProperties": false
         },
         {
           "type": "object",
@@ -164,7 +171,8 @@
               "description": "Custom error message if none of the rules are satisfied"
             }
           },
-          "required": ["one_of"]
+          "required": ["one_of"],
+          "additionalProperties": false
         },
         {
           "type": "string",
@@ -200,8 +208,24 @@
             "is_ts": {
               "type": "boolean",
               "description": "If true, match TypeScript files"
+            },
+            "has_content": {
+              "$ref": "#/definitions/contentMatches",
+              "description": "Content to match in the file"
+            },
+            "not_has_content": {
+              "$ref": "#/definitions/contentMatches",
+              "description": "Content to exclude from the file"
+            },
+            "has_any_content": {
+              "oneOf": [
+                { "type": "string" },
+                { "type": "array", "items": { "type": "string" } }
+              ],
+              "description": "Content to match in the file"
             }
-          }
+          },
+          "additionalProperties": false
         }
       ]
     },
@@ -252,9 +276,11 @@
                   "description": "Maximum number of matching files"
                 }
               },
-              "required": ["pattern"]
+              "required": ["pattern"],
+              "additionalProperties": false
             }
-          }
+          },
+          "additionalProperties": false
         }
       ]
     },
@@ -398,7 +424,8 @@
                     "minimum": 0,
                     "description": "Maximum number of matches"
                   }
-                }
+                },
+                "additionalProperties": false
               }
             ]
           }
@@ -455,7 +482,8 @@
                 "description": "Name of the import"
               }
             },
-            "required": ["from"]
+            "required": ["from"],
+            "additionalProperties": false
           },
           "description": "Imports that the file should have"
         },
@@ -473,7 +501,8 @@
                 "description": "Name of the import that should not exist"
               }
             },
-            "required": ["from"]
+            "required": ["from"],
+            "additionalProperties": false
           },
           "description": "Imports that the file should not have"
         }
