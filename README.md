@@ -1,8 +1,8 @@
 # Project Architecture Linter (PALinter)
 
-A powerfull linter for projects architecture written in rust.
+A powerful linter for projects architecture written in rust.
 
-> OBS: This is a project i made mostly for fun and to learn rust, so it's not production ready and probably is not following the best practices haha. So advices, suggestions and issues are welcome!!
+> OBS: This is a project i made mostly for fun and to learn rust, so it's not production ready and probably is not following the best practices 😅. So advices, suggestions and issues are welcome!!
 
 > OBS2: Although the project goal is to lint any project of any stack, for now it's mostly focused on typescript projects.
 
@@ -20,7 +20,7 @@ npm install -D palinter
 
 # How to use
 
-## Exmple project
+## Example project
 
 To understand the basics of how to use the linter, let's create a simple project to lint a folder with svg files.
 
@@ -54,7 +54,7 @@ In this file we first select the folder we want to validate and then add the rul
           extension_is: svg
 ```
 
-Each rule is composed of a condition (`if_file` or `if_folder`) and assertions (what we `expect` to happen) to be checket if the condition is met. In this case:
+Each rule is composed of a condition (`if_file` or `if_folder`) and assertions (what we `expect` to happen) to be checked if the condition is met. In this case:
 
 ```yaml
 rules:

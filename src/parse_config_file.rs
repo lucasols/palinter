@@ -18,6 +18,9 @@ pub struct ParsedFileConditions {
     pub has_name: Option<String>,
     pub not_has_name: Option<String>,
     pub is_ts: Option<bool>,
+    pub has_content: Option<ParsedFileContentMatches>,
+    pub has_any_content: Option<ParsedFileContentMatches>,
+    pub not_has_content: Option<SingleOrMultiple<String>>,
 
     #[serde(flatten)]
     pub wrong: HashMap<String, Value>,

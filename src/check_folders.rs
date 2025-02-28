@@ -63,6 +63,38 @@ fn file_matches_condition(
                 }
             }
 
+            if let Some(content_matches) = &conditions.has_content {
+                if check_content(&file.content, content_matches, &[], false).is_err()
+                {
+                    return None;
+                }
+            }
+
+            if let Some(content_matches) = &conditions.has_any_content {
+                if check_content(
+                    &file.content,
+                    content_matches,
+                    &has_name_captures,
+                    true,
+                )
+                .is_err()
+                {
+                    return None;
+                }
+            }
+
+            if let Some(content_matches) = &conditions.not_has_content {
+                if check_content_not_matches(
+                    &file.content,
+                    content_matches,
+                    &has_name_captures,
+                )
+                .is_err()
+                {
+                    return None;
+                }
+            }
+
             Some(ConditionsResult {
                 captures: has_name_captures,
             })

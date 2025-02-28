@@ -39,6 +39,9 @@ pub struct FileConditions {
     pub has_extension: Option<Vec<String>>,
     pub has_name: Option<String>,
     pub not_has_name: Option<String>,
+    pub has_content: Option<Vec<ContentMatches>>,
+    pub has_any_content: Option<Vec<ContentMatches>>,
+    pub not_has_content: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone)]
@@ -316,41 +319,17 @@ fn normalize_rules(
                         AnyOr::Any
                     }
                     ParsedAnyNoneOrConditions::Conditions(conditions) => {
-                        let ParsedFileConditions {
-                            has_extension,
-                            has_name,
-                            not_has_name,
-                            is_ts,
-                            wrong,
-                        } = conditions;
-
                         check_invalid_conditions(
-                            wrong,
+                            &conditions.wrong,
                             "if_file condition",
                             config_path,
                         )?;
 
-                        let validated_is_ts =
-                            get_true_flag(config_path, is_ts, "is_ts")?;
-
-                        AnyOr::Or(FileConditions {
-                            has_extension: (has_extension.is_some()
-                                || validated_is_ts)
-                                .then_some(clone_extend_vec(
-                                    &normalize_single_or_multiple_option(
-                                        has_extension,
-                                    )
-                                    .unwrap_or_default(),
-                                    &validated_is_ts
-                                        .then_some(vec![
-                                            "ts".to_string(),
-                                            "tsx".to_string(),
-                                        ])
-                                        .unwrap_or_default(),
-                                )),
-                            has_name: has_name.clone(),
-                            not_has_name: not_has_name.clone(),
-                        })
+                        AnyOr::Or(get_file_conditions(
+                            conditions,
+                            config_path,
+                            config,
+                        )?)
                     }
                 };
 
@@ -995,6 +974,57 @@ fn get_file_expect(
     })
 }
 
+fn get_file_conditions(
+    parsed_conditions: &ParsedFileConditions,
+    config_path: &String,
+    parsed_config: &ParsedConfig,
+) -> Result<FileConditions, String> {
+    let ParsedFileConditions {
+        has_extension,
+        has_name,
+        not_has_name,
+        is_ts,
+        has_content,
+        has_any_content,
+        not_has_content,
+        wrong: _,
+    } = parsed_conditions;
+
+    if (has_content.is_some()
+        || has_any_content.is_some()
+        || not_has_content.is_some())
+        && (parsed_config.analyze_content_of_files_types.is_none()
+            && parsed_config.ts.is_none())
+    {
+        return Err(format!(
+            "Config error in '{}': to use 'content_matches' and 'content_matches_any' you must specify the 'analyze_content_of_files_types' property with the file extensions you want to analyze",
+            config_path
+        ));
+    }
+
+    let validated_is_ts = get_true_flag(config_path, is_ts, "is_ts")?;
+
+    Ok(FileConditions {
+        has_extension: (has_extension.is_some() || validated_is_ts).then_some(
+            clone_extend_vec(
+                &normalize_single_or_multiple_option(has_extension)
+                    .unwrap_or_default(),
+                &validated_is_ts
+                    .then_some(vec!["ts".to_string(), "tsx".to_string()])
+                    .unwrap_or_default(),
+            ),
+        ),
+        has_name: has_name.clone(),
+        not_has_name: not_has_name.clone(),
+        has_content: normalize_content_matches(has_content.clone(), config_path),
+        has_any_content: normalize_content_matches(
+            has_any_content.clone(),
+            config_path,
+        ),
+        not_has_content: normalize_single_or_multiple_option(not_has_content),
+    })
+}
+
 fn normalize_parsed_match_import(
     parsed_match_import: Vec<ParsedMatchImport>,
 ) -> Vec<MatchImport> {
@@ -1368,6 +1398,9 @@ mod tests {
                                     ),
                                     has_name: None,
                                     not_has_name: None,
+                                    has_content: None,
+                                    has_any_content: None,
+                                    not_has_content: None,
                                 },
                             ),
                             expect: Or(
@@ -1475,6 +1508,9 @@ mod tests {
                                             ),
                                             has_name: None,
                                             not_has_name: None,
+                                            has_content: None,
+                                            has_any_content: None,
+                                            not_has_content: None,
                                         },
                                     ),
                                     expect: Or(
