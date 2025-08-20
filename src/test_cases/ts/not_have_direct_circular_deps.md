@@ -60,8 +60,8 @@ structure:
       import '@utils/c';
 
 expected_errors:
-  - "File ./src/a.ts:\n • File has direct circular dependencies with './src/b.ts' (run cmd `palinter circular-deps [file] -D` to get more info)"
-  - "File ./src/b.ts:\n • File has direct circular dependencies with './src/a.ts' (run cmd `palinter circular-deps [file] -D` to get more info)"
+  - "File ./src/a.ts:\n • File has direct circular dependencies with '@src/b' (run cmd `palinter circular-deps [file] -D` to get more info)"
+  - "File ./src/b.ts:\n • File has direct circular dependencies with '@src/a' (run cmd `palinter circular-deps [file] -D` to get more info)"
 ```
 
 ```yaml
@@ -82,7 +82,7 @@ structure:
       import '@utils/c';
 
 expected_errors:
-  - "File ./src/b.ts:\n • File has direct circular dependencies with './src/a.ts' (run cmd `palinter circular-deps [file] -D` to get more info)"
+  - "File ./src/b.ts:\n • File has direct circular dependencies with '@src/a' (run cmd `palinter circular-deps [file] -D` to get more info)"
 ```
 
 ```yaml
