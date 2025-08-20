@@ -195,7 +195,7 @@ pub fn check_ts_not_have_direct_circular_deps(file: &File) -> Result<(), String>
             return Ok(());
         }
 
-        Err("File has direct circular dependencies (run cmd `palinter circular-deps [file]` to get more info)".to_string())
+        Err("File has direct circular dependencies (run cmd `palinter circular-deps [file] -D` to get more info)".to_string())
     } else if file_has_ignore_comment(file, "not-have-direct-circular-deps") {
         Err(
             "Unused ignore comment '// palinter-ignore-not-have-direct-circular-deps', remove it"

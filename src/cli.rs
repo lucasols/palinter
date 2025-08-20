@@ -9,6 +9,7 @@ pub enum CliCommand {
         cfg_path: PathBuf,
         root: PathBuf,
         truncate: usize,
+        only_direct_deps: bool,
     },
     TestConfig {
         test_cases_folder: PathBuf,
@@ -80,6 +81,13 @@ fn get_clap_command() -> Command {
                             builder::RangedU64ValueParser::<usize>::new().range(0..),
                         )
                         .help("Truncate the output to the first n elements"),
+                )
+                .arg(
+                    Arg::new("only-direct-deps")
+                        .short('D')
+                        .long("only-direct-deps")
+                        .action(ArgAction::SetTrue)
+                        .help("Show only circular deps that include the target file"),
                 ),
         )
         .subcommand(
@@ -116,6 +124,7 @@ fn get_cli_cmd_from_matches(matches: &ArgMatches) -> CliCommand {
             cfg_path: sub_matches.get_one::<PathBuf>("config").unwrap().clone(),
             root: sub_matches.get_one::<PathBuf>("root").unwrap().clone(),
             truncate: *sub_matches.get_one::<usize>("truncate").unwrap(),
+            only_direct_deps: sub_matches.get_flag("only-direct-deps"),
         },
         Some(("test-config", sub_matches)) => CliCommand::TestConfig {
             test_cases_folder: sub_matches
@@ -203,6 +212,7 @@ mod tests {
                 cfg_path: PathBuf::from("palinter.yaml"),
                 root: PathBuf::from("."),
                 truncate: 10,
+                only_direct_deps: false,
             }
         );
 
@@ -224,6 +234,39 @@ mod tests {
                 cfg_path: PathBuf::from("palinter-2.yaml"),
                 root: PathBuf::from("src/project"),
                 truncate: 5,
+                only_direct_deps: false,
+            }
+        );
+
+        assert_eq!(
+            get_cli_cmd_from_shell_string(vec![
+                "palinter",
+                "circular-deps",
+                "file.ts",
+                "--only-direct-deps",
+            ]),
+            CliCommand::CircularDeps {
+                file_name: PathBuf::from("file.ts"),
+                cfg_path: PathBuf::from("palinter.yaml"),
+                root: PathBuf::from("."),
+                truncate: 10,
+                only_direct_deps: true,
+            }
+        );
+
+        assert_eq!(
+            get_cli_cmd_from_shell_string(vec![
+                "palinter",
+                "circular-deps",
+                "file.ts",
+                "-D",
+            ]),
+            CliCommand::CircularDeps {
+                file_name: PathBuf::from("file.ts"),
+                cfg_path: PathBuf::from("palinter.yaml"),
+                root: PathBuf::from("."),
+                truncate: 10,
+                only_direct_deps: true,
             }
         );
     }
