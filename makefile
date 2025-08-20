@@ -47,7 +47,7 @@ delete_unused_snapshots:
 	cargo insta test --unreferenced=delete
 
 jestor_test_circular_dep:
-	cargo run --release -- circular-deps '@src/pages/modals/Find.tsx' --config ../jestor/web-app/palinter.yaml --root ../jestor/web-app
+	cargo run --release -- circular-deps '@src/_components/forms/CreationAndUpdateBlockFormInput/toolsEditors/ConnectedRecordsConfigEditor.tsx' --config ../jestor/web-app/palinter.yaml --root ../jestor/web-app -D
 
 jestor_test_config:
 	cargo run -- test-config ../jestor/web-app/tests/palinter-config --config ../jestor/web-app/palinter.yaml

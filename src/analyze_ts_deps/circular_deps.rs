@@ -13,6 +13,7 @@ pub fn get_detailed_file_circular_deps_result(
     root_dir: &Path,
     config: Config,
     truncate: usize,
+    only_direct_deps: bool,
 ) -> Result<(), String> {
     *ALIASES.lock().unwrap() = config
         .ts_config
@@ -56,7 +57,6 @@ pub fn get_detailed_file_circular_deps_result(
     if let Some(circular_deps) = result.circular_deps {
         let mut cdeps = circular_deps;
 
-        let original_len = cdeps.len();
 
         let current_dep_path = format!("|{}|", resolved_path.to_str().unwrap());
 
@@ -68,6 +68,11 @@ pub fn get_detailed_file_circular_deps_result(
             }
         });
 
+        if only_direct_deps {
+            cdeps.retain(|dep| dep.contains(&current_dep_path));
+        }
+
+        let available_len = cdeps.len();
         cdeps.truncate(truncate);
 
         println!("🔁 {} circular deps found:", cdeps.len());
@@ -100,10 +105,10 @@ pub fn get_detailed_file_circular_deps_result(
             }
         }
 
-        if cdeps.len() < original_len {
+        if cdeps.len() < available_len {
             println!(
                 "{}",
-                format!("\n... and {} more", original_len - cdeps.len())
+                format!("\n... and {} more", available_len - cdeps.len())
                     .bright_yellow()
             );
         }

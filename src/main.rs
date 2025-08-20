@@ -28,6 +28,7 @@ fn main() {
             cfg_path,
             root,
             truncate,
+            only_direct_deps,
         } => {
             let parsed_config = match parse_config_file(&cfg_path) {
                 Ok(config) => config,
@@ -44,7 +45,11 @@ fn main() {
             let config = get_config(&parsed_config).unwrap();
 
             if let Err(err) = get_detailed_file_circular_deps_result(
-                &file_name, &root, config, truncate,
+                &file_name,
+                &root,
+                config,
+                truncate,
+                only_direct_deps,
             ) {
                 eprintln!("❌ Error getting circular deps: {}", err);
 
