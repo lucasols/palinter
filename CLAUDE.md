@@ -9,18 +9,20 @@ PALinter is a Rust-based architecture linter for projects, primarily focused on 
 ## Development Commands
 
 ### Core Development
+
 - `cargo run` - Run the linter with default config (palinter.yaml)
 - `cargo run -- --help` - Show CLI help
-- `cargo test` - Run all tests
-- `cargo test -- --nocapture` - Run tests with output
+- `make test` - Run all tests
 - `cargo clippy` - Run linting
 
 ### Building and Publishing
+
 - `make build` - Build for multiple targets and prepare npm package
 - `make publish_patch` - Patch version bump and publish
 - `make publish_minor` - Minor version bump and publish
 
 ### Test Commands
+
 - `cargo run -- test-config <test_cases_folder>` - Test config against test cases
 - `cargo run -- circular-deps <file>` - Check circular dependencies
 - `cargo insta test --unreferenced=delete` - Delete unused snapshots
@@ -30,19 +32,23 @@ PALinter is a Rust-based architecture linter for projects, primarily focused on 
 ### Core Modules
 
 1. **CLI (`cli.rs`)** - Command-line interface with three main commands:
+
    - `lint` (default) - Lint project structure
-   - `circular-deps` - Check circular dependencies 
+   - `circular-deps` - Check circular dependencies
    - `test-config` - Test configuration against test cases
 
 2. **Config System**:
+
    - `parse_config_file.rs` - Parse YAML config files
    - `internal_config.rs` - Internal config representation with types like `FileExpected`, `FolderConfig`, etc.
 
 3. **Folder Analysis (`check_folders/`)**:
+
    - `check_folders.rs` - Main folder checking logic
    - `checks.rs` - Individual check implementations (file/folder rules)
 
 4. **TypeScript Analysis (`analyze_ts_deps/`)**:
+
    - `modules_graph.rs` - Build dependency graphs
    - `circular_deps.rs` - Detect circular dependencies
    - `ts_checks.rs` - TypeScript-specific validations
@@ -61,12 +67,14 @@ PALinter is a Rust-based architecture linter for projects, primarily focused on 
 ## Configuration System
 
 PALinter uses YAML configuration files (default: `palinter.yaml`) that define:
+
 - File and folder selection paths
 - Conditional rules (`if_file`, `if_folder`)
 - Expectations (`expect` blocks)
 - TypeScript-specific checks
 
 Example structure:
+
 ```yaml
 ./:
   /folder:
@@ -86,6 +94,7 @@ Example structure:
 ## TypeScript Features
 
 Advanced TypeScript analysis capabilities:
+
 - Circular dependency detection
 - Import/export validation
 - Unused export detection
