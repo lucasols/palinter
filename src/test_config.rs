@@ -528,7 +528,7 @@ mod tests {
         assert_debug_snapshot!(test_summary,
             @r###"
         Err(
-            "\n\n❌ Test case '\u{1b}[34mtest.md\u{1b}[0m' - project 3: Expected Ok but got errors: Problems {\n    errors: [\n        \"File ./stores/test_examples.ts:\\n • should be named in camelCase\",\n    ],\n    warnings: [],\n}\n\n\n🟩 Running 1 test cases\n\n",
+            "\n\n❌ Test case 'test.md' - project 3: Expected Ok but got errors: Problems {\n    errors: [\n        \"File ./stores/test_examples.ts:\\n • should be named in camelCase\",\n    ],\n    warnings: [],\n}\n\n\n🟩 Running 1 test cases\n\n",
         )
         "###
         )
@@ -545,7 +545,7 @@ mod tests {
         assert_debug_snapshot!(test_summary,
             @r###"
         Err(
-            "\n\n❌ Test case '\u{1b}[34mtest.md\u{1b}[0m' - project 1: Expected errors but got Ok\n\n\n🟩 Running 1 test cases\n\n",
+            "\n\n❌ Test case 'test.md' - project 1: Expected errors but got Ok\n\n\n🟩 Running 1 test cases\n\n",
         )
         "###
         )

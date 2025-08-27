@@ -15,6 +15,9 @@ build:
 	cp target/x86_64-unknown-linux-gnu/release/palinter npm/bin/linux-x64
 	cp target/aarch64-unknown-linux-gnu/release/palinter npm/bin/linux-arm64
 
+test:
+	cargo test --color=always -- --test-threads=1 --nocapture --color=always -q	
+
 publish_current:
 	cd npm \
 	&& pnpm build \

@@ -44,7 +44,7 @@ pub fn extract_file_content_exports(
         } else {
             lazy_static! {
                 static ref SIMPLE_EXPORT: Regex = Regex::new(
-                    r#"^export\s+(let|const|class|function\*?|async\s+?function\*?|type|interface)\s+(\w+)"#
+                    r#"^export\s+(let|const|class|function\*?|async\s+?function\*?|type|interface)\s+([$\w]+)"#
                 )
                 .unwrap();
 
@@ -516,6 +516,27 @@ mod tests {
                     ignored: false,
                 }
             ],
+        );
+    }
+
+    #[test]
+    fn export_function_with_type_annotation() {
+        let file_content = r#"
+            export function $imageNode(
+                node: LexicalNode | null | undefined,
+            ): node is ImageNode {
+                return node instanceof ImageNode;
+            }
+        "#;
+        let exports = extract_file_content_exports(file_content).unwrap();
+
+        assert_eq!(
+            exports,
+            vec![Export {
+                line: 2,
+                name: "$imageNode".to_string(),
+                ignored: false,
+            }],
         );
     }
 }
