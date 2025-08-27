@@ -46,16 +46,16 @@ pub fn extract_imports_from_file_content(
                     (?:
                         (?P<all>
                             \*.+|
-                            \w+\s*,\s+\*.+
+                            [$\w]+\s*,\s+\*.+
                         )
                         |
-                        \{(?P<named>[\w\s,]+?)\}\s+
+                        \{(?P<named>[$\w\s,]+?)\}\s+
                         |
-                        (?P<default>\w+\s+)
+                        (?P<default>[$\w]+\s+)
                         |
-                        \w+\s*,\s+\{(?P<named_with_default>[\w\s,]+?)\}\s+
+                        [$\w]+\s*,\s+\{(?P<named_with_default>[$\w\s,]+?)\}\s+
                         |
-                        type\s+\{(?P<types>[\w\s,]+?)\}\s+
+                        type\s+\{(?P<types>[$\w\s,]+?)\}\s+
                     )
                     from\s+["'](?P<import_path>.+)["']
                 "#
@@ -1038,6 +1038,26 @@ const tableBodyCellViewerComponents = import.meta.glob(
                     "a".to_string(),
                     "Test".to_string(),
                     "Test2".to_string()
+                ]),
+            }],
+        );
+    }
+
+    #[test]
+    fn import_function_with_dollar_sign() {
+        let file_content = r#"
+            import { $imageNode, normalFunction } from '@src/lexical';
+        "#;
+        let imports = extract_imports_from_file_content(file_content).unwrap();
+
+        assert_eq!(
+            imports,
+            vec![Import {
+                import_path: PathBuf::from("@src/lexical"),
+                line: 2,
+                values: ImportType::Named(vec![
+                    "$imageNode".to_string(),
+                    "normalFunction".to_string(),
                 ]),
             }],
         );
