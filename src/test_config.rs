@@ -16,6 +16,11 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 
+fn strip_ansi_codes(text: &str) -> String {
+    let ansi_regex = Regex::new(r"\x1b\[[0-9;]*m").unwrap();
+    ansi_regex.replace_all(text, "").to_string()
+}
+
 #[derive(Debug, Clone)]
 struct TestCase {
     file_name: String,
@@ -508,7 +513,12 @@ mod tests {
             false,
         );
 
-        assert_debug_snapshot!(test_summary,
+        let stripped_result = match &test_summary {
+            Ok(s) => Ok(strip_ansi_codes(s)),
+            Err(s) => Err(strip_ansi_codes(s))
+        };
+
+        assert_debug_snapshot!(stripped_result,
             @r###"
         Ok(
             "\n🟩 Running 1 test cases\n\n",
@@ -525,7 +535,12 @@ mod tests {
             false,
         );
 
-        assert_debug_snapshot!(test_summary,
+        let stripped_result = match &test_summary {
+            Ok(s) => Ok(strip_ansi_codes(s)),
+            Err(s) => Err(strip_ansi_codes(s))
+        };
+
+        assert_debug_snapshot!(stripped_result,
             @r###"
         Err(
             "\n\n❌ Test case 'test.md' - project 3: Expected Ok but got errors: Problems {\n    errors: [\n        \"File ./stores/test_examples.ts:\\n • should be named in camelCase\",\n    ],\n    warnings: [],\n}\n\n\n🟩 Running 1 test cases\n\n",
@@ -542,7 +557,12 @@ mod tests {
             false,
         );
 
-        assert_debug_snapshot!(test_summary,
+        let stripped_result = match &test_summary {
+            Ok(s) => Ok(strip_ansi_codes(s)),
+            Err(s) => Err(strip_ansi_codes(s))
+        };
+
+        assert_debug_snapshot!(stripped_result,
             @r###"
         Err(
             "\n\n❌ Test case 'test.md' - project 1: Expected errors but got Ok\n\n\n🟩 Running 1 test cases\n\n",
