@@ -16,11 +16,6 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 
-fn strip_ansi_codes(text: &str) -> String {
-    let ansi_regex = Regex::new(r"\x1b\[[0-9;]*m").unwrap();
-    ansi_regex.replace_all(text, "").to_string()
-}
-
 #[derive(Debug, Clone)]
 struct TestCase {
     file_name: String,
@@ -505,6 +500,11 @@ mod tests {
 
     use insta::assert_debug_snapshot;
 
+    fn strip_ansi_codes(text: &str) -> String {
+        let ansi_regex = Regex::new(r"\x1b\[[0-9;]*m").unwrap();
+        ansi_regex.replace_all(text, "").to_string()
+    }
+
     #[test]
     fn test_config_success() {
         let test_summary = test_config(
@@ -515,7 +515,7 @@ mod tests {
 
         let stripped_result = match &test_summary {
             Ok(s) => Ok(strip_ansi_codes(s)),
-            Err(s) => Err(strip_ansi_codes(s))
+            Err(s) => Err(strip_ansi_codes(s)),
         };
 
         assert_debug_snapshot!(stripped_result,
@@ -537,7 +537,7 @@ mod tests {
 
         let stripped_result = match &test_summary {
             Ok(s) => Ok(strip_ansi_codes(s)),
-            Err(s) => Err(strip_ansi_codes(s))
+            Err(s) => Err(strip_ansi_codes(s)),
         };
 
         assert_debug_snapshot!(stripped_result,
@@ -559,7 +559,7 @@ mod tests {
 
         let stripped_result = match &test_summary {
             Ok(s) => Ok(strip_ansi_codes(s)),
-            Err(s) => Err(strip_ansi_codes(s))
+            Err(s) => Err(strip_ansi_codes(s)),
         };
 
         assert_debug_snapshot!(stripped_result,
