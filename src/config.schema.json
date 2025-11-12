@@ -138,6 +138,14 @@
               "items": { "$ref": "#/definitions/folderExpect" },
               "description": "List of possible expectations, of which one must be met"
             },
+            "allow_unexpected_files": {
+              "type": "boolean",
+              "description": "If true, allow unexpected files in folders that match this rule"
+            },
+            "allow_unexpected_folders": {
+              "type": "boolean",
+              "description": "If true, allow unexpected folders in folders that match this rule"
+            },
             "error_msg": {
               "type": "string",
               "description": "Custom error message for this rule"
