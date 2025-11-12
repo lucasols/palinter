@@ -146,6 +146,10 @@
               "type": "boolean",
               "description": "If true, allow unexpected folders in folders that match this rule"
             },
+            "allow_unexpected": {
+              "type": "boolean",
+              "description": "If true, allow both unexpected files and folders in folders that match this rule"
+            },
             "error_msg": {
               "type": "string",
               "description": "Custom error message for this rule"

@@ -5,9 +5,13 @@
   /components:
     rules:
       - if_folder:
-          has_name: '^[A-Z].*'
+          has_name: 'regex:^[A-Z].*'
         allow_unexpected_files: true
         allow_unexpected_folders: true
+        expect: any
+      - if_folder:
+          has_name: 'test'
+        allow_unexpected: true
         expect: any
 ```
 
@@ -30,6 +34,8 @@ structure:
     /checkbox:
       index.ts: ''
     rootUnexpected.txt: ''
+    /test:
+      test.ts: ''
 expected_errors:
   - |
     Folder /checkbox is not expected in folder ./components

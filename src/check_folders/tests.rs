@@ -600,6 +600,8 @@ fn test_case_folder_structure_is_equal_to_loaded_structure() {
                 error_msg: None,
                 non_recursive: false,
                 not_touch: false,
+                allow_unexpected_files: false,
+                allow_unexpected_folders: false,
                 is_warning: false,
             }],
             one_of_blocks: OneOfBlocks::default(),

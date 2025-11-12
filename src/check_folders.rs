@@ -795,6 +795,8 @@ fn check_folder_children(
                 let mut folder_touched = false;
                 let mut folder_has_error = false;
                 let mut children_was_checked = false;
+                let mut folder_rules_allow_unexpected_files = false;
+                let mut folder_rules_allow_unexpected_folders = false;
 
                 let mut check_folder_rule = |rule: &FolderRule| {
                     let folder_matches =
@@ -805,6 +807,14 @@ fn check_folder_children(
 
                         if !rule.not_touch {
                             folder_touched = true;
+                        }
+
+                        if rule.allow_unexpected_files {
+                            folder_rules_allow_unexpected_files = true;
+                        }
+
+                        if rule.allow_unexpected_folders {
+                            folder_rules_allow_unexpected_folders = true;
                         }
 
                         if let AnyNoneOr::Or(expect_rules) = &rule.expect {
@@ -919,15 +929,48 @@ fn check_folder_children(
                     ));
                 }
 
-                let new_sub_folder_cfg =
-                    sub_folder_cfg.map(|sub_folder_cfg| FolderConfig {
-                        append_error_msg: sub_folder_cfg
-                            .append_error_msg
-                            .clone()
-                            .or(folder_config
-                                .and_then(|cfg| cfg.append_error_msg.clone())),
-                        ..sub_folder_cfg.clone()
-                    });
+                let new_sub_folder_cfg = sub_folder_cfg.map(|sub_folder_cfg| {
+                    let mut cloned = sub_folder_cfg.clone();
+
+                    if cloned.append_error_msg.is_none() {
+                        if let Some(parent_cfg) = folder_config {
+                            cloned.append_error_msg =
+                                parent_cfg.append_error_msg.clone();
+                        }
+                    }
+
+                    if folder_rules_allow_unexpected_files {
+                        cloned.allow_unexpected_files = true;
+                    }
+
+                    if folder_rules_allow_unexpected_folders {
+                        cloned.allow_unexpected_folders = true;
+                    }
+
+                    cloned
+                });
+
+                let mut child_inherited_allow_unconfigured_files =
+                    if inherited_select_all_children {
+                        allow_unconfigured_files
+                    } else {
+                        false
+                    };
+
+                if folder_rules_allow_unexpected_files {
+                    child_inherited_allow_unconfigured_files = true;
+                }
+
+                let mut child_inherited_allow_unconfigured_folders =
+                    if inherited_select_all_children {
+                        allow_unconfigured_folders
+                    } else {
+                        false
+                    };
+
+                if folder_rules_allow_unexpected_folders {
+                    child_inherited_allow_unconfigured_folders = true;
+                }
 
                 if !folder_is_not_expected {
                     if let Err(Problems {
@@ -944,16 +987,8 @@ fn check_folder_children(
                         error_msg_vars,
                         is_test_config,
                         true,
-                        if inherited_select_all_children {
-                            allow_unconfigured_files
-                        } else {
-                            false
-                        },
-                        if inherited_select_all_children {
-                            allow_unconfigured_folders
-                        } else {
-                            false
-                        },
+                        child_inherited_allow_unconfigured_files,
+                        child_inherited_allow_unconfigured_folders,
                     ) {
                         errors.extend(extra_errors);
                         warnings.extend(extra_warnings);

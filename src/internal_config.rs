@@ -137,6 +137,8 @@ pub struct FolderRule {
     pub expect: AnyNoneOr<Vec<FolderExpect>>,
     pub non_recursive: bool,
     pub not_touch: bool,
+    pub allow_unexpected_files: bool,
+    pub allow_unexpected_folders: bool,
     pub error_msg: Option<String>,
     pub is_warning: bool,
 }
@@ -450,8 +452,11 @@ fn normalize_rules(
                 conditions: parsed_conditions,
                 error_msg,
                 expect,
-                non_recursive,
                 expect_one_of,
+                allow_unexpected_files,
+                allow_unexpected_folders,
+                allow_unexpected,
+                non_recursive,
                 not_touch,
                 is_warning,
             } => {
@@ -497,6 +502,29 @@ fn normalize_rules(
 
                 check_rules_expects(expect, expect_one_of, config_path)?;
 
+                let mut allow_unexpected_files_flag = get_true_flag(
+                    config_path,
+                    allow_unexpected_files,
+                    "allow_unexpected_files",
+                )?;
+
+                let mut allow_unexpected_folders_flag = get_true_flag(
+                    config_path,
+                    allow_unexpected_folders,
+                    "allow_unexpected_folders",
+                )?;
+
+                let allow_unexpected_flag = get_true_flag(
+                    config_path,
+                    allow_unexpected,
+                    "allow_unexpected",
+                )?;
+
+                if allow_unexpected_flag {
+                    allow_unexpected_files_flag = true;
+                    allow_unexpected_folders_flag = true;
+                }
+
                 if let Some(expect) = expect {
                     let new_expect = match &**expect {
                         ParsedAnyNoneOrConditions::AnyOrNone(any) => {
@@ -535,6 +563,8 @@ fn normalize_rules(
                             not_touch,
                             "not_touch",
                         )?,
+                        allow_unexpected_files: allow_unexpected_files_flag,
+                        allow_unexpected_folders: allow_unexpected_folders_flag,
                         non_recursive: get_true_flag(
                             config_path,
                             non_recursive,
@@ -572,6 +602,9 @@ fn normalize_rules(
                                     not_touch,
                                     "not_touch",
                                 )?,
+                                allow_unexpected_files: allow_unexpected_files_flag,
+                                allow_unexpected_folders:
+                                    allow_unexpected_folders_flag,
                                 error_msg: None,
                                 non_recursive: get_true_flag(
                                     config_path,
@@ -668,6 +701,9 @@ fn normalize_rules(
                             conditions,
                             expect,
                             expect_one_of,
+                            allow_unexpected_files,
+                            allow_unexpected_folders,
+                            allow_unexpected,
                             non_recursive,
                             not_touch,
                             error_msg,
@@ -676,6 +712,10 @@ fn normalize_rules(
                             conditions: conditions.clone(),
                             expect: expect.clone(),
                             expect_one_of: expect_one_of.clone(),
+                            allow_unexpected_files: allow_unexpected_files.clone(),
+                            allow_unexpected_folders: allow_unexpected_folders
+                                .clone(),
+                            allow_unexpected: allow_unexpected.clone(),
                             non_recursive: custom_non_recursive.or(*non_recursive),
                             not_touch: custom_not_touch.or(*not_touch),
                             error_msg: custom_error.clone().or(error_msg.clone()),
@@ -1435,6 +1475,8 @@ mod tests {
                             expect: Any,
                             non_recursive: false,
                             not_touch: false,
+                            allow_unexpected_files: false,
+                            allow_unexpected_folders: false,
                             error_msg: None,
                             is_warning: false,
                         },
@@ -1545,6 +1587,8 @@ mod tests {
                                     expect: Any,
                                     non_recursive: false,
                                     not_touch: false,
+                                    allow_unexpected_files: false,
+                                    allow_unexpected_folders: false,
                                     error_msg: None,
                                     is_warning: false,
                                 },

@@ -57,7 +57,6 @@ pub fn get_detailed_file_circular_deps_result(
     if let Some(circular_deps) = result.circular_deps {
         let mut cdeps = circular_deps;
 
-
         let current_dep_path = format!("|{}|", resolved_path.to_str().unwrap());
 
         cdeps.sort_by_key(|dep| {

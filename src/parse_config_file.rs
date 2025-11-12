@@ -155,6 +155,7 @@ pub enum ParsedRule {
         expect_one_of: Option<Vec<ParsedFolderExpect>>,
         allow_unexpected_files: Option<bool>,
         allow_unexpected_folders: Option<bool>,
+        allow_unexpected: Option<bool>,
         error_msg: Option<String>,
         non_recursive: Option<bool>,
         not_touch: Option<bool>,
