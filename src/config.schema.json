@@ -219,7 +219,7 @@
             },
             "is_ts": {
               "type": "boolean",
-              "description": "If true, match TypeScript files"
+              "description": "If true, match TypeScript files (.ts and .tsx)"
             },
             "has_content": {
               "$ref": "#/definitions/contentMatches",
