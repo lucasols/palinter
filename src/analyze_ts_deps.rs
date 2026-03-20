@@ -294,11 +294,17 @@ fn get_file_edges(
 
                 match import.values {
                     ImportType::Type(_) => {
-                        edges.push(path_str);
+                        if !edges.contains(&path_str) {
+                            edges.push(path_str);
+                        }
                     }
                     _ => {
-                        non_type_edges.push(path_str.clone());
-                        edges.push(path_str);
+                        if !non_type_edges.contains(&path_str) {
+                            non_type_edges.push(path_str.clone());
+                        }
+                        if !edges.contains(&path_str) {
+                            edges.push(path_str);
+                        }
                     }
                 }
             }
