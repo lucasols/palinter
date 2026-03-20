@@ -2,11 +2,73 @@ use crate::{internal_config::Config, load_folder_structure};
 use colored::Colorize;
 
 use super::{
-    get_file_edges, get_resolved_path, load_used_project_files_deps_info_from_cfg,
-    modules_graph::get_node_deps, ALIASES, ROOT_DIR,
+    extract_file_content_imports::{Import, ImportType},
+    get_file_edges, get_file_imports, get_resolved_path,
+    load_used_project_files_deps_info_from_cfg,
+    modules_graph::get_node_deps,
+    ALIASES, ROOT_DIR,
 };
 
 use std::path::Path;
+
+fn get_import_between(
+    from_file: &str,
+    to_file: &str,
+) -> Option<Import> {
+    let resolved = get_resolved_path(Path::new(from_file)).ok()??;
+    let imports =
+        get_file_imports(resolved.to_str()?).ok()?;
+    imports.get(to_file).cloned()
+}
+
+fn format_import_statement(import: &Import) -> String {
+    let path = import.import_path.to_str().unwrap_or("?");
+
+    let stmt = match &import.values {
+        ImportType::Named(values) => {
+            if values.len() > 3 {
+                let truncated: Vec<&str> =
+                    values.iter().take(3).map(|s| s.as_str()).collect();
+                format!(
+                    "import {{ {}, ... }} from '{}'",
+                    truncated.join(", "),
+                    path
+                )
+            } else {
+                format!(
+                    "import {{ {} }} from '{}'",
+                    values.join(", "),
+                    path
+                )
+            }
+        }
+        ImportType::All => format!("import * from '{}'", path),
+        ImportType::Dynamic => format!("import('{}')", path),
+        ImportType::SideEffect => format!("import '{}'", path),
+        ImportType::Type(values) => {
+            if values.len() > 3 {
+                let truncated: Vec<&str> =
+                    values.iter().take(3).map(|s| s.as_str()).collect();
+                format!(
+                    "import type {{ {}, ... }} from '{}'",
+                    truncated.join(", "),
+                    path
+                )
+            } else {
+                format!(
+                    "import type {{ {} }} from '{}'",
+                    values.join(", "),
+                    path
+                )
+            }
+        }
+        ImportType::Glob => {
+            format!("import.meta.glob('{}')", path)
+        }
+    };
+
+    format!("{}  :{}", stmt, import.line)
+}
 
 pub fn get_detailed_file_circular_deps_result(
     file_path: &Path,
@@ -100,6 +162,24 @@ pub fn get_detailed_file_circular_deps_result(
                     println!("\n{} {}", ">>".dimmed(), part_to_use);
                 } else {
                     println!("   {}{}", " ".repeat(i * 2), part_to_use);
+                }
+
+                if i < parts.len() - 1 {
+                    let from_file = parts[i].trim_matches('|');
+                    let to_file = parts[i + 1].trim_matches('|');
+
+                    if let Some(import) =
+                        get_import_between(from_file, to_file)
+                    {
+                        let formatted =
+                            format_import_statement(&import);
+                        let indent = if i == 0 { 3 } else { 3 + i * 2 };
+                        println!(
+                            "{}{}",
+                            " ".repeat(indent),
+                            format!("└── {}", formatted).dimmed()
+                        );
+                    }
                 }
             }
         }
