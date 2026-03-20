@@ -455,3 +455,56 @@ fn project_with_glob_imports_and_circular_deps() {
     }
     "###);
 }
+
+#[test]
+fn normalize_imports_preserves_type_and_named_separately() {
+    let _guard = TEST_MUTEX.lock().unwrap();
+
+    _setup_test();
+
+    let (_, used_files) = get_results(
+        vec![
+            SimplifiedFile {
+                path: PathBuf::from("./src/index.ts"),
+                content: String::from(
+                    r#"
+                    import { foo } from '@src/fileA';
+                    import type { Bar } from '@src/fileA';
+                    "#,
+                ),
+            },
+            SimplifiedFile {
+                path: PathBuf::from("./src/fileA.ts"),
+                content: String::from(
+                    r#"
+                    export const foo = 1;
+                    export type Bar = string;
+                    "#,
+                ),
+            },
+        ],
+        "@src/index.ts",
+    );
+
+    let index_info = used_files.get("./src/index.ts").unwrap();
+    let imports_to_file_a =
+        index_info.imports.get("./src/fileA.ts").unwrap();
+
+    let has_named = imports_to_file_a.iter().any(|i| {
+        matches!(&i.values, ImportType::Named(v) if v.contains(&"foo".to_string()))
+    });
+    let has_type = imports_to_file_a.iter().any(|i| {
+        matches!(&i.values, ImportType::Type(v) if v.contains(&"Bar".to_string()))
+    });
+
+    assert!(
+        has_named,
+        "Should have a Named import with 'foo', got: {:?}",
+        imports_to_file_a
+    );
+    assert!(
+        has_type,
+        "Should have a Type import with 'Bar', got: {:?}",
+        imports_to_file_a
+    );
+}

@@ -29,7 +29,7 @@ pub mod ts_checks;
 
 #[derive(Debug, Clone, Default)]
 pub struct FileDepsInfo {
-    imports: IndexMap<String, Import>,
+    imports: IndexMap<String, Vec<Import>>,
     exports: Vec<Export>,
 }
 
@@ -44,7 +44,7 @@ lazy_static! {
         Mutex::new(HashMap::new());
     static ref RESOLVE_CACHE: Mutex<HashMap<PathBuf, PathBuf>> =
         Mutex::new(HashMap::new());
-    static ref IMPORTS_CACHE: Mutex<HashMap<String, IndexMap<String, Import>>> =
+    static ref IMPORTS_CACHE: Mutex<HashMap<String, IndexMap<String, Vec<Import>>>> =
         Mutex::new(HashMap::new());
     pub static ref ALIASES: Mutex<HashMap<String, String>> =
         Mutex::new(HashMap::new());
@@ -231,7 +231,7 @@ fn add_aliases(path: &String) -> String {
 
 pub fn get_file_imports(
     resolved_path: &str,
-) -> Result<IndexMap<String, Import>, String> {
+) -> Result<IndexMap<String, Vec<Import>>, String> {
     let mut binding = IMPORTS_CACHE.lock().unwrap();
 
     let from_cache = binding.get(resolved_path);
@@ -288,7 +288,7 @@ fn get_file_edges(
         let mut non_type_edges: Vec<String> = Vec::new();
         let mut edges: Vec<String> = Vec::new();
 
-        for import in edges_imports.values() {
+        for import in edges_imports.values().flatten() {
             if let Some(resolved_path) = get_resolved_path(&import.import_path)? {
                 let path_str = resolved_path.to_str().unwrap().to_string();
 
@@ -374,116 +374,138 @@ pub fn get_basic_file_deps_info(
 
 fn normalize_imports(
     imports: Vec<Import>,
-) -> Result<IndexMap<String, Import>, String> {
-    let mut normalized_imports: IndexMap<String, Import> = IndexMap::new();
+) -> Result<IndexMap<String, Vec<Import>>, String> {
+    let mut normalized_imports: IndexMap<String, Vec<Import>> =
+        IndexMap::new();
 
     for new_import in imports {
-        let resolved_import_name = if new_import.values == ImportType::Glob {
-            None
-        } else {
-            get_resolved_path(&new_import.import_path)?
-        };
+        let resolved_import_name =
+            if new_import.values == ImportType::Glob {
+                None
+            } else {
+                get_resolved_path(&new_import.import_path)?
+            };
 
         let use_name = pb_to_string(
-            resolved_import_name.unwrap_or(new_import.import_path.clone()),
+            resolved_import_name
+                .unwrap_or(new_import.import_path.clone()),
         );
 
-        let current_import = normalized_imports.get(&use_name);
-
-        if let Some(current_import) = current_import {
-            match &current_import.values {
-                ImportType::All | ImportType::Glob => {
-                    continue;
-                }
-                ImportType::Named(current_named) => {
-                    let new_values = match &new_import.values {
-                        ImportType::All => ImportType::All,
-                        ImportType::Named(new_named)
-                        | ImportType::Type(new_named) => ImportType::Named(
-                            clone_extend_vec(current_named, new_named),
-                        ),
-                        ImportType::Dynamic
-                        | ImportType::SideEffect
-                        | ImportType::Glob => {
-                            ImportType::Named(current_named.clone())
-                        }
-                    };
-
-                    normalized_imports.insert(
-                        use_name,
-                        Import {
-                            import_path: new_import.import_path,
-                            line: new_import.line,
-                            values: new_values,
-                        },
-                    );
-                }
-                ImportType::Type(current_types) => {
-                    let new_values = match &new_import.values {
-                        ImportType::All => ImportType::All,
-                        ImportType::Named(new_named) => ImportType::Named(
-                            clone_extend_vec(current_types, new_named),
-                        ),
-                        ImportType::Type(new_types) => ImportType::Type(
-                            clone_extend_vec(current_types, new_types),
-                        ),
-                        ImportType::Dynamic
-                        | ImportType::SideEffect
-                        | ImportType::Glob => {
-                            ImportType::Named(current_types.clone())
-                        }
-                    };
-
-                    normalized_imports.insert(
-                        use_name,
-                        Import {
-                            import_path: new_import.import_path,
-                            line: new_import.line,
-                            values: new_values,
-                        },
-                    );
-                }
-                ImportType::SideEffect | ImportType::Dynamic => {
-                    normalized_imports.insert(use_name, new_import);
-                }
-            }
-        } else {
-            match &new_import.values {
-                ImportType::Glob => {
-                    let normalized_glob = if new_import.import_path.starts_with("/")
-                    {
-                        format!(".{}", new_import.import_path.to_str().unwrap())
+        match &new_import.values {
+            ImportType::Glob => {
+                let normalized_glob =
+                    if new_import.import_path.starts_with("/") {
+                        format!(
+                            ".{}",
+                            new_import.import_path.to_str().unwrap()
+                        )
                     } else {
-                        new_import.import_path.to_str().unwrap().to_string()
+                        new_import
+                            .import_path
+                            .to_str()
+                            .unwrap()
+                            .to_string()
                     };
 
-                    let glob = globset::Glob::new(&normalized_glob)
-                        .unwrap()
-                        .compile_matcher();
+                let glob = globset::Glob::new(&normalized_glob)
+                    .unwrap()
+                    .compile_matcher();
 
-                    for file in FILES_CACHE.lock().unwrap().values() {
-                        if glob.is_match(file.relative_path.as_str()) {
-                            normalized_imports.insert(
-                                file.relative_path.clone(),
-                                Import {
-                                    import_path: PathBuf::from(
-                                        file.relative_path.clone(),
-                                    ),
-                                    line: new_import.line,
-                                    values: ImportType::All,
-                                },
-                            );
-                        }
+                for file in FILES_CACHE.lock().unwrap().values() {
+                    if glob.is_match(file.relative_path.as_str()) {
+                        normalized_imports
+                            .entry(file.relative_path.clone())
+                            .or_default()
+                            .push(Import {
+                                import_path: PathBuf::from(
+                                    file.relative_path.clone(),
+                                ),
+                                line: new_import.line,
+                                values: ImportType::All,
+                            });
                     }
                 }
-                _ => {
-                    normalized_imports.insert(use_name, new_import);
+            }
+            _ => {
+                let entries = normalized_imports
+                    .entry(use_name)
+                    .or_default();
+
+                let merged = try_merge_import(entries, &new_import);
+
+                if !merged {
+                    entries.push(new_import);
                 }
             }
         }
     }
 
     Ok(normalized_imports)
+}
+
+fn try_merge_import(
+    entries: &mut [Import],
+    new_import: &Import,
+) -> bool {
+    for existing in entries.iter_mut() {
+        match (&existing.values, &new_import.values) {
+            (ImportType::All | ImportType::Glob, _) => {
+                return true;
+            }
+            (_, ImportType::All) => {
+                existing.values = ImportType::All;
+                existing.line = new_import.line;
+                existing.import_path =
+                    new_import.import_path.clone();
+                return true;
+            }
+            (
+                ImportType::Named(current),
+                ImportType::Named(new),
+            ) => {
+                existing.values = ImportType::Named(
+                    clone_extend_vec(current, new),
+                );
+                existing.line = new_import.line;
+                existing.import_path =
+                    new_import.import_path.clone();
+                return true;
+            }
+            (
+                ImportType::Type(current),
+                ImportType::Type(new),
+            ) => {
+                existing.values = ImportType::Type(
+                    clone_extend_vec(current, new),
+                );
+                existing.line = new_import.line;
+                existing.import_path =
+                    new_import.import_path.clone();
+                return true;
+            }
+            (
+                ImportType::SideEffect | ImportType::Dynamic,
+                ImportType::SideEffect
+                | ImportType::Dynamic
+                | ImportType::Named(_)
+                | ImportType::Type(_),
+            ) => {
+                existing.values = new_import.values.clone();
+                existing.line = new_import.line;
+                existing.import_path =
+                    new_import.import_path.clone();
+                return true;
+            }
+            (
+                ImportType::Named(_) | ImportType::Type(_),
+                ImportType::SideEffect | ImportType::Dynamic,
+            ) => {
+                return true;
+            }
+            _ => {}
+        }
+    }
+    false
 }
 
 fn pb_to_string(import_path: PathBuf) -> String {

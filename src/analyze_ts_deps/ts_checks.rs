@@ -45,40 +45,51 @@ pub fn check_ts_not_have_unused_exports(file: &File) -> Result<(), String> {
                 continue;
             }
 
-            if let Some(related_import) =
+            if let Some(related_imports) =
                 other_deps_info.imports.get(&file.relative_path)
             {
-                match &related_import.values {
-                    ImportType::All | ImportType::Dynamic => {
-                        unused_exports = vec![];
-                        used_ignored_exports.extend(ignored_exports.clone());
+                for related_import in related_imports {
+                    match &related_import.values {
+                        ImportType::All | ImportType::Dynamic => {
+                            unused_exports = vec![];
+                            used_ignored_exports
+                                .extend(ignored_exports.clone());
+                        }
+                        ImportType::Named(values) => {
+                            unused_exports.retain(|export| {
+                                !values.contains(&export.name)
+                            });
+
+                            let related_ignored_exports = ignored_exports
+                                .iter()
+                                .filter(|export| {
+                                    values.contains(&export.name)
+                                })
+                                .cloned()
+                                .collect::<Vec<_>>();
+
+                            used_ignored_exports
+                                .extend(related_ignored_exports);
+                        }
+                        ImportType::SideEffect => {}
+                        ImportType::Type(values) => {
+                            unused_exports.retain(|export| {
+                                !values.contains(&export.name)
+                            });
+
+                            let related_ignored_exports = ignored_exports
+                                .iter()
+                                .filter(|export| {
+                                    values.contains(&export.name)
+                                })
+                                .cloned()
+                                .collect::<Vec<_>>();
+
+                            used_ignored_exports
+                                .extend(related_ignored_exports);
+                        }
+                        ImportType::Glob => {}
                     }
-                    ImportType::Named(values) => {
-                        unused_exports
-                            .retain(|export| !values.contains(&export.name));
-
-                        let related_ignored_exports = ignored_exports
-                            .iter()
-                            .filter(|export| values.contains(&export.name))
-                            .cloned()
-                            .collect::<Vec<_>>();
-
-                        used_ignored_exports.extend(related_ignored_exports);
-                    }
-                    ImportType::SideEffect => {}
-                    ImportType::Type(values) => {
-                        unused_exports
-                            .retain(|export| !values.contains(&export.name));
-
-                        let related_ignored_exports = ignored_exports
-                            .iter()
-                            .filter(|export| values.contains(&export.name))
-                            .cloned()
-                            .collect::<Vec<_>>();
-
-                        used_ignored_exports.extend(related_ignored_exports);
-                    }
-                    ImportType::Glob => {}
                 }
             }
         }
@@ -201,7 +212,7 @@ pub fn check_ts_not_have_direct_circular_deps(file: &File) -> Result<(), String>
         )?;
 
         // Find the first import that creates a circular dependency
-        for import in file_imports.values() {
+        for import in file_imports.values().flatten() {
             let import_deps_result = get_file_deps_result(&import.import_path)?;
             if import_deps_result.deps.contains(&file.relative_path) {
                 return Err(format!(
@@ -341,14 +352,21 @@ pub fn check_ts_have_imports(
     for have_import in have_imports {
         match have_import {
             MatchImport::From(path) => {
-                if !file_imports.values().any(|Import { import_path, .. }| {
-                    match_glob_path(path, import_path)
-                }) {
-                    errors.push(format!("Should have any import from '{}'", path));
+                if !file_imports
+                    .values()
+                    .flatten()
+                    .any(|Import { import_path, .. }| {
+                        match_glob_path(path, import_path)
+                    })
+                {
+                    errors.push(format!(
+                        "Should have any import from '{}'",
+                        path
+                    ));
                 }
             }
             MatchImport::DefaultFrom(path) => {
-                if !file_imports.values().any(
+                if !file_imports.values().flatten().any(
                     |Import {
                          import_path,
                          values,
@@ -356,7 +374,8 @@ pub fn check_ts_have_imports(
                      }| {
                         if match_glob_path(path, import_path) {
                             if let ImportType::Named(values) = values {
-                                values.contains(&"default".to_string())
+                                values
+                                    .contains(&"default".to_string())
                             } else {
                                 false
                             }
@@ -372,7 +391,7 @@ pub fn check_ts_have_imports(
                 }
             }
             MatchImport::Named { from, name } => {
-                if !file_imports.values().any(
+                if !file_imports.values().flatten().any(
                     |Import {
                          import_path,
                          values,
@@ -425,15 +444,21 @@ pub fn check_ts_not_have_imports(
     for not_have_import in not_have_imports {
         match not_have_import {
             MatchImport::From(path) => {
-                if file_imports.values().any(|Import { import_path, .. }| {
-                    match_glob_path(path, import_path)
-                }) {
-                    errors
-                        .push(format!("Should not have any import from '{}'", path));
+                if file_imports
+                    .values()
+                    .flatten()
+                    .any(|Import { import_path, .. }| {
+                        match_glob_path(path, import_path)
+                    })
+                {
+                    errors.push(format!(
+                        "Should not have any import from '{}'",
+                        path
+                    ));
                 }
             }
             MatchImport::DefaultFrom(path) => {
-                if file_imports.values().any(
+                if file_imports.values().flatten().any(
                     |Import {
                          import_path,
                          values,
@@ -441,7 +466,8 @@ pub fn check_ts_not_have_imports(
                      }| {
                         if match_glob_path(path, import_path) {
                             if let ImportType::Named(values) = values {
-                                values.contains(&"default".to_string())
+                                values
+                                    .contains(&"default".to_string())
                             } else {
                                 false
                             }
@@ -457,7 +483,7 @@ pub fn check_ts_not_have_imports(
                 }
             }
             MatchImport::Named { from, name } => {
-                if file_imports.values().any(
+                if file_imports.values().flatten().any(
                     |Import {
                          import_path,
                          values,

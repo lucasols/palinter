@@ -11,14 +11,28 @@ use super::{
 
 use std::path::Path;
 
-fn get_import_between(
+fn get_imports_between(
     from_file: &str,
     to_file: &str,
-) -> Option<Import> {
-    let resolved = get_resolved_path(Path::new(from_file)).ok()??;
-    let imports =
-        get_file_imports(resolved.to_str()?).ok()?;
-    imports.get(to_file).cloned()
+) -> Vec<Import> {
+    let inner = || -> Option<Vec<Import>> {
+        let resolved =
+            get_resolved_path(Path::new(from_file)).ok()??;
+        let imports =
+            get_file_imports(resolved.to_str()?).ok()?;
+        Some(
+            imports
+                .get(to_file)?
+                .iter()
+                .filter(|i| {
+                    !matches!(i.values, ImportType::Type(_))
+                })
+                .cloned()
+                .collect(),
+        )
+    };
+
+    inner().unwrap_or_default()
 }
 
 fn format_import_statement(import: &Import) -> String {
@@ -167,13 +181,14 @@ pub fn get_detailed_file_circular_deps_result(
                 if i < parts.len() - 1 {
                     let from_file = parts[i].trim_matches('|');
                     let to_file = parts[i + 1].trim_matches('|');
+                    let imports =
+                        get_imports_between(from_file, to_file);
+                    let indent =
+                        if i == 0 { 3 } else { 3 + i * 2 };
 
-                    if let Some(import) =
-                        get_import_between(from_file, to_file)
-                    {
+                    for import in &imports {
                         let formatted =
-                            format_import_statement(&import);
-                        let indent = if i == 0 { 3 } else { 3 + i * 2 };
+                            format_import_statement(import);
                         println!(
                             "{}{}",
                             " ".repeat(indent),

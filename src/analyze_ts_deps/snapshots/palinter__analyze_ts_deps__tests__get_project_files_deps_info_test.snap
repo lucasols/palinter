@@ -46,30 +46,36 @@ expression: results
         },
         "./src/fileB.ts": FileDepsInfo {
             imports: {
-                "./src/fileA.ts": Import {
-                    import_path: "@src/fileA",
-                    line: 3,
-                    values: Named(
-                        [
-                            "a",
-                            "b",
-                        ],
-                    ),
-                },
-                "testLib": Import {
-                    import_path: "testLib",
-                    line: 4,
-                    values: Named(
-                        [
-                            "test",
-                        ],
-                    ),
-                },
-                "./src/img.svg": Import {
-                    import_path: "@src/img.svg",
-                    line: 5,
-                    values: SideEffect,
-                },
+                "./src/fileA.ts": [
+                    Import {
+                        import_path: "@src/fileA",
+                        line: 3,
+                        values: Named(
+                            [
+                                "a",
+                                "b",
+                            ],
+                        ),
+                    },
+                ],
+                "testLib": [
+                    Import {
+                        import_path: "testLib",
+                        line: 4,
+                        values: Named(
+                            [
+                                "test",
+                            ],
+                        ),
+                    },
+                ],
+                "./src/img.svg": [
+                    Import {
+                        import_path: "@src/img.svg",
+                        line: 5,
+                        values: SideEffect,
+                    },
+                ],
             },
             exports: [],
         },
@@ -79,11 +85,13 @@ expression: results
         },
         "./src/index.ts": FileDepsInfo {
             imports: {
-                "./src/fileB.ts": Import {
-                    import_path: "@src/fileB",
-                    line: 1,
-                    values: SideEffect,
-                },
+                "./src/fileB.ts": [
+                    Import {
+                        import_path: "@src/fileB",
+                        line: 1,
+                        values: SideEffect,
+                    },
+                ],
             },
             exports: [],
         },
