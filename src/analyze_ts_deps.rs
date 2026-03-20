@@ -507,8 +507,7 @@ fn try_merge_import(
                 ImportType::SideEffect | ImportType::Dynamic,
                 ImportType::SideEffect
                 | ImportType::Dynamic
-                | ImportType::Named(_)
-                | ImportType::Type(_),
+                | ImportType::Named(_),
             ) => {
                 existing.values = new_import.values.clone();
                 existing.line = new_import.line;
@@ -517,7 +516,7 @@ fn try_merge_import(
                 return true;
             }
             (
-                ImportType::Named(_) | ImportType::Type(_),
+                ImportType::Named(_),
                 ImportType::SideEffect | ImportType::Dynamic,
             ) => {
                 return true;

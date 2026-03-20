@@ -211,14 +211,26 @@ pub fn check_ts_not_have_direct_circular_deps(file: &File) -> Result<(), String>
             PathBuf::from(file.clone().relative_path).to_str().unwrap(),
         )?;
 
-        // Find the first import that creates a circular dependency
+        // Find the first non-type import that creates a circular dependency
         // Use the map keys (resolved paths) for deps lookup, and the import values for display
         for (resolved_import_path, imports) in &file_imports {
+            // Skip paths where all imports are type-only — they
+            // don't create runtime circular dependencies
+            let has_non_type = imports
+                .iter()
+                .any(|i| !matches!(i.values, ImportType::Type(_)));
+            if !has_non_type {
+                continue;
+            }
+
             let import_deps_result =
                 get_file_deps_result(&PathBuf::from(resolved_import_path))?;
             if import_deps_result.deps.contains(&file.relative_path) {
                 let display_path = imports
-                    .first()
+                    .iter()
+                    .find(|i| {
+                        !matches!(i.values, ImportType::Type(_))
+                    })
                     .map(|i| i.import_path.to_str().unwrap_or("?"))
                     .unwrap_or("?");
                 return Err(format!(

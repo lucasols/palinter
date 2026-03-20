@@ -676,6 +676,271 @@ fn inline_type_imports_normalized_separately() {
     );
 }
 
+// ---- Regression tests for try_merge_import bug ----
+// SideEffect/Dynamic imports should NOT be merged with Type imports.
+// When merged, the runtime edge is lost and circular deps go undetected.
+
+#[test]
+fn side_effect_with_type_import_still_detects_circular_dep() {
+    let _guard = TEST_MUTEX.lock().unwrap();
+    _setup_test();
+
+    // fileA has a SideEffect import AND a Type import from fileB.
+    // The SideEffect creates a runtime edge; the Type should not
+    // cause that edge to be dropped.
+    let (results, _) = get_results(
+        vec![
+            SimplifiedFile {
+                path: PathBuf::from("./src/index.ts"),
+                content: String::from(
+                    "import { a } from '@src/fileA';",
+                ),
+            },
+            SimplifiedFile {
+                path: PathBuf::from("./src/fileA.ts"),
+                content: String::from(
+                    r#"
+                    import '@src/fileB';
+                    import type { Foo } from '@src/fileB';
+                    export const a = 1;
+                    "#,
+                ),
+            },
+            SimplifiedFile {
+                path: PathBuf::from("./src/fileB.ts"),
+                content: String::from(
+                    r#"
+                    import { a } from '@src/fileA';
+                    export type Foo = string;
+                    "#,
+                ),
+            },
+        ],
+        "@src/index.ts",
+    );
+
+    let file_a = results.get("./src/fileA.ts").unwrap();
+    assert!(
+        file_a.circular_deps.is_some(),
+        "fileA should have circular deps: side-effect import \
+         from fileB is a runtime dependency"
+    );
+}
+
+#[test]
+fn type_import_then_side_effect_still_detects_circular_dep() {
+    let _guard = TEST_MUTEX.lock().unwrap();
+    _setup_test();
+
+    // Same scenario but Type import appears before SideEffect
+    // in the source. Both orderings must preserve the runtime edge.
+    let (results, _) = get_results(
+        vec![
+            SimplifiedFile {
+                path: PathBuf::from("./src/index.ts"),
+                content: String::from(
+                    "import { a } from '@src/fileA';",
+                ),
+            },
+            SimplifiedFile {
+                path: PathBuf::from("./src/fileA.ts"),
+                content: String::from(
+                    r#"
+                    import type { Foo } from '@src/fileB';
+                    import '@src/fileB';
+                    export const a = 1;
+                    "#,
+                ),
+            },
+            SimplifiedFile {
+                path: PathBuf::from("./src/fileB.ts"),
+                content: String::from(
+                    r#"
+                    import { a } from '@src/fileA';
+                    export type Foo = string;
+                    "#,
+                ),
+            },
+        ],
+        "@src/index.ts",
+    );
+
+    let file_a = results.get("./src/fileA.ts").unwrap();
+    assert!(
+        file_a.circular_deps.is_some(),
+        "fileA should have circular deps: side-effect import \
+         from fileB is a runtime dependency, regardless of \
+         order with type import"
+    );
+}
+
+#[test]
+fn dynamic_import_with_type_import_still_detects_circular_dep() {
+    let _guard = TEST_MUTEX.lock().unwrap();
+    _setup_test();
+
+    // Dynamic import creates a runtime edge that should survive
+    // merging with a Type import from the same path.
+    let (results, _) = get_results(
+        vec![
+            SimplifiedFile {
+                path: PathBuf::from("./src/index.ts"),
+                content: String::from(
+                    "import { a } from '@src/fileA';",
+                ),
+            },
+            SimplifiedFile {
+                path: PathBuf::from("./src/fileA.ts"),
+                content: String::from(
+                    r#"
+                    const mod = import('@src/fileB');
+                    import type { Foo } from '@src/fileB';
+                    export const a = 1;
+                    "#,
+                ),
+            },
+            SimplifiedFile {
+                path: PathBuf::from("./src/fileB.ts"),
+                content: String::from(
+                    r#"
+                    import { a } from '@src/fileA';
+                    export type Foo = string;
+                    "#,
+                ),
+            },
+        ],
+        "@src/index.ts",
+    );
+
+    let file_a = results.get("./src/fileA.ts").unwrap();
+    assert!(
+        file_a.circular_deps.is_some(),
+        "fileA should have circular deps: dynamic import \
+         from fileB is a runtime dependency"
+    );
+}
+
+#[test]
+fn type_import_then_dynamic_still_detects_circular_dep() {
+    let _guard = TEST_MUTEX.lock().unwrap();
+    _setup_test();
+
+    // Type import first, then Dynamic. The Dynamic edge must
+    // survive and not be dropped by merge with the existing Type.
+    let (results, _) = get_results(
+        vec![
+            SimplifiedFile {
+                path: PathBuf::from("./src/index.ts"),
+                content: String::from(
+                    "import { a } from '@src/fileA';",
+                ),
+            },
+            SimplifiedFile {
+                path: PathBuf::from("./src/fileA.ts"),
+                content: String::from(
+                    r#"
+                    import type { Foo } from '@src/fileB';
+                    const mod = import('@src/fileB');
+                    export const a = 1;
+                    "#,
+                ),
+            },
+            SimplifiedFile {
+                path: PathBuf::from("./src/fileB.ts"),
+                content: String::from(
+                    r#"
+                    import { a } from '@src/fileA';
+                    export type Foo = string;
+                    "#,
+                ),
+            },
+        ],
+        "@src/index.ts",
+    );
+
+    let file_a = results.get("./src/fileA.ts").unwrap();
+    assert!(
+        file_a.circular_deps.is_some(),
+        "fileA should have circular deps: dynamic import \
+         from fileB is a runtime dependency, regardless of \
+         order with type import"
+    );
+}
+
+// ---- Regression test for direct circular dep display ----
+// check_ts_not_have_direct_circular_deps should blame the
+// runtime import that causes the cycle, not a type-only import
+// that happens to transitively reach the same file.
+
+#[test]
+fn direct_circular_dep_error_blames_runtime_import_not_type() {
+    let _guard = TEST_MUTEX.lock().unwrap();
+    _setup_test();
+
+    // fileA type-imports from fileB, runtime-imports from fileC.
+    // fileC imports back from fileA → cycle A→C→A.
+    // fileB also reaches fileA via fileC (B→C→A).
+    // The error should name fileC, not fileB.
+    let (_, _) = get_results(
+        vec![
+            SimplifiedFile {
+                path: PathBuf::from("./src/index.ts"),
+                content: String::from(
+                    "import { a } from '@src/fileA';",
+                ),
+            },
+            SimplifiedFile {
+                path: PathBuf::from("./src/fileA.ts"),
+                content: String::from(
+                    r#"
+                    import type { Foo } from '@src/fileB';
+                    import { c } from '@src/fileC';
+                    export const a = 1;
+                    "#,
+                ),
+            },
+            SimplifiedFile {
+                path: PathBuf::from("./src/fileB.ts"),
+                content: String::from(
+                    r#"
+                    import { c } from '@src/fileC';
+                    export type Foo = string;
+                    "#,
+                ),
+            },
+            SimplifiedFile {
+                path: PathBuf::from("./src/fileC.ts"),
+                content: String::from(
+                    r#"
+                    import { a } from '@src/fileA';
+                    export const c = 1;
+                    "#,
+                ),
+            },
+        ],
+        "@src/index.ts",
+    );
+
+    let file_a = File {
+        basename: "fileA".to_string(),
+        name_with_ext: "fileA.ts".to_string(),
+        content: None,
+        extension: Some("ts".to_string()),
+        relative_path: "./src/fileA.ts".to_string(),
+    };
+
+    let result =
+        ts_checks::check_ts_not_have_direct_circular_deps(&file_a);
+    let err = result.unwrap_err();
+
+    assert!(
+        err.contains("@src/fileC"),
+        "Error should blame fileC (the runtime import causing \
+         the cycle), not fileB (type-only). Got: {}",
+        err
+    );
+}
+
 #[test]
 fn get_resolved_path_consistent_with_non_default_root() {
     let _guard = TEST_MUTEX.lock().unwrap();
