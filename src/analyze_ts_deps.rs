@@ -177,21 +177,32 @@ fn get_resolved_path(path: &Path) -> Result<Option<PathBuf>, String> {
             let file_is_in_cache =
                 FILES_CACHE.lock().unwrap().contains_key(&cache_name);
 
-            let new_path = if file_is_in_cache {
-                PathBuf::from(cache_name)
+            let load_path = if file_is_in_cache {
+                PathBuf::from(&cache_name)
             } else {
-                PathBuf::from(format!("{}{}", file_abs_path, paths_to_try))
+                PathBuf::from(format!(
+                    "{}{}",
+                    file_abs_path, paths_to_try
+                ))
             };
 
-            let new_file = load_file_from_cache(&new_path);
+            if let Ok(loaded_file) = load_file_from_cache(&load_path)
+            {
+                let result_path = PathBuf::from(&cache_name);
 
-            if new_file.is_ok() {
+                if !file_is_in_cache {
+                    FILES_CACHE
+                        .lock()
+                        .unwrap()
+                        .insert(cache_name, loaded_file);
+                }
+
                 RESOLVE_CACHE
                     .lock()
                     .unwrap()
-                    .insert(path.to_path_buf(), new_path.clone());
+                    .insert(path.to_path_buf(), result_path.clone());
 
-                return Ok(Some(new_path));
+                return Ok(Some(result_path));
             }
         }
 
@@ -203,7 +214,10 @@ fn get_resolved_path(path: &Path) -> Result<Option<PathBuf>, String> {
         RESOLVE_CACHE
             .lock()
             .unwrap()
-            .insert(path.to_path_buf(), PathBuf::from(file_abs_path));
+            .insert(
+                path.to_path_buf(),
+                file_with_replaced_alias.clone(),
+            );
 
         Ok(Some(file_with_replaced_alias))
     }

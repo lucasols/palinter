@@ -212,12 +212,18 @@ pub fn check_ts_not_have_direct_circular_deps(file: &File) -> Result<(), String>
         )?;
 
         // Find the first import that creates a circular dependency
-        for import in file_imports.values().flatten() {
-            let import_deps_result = get_file_deps_result(&import.import_path)?;
+        // Use the map keys (resolved paths) for deps lookup, and the import values for display
+        for (resolved_import_path, imports) in &file_imports {
+            let import_deps_result =
+                get_file_deps_result(&PathBuf::from(resolved_import_path))?;
             if import_deps_result.deps.contains(&file.relative_path) {
+                let display_path = imports
+                    .first()
+                    .map(|i| i.import_path.to_str().unwrap_or("?"))
+                    .unwrap_or("?");
                 return Err(format!(
                     "File has direct circular dependencies with '{}' (run cmd `palinter circular-deps [file] -D` to get more info)",
-                    import.import_path.to_str().unwrap()
+                    display_path
                 ));
             }
         }

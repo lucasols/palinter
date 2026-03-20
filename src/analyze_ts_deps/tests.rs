@@ -508,3 +508,260 @@ fn normalize_imports_preserves_type_and_named_separately() {
         imports_to_file_a
     );
 }
+
+#[test]
+fn inline_type_only_import_does_not_create_circular_dep() {
+    let _guard = TEST_MUTEX.lock().unwrap();
+
+    _setup_test();
+
+    let (results, _) = get_results(
+        vec![
+            SimplifiedFile {
+                path: PathBuf::from("./src/index.ts"),
+                content: String::from(
+                    "import { a } from '@src/fileA';",
+                ),
+            },
+            SimplifiedFile {
+                path: PathBuf::from("./src/fileA.ts"),
+                content: String::from(
+                    r#"
+                    import { type TypeB } from '@src/fileB';
+                    export const a = 1;
+                    "#,
+                ),
+            },
+            SimplifiedFile {
+                path: PathBuf::from("./src/fileB.ts"),
+                content: String::from(
+                    r#"
+                    import { a } from '@src/fileA';
+                    export type TypeB = string;
+                    "#,
+                ),
+            },
+        ],
+        "@src/index.ts",
+    );
+
+    let file_a = results.get("./src/fileA.ts").unwrap();
+    assert_eq!(
+        file_a.circular_deps, None,
+        "fileA should not have circular deps: \
+         import from fileB is type-only"
+    );
+
+    let file_b = results.get("./src/fileB.ts").unwrap();
+    assert_eq!(
+        file_b.circular_deps, None,
+        "fileB should not have circular deps: \
+         fileA's import from fileB is type-only"
+    );
+}
+
+#[test]
+fn mixed_inline_type_and_named_import_creates_circular_dep() {
+    let _guard = TEST_MUTEX.lock().unwrap();
+
+    _setup_test();
+
+    let (results, _) = get_results(
+        vec![
+            SimplifiedFile {
+                path: PathBuf::from("./src/index.ts"),
+                content: String::from(
+                    "import { a } from '@src/fileA';",
+                ),
+            },
+            SimplifiedFile {
+                path: PathBuf::from("./src/fileA.ts"),
+                content: String::from(
+                    r#"
+                    import { funcB, type TypeB } from '@src/fileB';
+                    export const a = 1;
+                    "#,
+                ),
+            },
+            SimplifiedFile {
+                path: PathBuf::from("./src/fileB.ts"),
+                content: String::from(
+                    r#"
+                    import { a } from '@src/fileA';
+                    export const funcB = 1;
+                    export type TypeB = string;
+                    "#,
+                ),
+            },
+        ],
+        "@src/index.ts",
+    );
+
+    let file_a = results.get("./src/fileA.ts").unwrap();
+    assert!(
+        file_a.circular_deps.is_some(),
+        "fileA should have circular deps: \
+         funcB is a non-type import from fileB"
+    );
+}
+
+#[test]
+fn inline_type_imports_normalized_separately() {
+    let _guard = TEST_MUTEX.lock().unwrap();
+
+    _setup_test();
+
+    let (_, used_files) = get_results(
+        vec![
+            SimplifiedFile {
+                path: PathBuf::from("./src/index.ts"),
+                content: String::from(
+                    r#"
+                    import { foo, type Bar } from '@src/fileA';
+                    "#,
+                ),
+            },
+            SimplifiedFile {
+                path: PathBuf::from("./src/fileA.ts"),
+                content: String::from(
+                    r#"
+                    export const foo = 1;
+                    export type Bar = string;
+                    "#,
+                ),
+            },
+        ],
+        "@src/index.ts",
+    );
+
+    let index_info =
+        used_files.get("./src/index.ts").unwrap();
+    let imports_to_file_a =
+        index_info.imports.get("./src/fileA.ts").unwrap();
+
+    let has_named = imports_to_file_a.iter().any(|i| {
+        matches!(
+            &i.values,
+            ImportType::Named(v) if v.contains(&"foo".to_string())
+        )
+    });
+    let has_type = imports_to_file_a.iter().any(|i| {
+        matches!(
+            &i.values,
+            ImportType::Type(v) if v.contains(&"Bar".to_string())
+        )
+    });
+    let named_does_not_contain_type =
+        imports_to_file_a.iter().all(|i| {
+            !matches!(
+                &i.values,
+                ImportType::Named(v) if v.contains(&"Bar".to_string())
+            )
+        });
+
+    assert!(
+        has_named,
+        "Should have Named import with 'foo', got: {:?}",
+        imports_to_file_a
+    );
+    assert!(
+        has_type,
+        "Should have Type import with 'Bar', got: {:?}",
+        imports_to_file_a
+    );
+    assert!(
+        named_does_not_contain_type,
+        "'Bar' should be in Type, not Named: {:?}",
+        imports_to_file_a
+    );
+}
+
+#[test]
+fn get_resolved_path_consistent_with_non_default_root() {
+    let _guard = TEST_MUTEX.lock().unwrap();
+
+    _setup_test();
+
+    *ROOT_DIR.lock().unwrap() = "/project".to_string();
+    *ALIASES.lock().unwrap() = HashMap::from_iter(vec![(
+        String::from("@src"),
+        String::from("./src"),
+    )]);
+
+    let file = File {
+        basename: "fileA".to_string(),
+        name_with_ext: "fileA.ts".to_string(),
+        content: Some("export const a = 1;".to_string()),
+        extension: Some("ts".to_string()),
+        relative_path: "./src/fileA.ts".to_string(),
+    };
+
+    FILES_CACHE
+        .lock()
+        .unwrap()
+        .insert("./src/fileA.ts".to_string(), file);
+
+    let first = get_resolved_path(Path::new("./src/fileA.ts"))
+        .unwrap()
+        .unwrap();
+    let second = get_resolved_path(Path::new("./src/fileA.ts"))
+        .unwrap()
+        .unwrap();
+
+    assert_eq!(
+        first, second,
+        "get_resolved_path should return consistent results: \
+         first={:?}, second={:?}",
+        first, second
+    );
+    assert_eq!(
+        first,
+        PathBuf::from("./src/fileA.ts"),
+        "Should return relative path, not absolute"
+    );
+}
+
+#[test]
+fn get_resolved_path_extension_consistent_with_non_default_root()
+{
+    let _guard = TEST_MUTEX.lock().unwrap();
+
+    _setup_test();
+
+    *ROOT_DIR.lock().unwrap() = "/project".to_string();
+    *ALIASES.lock().unwrap() = HashMap::from_iter(vec![(
+        String::from("@src"),
+        String::from("./src"),
+    )]);
+
+    let file = File {
+        basename: "fileA".to_string(),
+        name_with_ext: "fileA.ts".to_string(),
+        content: Some("export const a = 1;".to_string()),
+        extension: Some("ts".to_string()),
+        relative_path: "./src/fileA.ts".to_string(),
+    };
+
+    FILES_CACHE
+        .lock()
+        .unwrap()
+        .insert("./src/fileA.ts".to_string(), file);
+
+    // Resolve via alias (goes through extension-trying loop)
+    let first =
+        get_resolved_path(Path::new("@src/fileA")).unwrap().unwrap();
+    let second =
+        get_resolved_path(Path::new("@src/fileA")).unwrap().unwrap();
+
+    assert_eq!(
+        first, second,
+        "Extension resolution should be consistent: \
+         first={:?}, second={:?}",
+        first, second
+    );
+    assert_eq!(
+        first,
+        PathBuf::from("./src/fileA.ts"),
+        "Should return relative path with extension"
+    );
+}

@@ -103,17 +103,38 @@ pub fn extract_imports_from_file_content(
                         values: ImportType::All,
                     });
                 } else if let Some(values_string) = captures.name("named") {
-                    let values = values_string
+                    let all_values: Vec<(String, bool)> = values_string
                         .as_str()
                         .split(',')
                         .filter_map(filter_map_named_import_value)
-                        .collect::<Vec<String>>();
+                        .collect();
 
-                    imports.push(Import {
-                        import_path: PathBuf::from(import_path),
-                        line: current_line,
-                        values: ImportType::Named(values),
-                    });
+                    let named_values: Vec<String> = all_values
+                        .iter()
+                        .filter(|(_, is_type)| !is_type)
+                        .map(|(name, _)| name.clone())
+                        .collect();
+
+                    let type_values: Vec<String> = all_values
+                        .iter()
+                        .filter(|(_, is_type)| *is_type)
+                        .map(|(name, _)| name.clone())
+                        .collect();
+
+                    if !named_values.is_empty() {
+                        imports.push(Import {
+                            import_path: PathBuf::from(&import_path),
+                            line: current_line,
+                            values: ImportType::Named(named_values),
+                        });
+                    }
+                    if !type_values.is_empty() {
+                        imports.push(Import {
+                            import_path: PathBuf::from(&import_path),
+                            line: current_line,
+                            values: ImportType::Type(type_values),
+                        });
+                    }
                 } else if captures.name("default").is_some() {
                     imports.push(Import {
                         import_path: PathBuf::from(import_path),
@@ -123,24 +144,44 @@ pub fn extract_imports_from_file_content(
                 } else if let Some(values_string) =
                     captures.name("named_with_default")
                 {
-                    let mut values = values_string
+                    let all_values: Vec<(String, bool)> = values_string
                         .as_str()
                         .split(',')
                         .filter_map(filter_map_named_import_value)
-                        .collect::<Vec<String>>();
+                        .collect();
 
-                    values.push(DEFAULT.to_string());
+                    let mut named_values: Vec<String> = all_values
+                        .iter()
+                        .filter(|(_, is_type)| !is_type)
+                        .map(|(name, _)| name.clone())
+                        .collect();
+
+                    named_values.push(DEFAULT.to_string());
+
+                    let type_values: Vec<String> = all_values
+                        .iter()
+                        .filter(|(_, is_type)| *is_type)
+                        .map(|(name, _)| name.clone())
+                        .collect();
 
                     imports.push(Import {
-                        import_path: PathBuf::from(import_path),
+                        import_path: PathBuf::from(&import_path),
                         line: current_line,
-                        values: ImportType::Named(values),
+                        values: ImportType::Named(named_values),
                     });
+                    if !type_values.is_empty() {
+                        imports.push(Import {
+                            import_path: PathBuf::from(&import_path),
+                            line: current_line,
+                            values: ImportType::Type(type_values),
+                        });
+                    }
                 } else if let Some(type_imports) = captures.name("types") {
                     let values = type_imports
                         .as_str()
                         .split(',')
                         .filter_map(filter_map_named_import_value)
+                        .map(|(name, _)| name)
                         .collect::<Vec<String>>();
 
                     imports.push(Import {
@@ -207,7 +248,9 @@ pub fn extract_imports_from_file_content(
     Ok(imports)
 }
 
-fn filter_map_named_import_value(captured_string: &str) -> Option<String> {
+fn filter_map_named_import_value(
+    captured_string: &str,
+) -> Option<(String, bool)> {
     let value = if captured_string.contains(" as ") {
         let split = captured_string.split(" as ");
 
@@ -216,12 +259,17 @@ fn filter_map_named_import_value(captured_string: &str) -> Option<String> {
         captured_string.trim().to_string()
     };
 
-    let non_type_value = value.replace("type ", "");
+    let (clean_value, is_type) =
+        if let Some(stripped) = value.strip_prefix("type ") {
+            (stripped.to_string(), true)
+        } else {
+            (value, false)
+        };
 
-    if non_type_value.is_empty() {
+    if clean_value.is_empty() {
         None
     } else {
-        Some(non_type_value)
+        Some((clean_value, is_type))
     }
 }
 
@@ -1031,15 +1079,69 @@ const tableBodyCellViewerComponents = import.meta.glob(
 
         assert_eq!(
             imports,
+            vec![
+                Import {
+                    import_path: PathBuf::from("@src/foo"),
+                    line: 2,
+                    values: ImportType::Named(vec!["a".to_string()]),
+                },
+                Import {
+                    import_path: PathBuf::from("@src/foo"),
+                    line: 2,
+                    values: ImportType::Type(vec![
+                        "Test".to_string(),
+                        "Test2".to_string()
+                    ]),
+                },
+            ],
+        );
+    }
+
+    #[test]
+    fn inline_type_only_import() {
+        let file_content = r#"
+          import { type Foo, type Bar } from '@src/foo';
+        "#;
+        let imports = extract_imports_from_file_content(file_content).unwrap();
+
+        assert_eq!(
+            imports,
             vec![Import {
                 import_path: PathBuf::from("@src/foo"),
                 line: 2,
-                values: ImportType::Named(vec![
-                    "a".to_string(),
-                    "Test".to_string(),
-                    "Test2".to_string()
+                values: ImportType::Type(vec![
+                    "Foo".to_string(),
+                    "Bar".to_string()
                 ]),
             }],
+        );
+    }
+
+    #[test]
+    fn named_with_default_and_inline_type() {
+        let file_content =
+            r#"import Foo, { Bar, type Baz } from '@src/foo';"#;
+        let imports = extract_imports_from_file_content(file_content).unwrap();
+
+        assert_eq!(
+            imports,
+            vec![
+                Import {
+                    import_path: PathBuf::from("@src/foo"),
+                    line: 1,
+                    values: ImportType::Named(vec![
+                        "Bar".to_string(),
+                        DEFAULT.to_string(),
+                    ]),
+                },
+                Import {
+                    import_path: PathBuf::from("@src/foo"),
+                    line: 1,
+                    values: ImportType::Type(vec![
+                        "Baz".to_string(),
+                    ]),
+                },
+            ],
         );
     }
 
