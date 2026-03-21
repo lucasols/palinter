@@ -1,4 +1,5 @@
 use colored::Colorize;
+use rayon::prelude::*;
 use std::collections::{BTreeMap, HashMap, HashSet};
 
 use crate::{
@@ -8,6 +9,7 @@ use crate::{
         check_ts_not_have_direct_circular_deps, check_ts_not_have_imports,
         check_ts_not_have_unused_exports, check_ts_not_have_used_exports_outside,
     },
+    analyze_ts_deps::warm_file_deps_results_for_paths,
     internal_config::{
         AnyNoneOr, AnyOr, Config, ErrorMsgVars, FileConditions, FileExpect,
         FileRule, FolderConditions, FolderConfig, FolderExpect, FolderRule,
@@ -554,6 +556,13 @@ struct InheritedFolderRule {
     rule: FolderRule,
 }
 
+#[derive(Default)]
+struct ChildCheckOutcome {
+    errors: Vec<String>,
+    warnings: Vec<String>,
+    matched_folder_name: Option<String>,
+}
+
 pub fn normalize_folder_config_name(name: &String) -> String {
     if name == "." {
         name.to_owned()
@@ -592,6 +601,20 @@ fn check_folder_children(
     inherited_allow_unconfigured_files: bool,
     inherited_allow_unconfigured_folders: bool,
 ) -> Result<(), Problems> {
+    let files_with_ts_checks = get_folder_files_with_ts_checks(
+        folder,
+        folder_config,
+        &inherited_files_rules,
+        is_test_config,
+    );
+
+    if let Err(error) = warm_file_deps_results_for_paths(&files_with_ts_checks) {
+        return Err(Problems {
+            errors: vec![error],
+            warnings: Vec::new(),
+        });
+    }
+
     let mut errors: Vec<String> = Vec::new();
     let mut warnings: Vec<String> = Vec::new();
 
@@ -632,370 +655,55 @@ fn check_folder_children(
         })
         .unwrap_or_default();
 
-    for child in &folder.children {
-        match child {
-            FolderChild::FileChild(file) => {
-                let mut file_touched = false;
+    let mut child_outcomes = folder
+        .children
+        .par_iter()
+        .enumerate()
+        .map(|(index, child)| {
+            let outcome = match child {
+                FolderChild::FileChild(file) => check_file_child(
+                    allow_warnings,
+                    file,
+                    folder,
+                    folder_config,
+                    &folder_path,
+                    &inherited_files_rules,
+                    &context_conditions,
+                    error_msg_vars,
+                    is_test_config,
+                    allow_unconfigured_files,
+                    &append_error,
+                ),
+                FolderChild::Folder(sub_folder) => check_sub_folder_child(
+                    allow_warnings,
+                    sub_folder,
+                    folder_config,
+                    &folder_path,
+                    &inherited_files_rules,
+                    &inherited_folders_rules,
+                    &context_conditions,
+                    error_msg_vars,
+                    is_test_config,
+                    inherited_select_all_children,
+                    allow_unconfigured_files,
+                    allow_unconfigured_folders,
+                    &append_error,
+                ),
+            };
 
-                let file_error_prefix = format!(
-                    "File {}\n • ",
-                    format!("{}/{}:", folder_path, file.name_with_ext)
-                        .bright_yellow()
-                );
+            (index, outcome)
+        })
+        .collect::<Vec<_>>();
 
-                let mut check_file_rule = |rule: &FileRule| {
-                    if let Some(conditions_result) =
-                        file_matches_condition(file, &rule.conditions)
-                    {
-                        if !rule.not_touch {
-                            file_touched = true;
-                        }
+    child_outcomes.sort_by_key(|(index, _)| *index);
 
-                        if is_test_config && rule.ignore_in_config_tests {
-                            return;
-                        }
-
-                        if let Err(expect_errors) = check_file_expect(
-                            file,
-                            &rule.expect,
-                            folder,
-                            &conditions_result,
-                            &context_conditions,
-                            error_msg_vars,
-                        ) {
-                            for error in expect_errors {
-                                let problem_vec =
-                                    if allow_warnings && rule.is_warning {
-                                        &mut warnings
-                                    } else {
-                                        &mut errors
-                                    };
-
-                                problem_vec.push(format!(
-                                    "{}{}{}",
-                                    file_error_prefix,
-                                    if let Some(custom_error) = &rule.error_msg {
-                                        format!("{}\n   | {}", custom_error, error)
-                                    } else {
-                                        error
-                                    },
-                                    append_error
-                                ));
-                            }
-                        }
-                    }
-                };
-
-                if let Some(folder_config) = folder_config {
-                    for rule in &folder_config.file_rules {
-                        check_file_rule(rule)
-                    }
-                }
-
-                for inherited_rule in &inherited_files_rules {
-                    check_file_rule(&inherited_rule.rule)
-                }
-
-                if let Some(folder_config) = folder_config {
-                    for one_of in &folder_config.one_of_blocks.file_blocks {
-                        let mut one_of_matched_at_least_one_condition = false;
-                        let mut one_of_matched = false;
-
-                        for rule in &one_of.rules {
-                            if let Some(conditions_result) =
-                                file_matches_condition(file, &rule.conditions)
-                            {
-                                one_of_matched_at_least_one_condition = true;
-
-                                if !rule.not_touch {
-                                    file_touched = true;
-                                }
-
-                                if check_file_expect(
-                                    file,
-                                    &rule.expect,
-                                    folder,
-                                    &conditions_result,
-                                    &context_conditions,
-                                    error_msg_vars,
-                                )
-                                .is_ok()
-                                {
-                                    one_of_matched = true;
-                                    break;
-                                }
-                            }
-                        }
-
-                        if one_of_matched_at_least_one_condition && !one_of_matched {
-                            errors.push(format!(
-                                "{}{}{}",
-                                file_error_prefix, one_of.error_msg, append_error
-                            ));
-                        }
-                    }
-                }
-
-                if !file_touched && !allow_unconfigured_files {
-                    errors.push(format!(
-                        "File {} is not expected in folder {}{}{}",
-                        file.name_with_ext.bright_yellow(),
-                        folder_path.bright_red(),
-                        folder_config
-                            .and_then(|cfg| cfg
-                                .unexpected_files_error_msg
-                                .as_ref()
-                                .or(cfg.unexpected_error_msg.as_ref()))
-                            .map(|msg| format!("\n   | {}", msg))
-                            .unwrap_or_default(),
-                        append_error
-                    ));
-                }
-            }
-            FolderChild::Folder(sub_folder) => {
-                let folder_error_prefix = format!(
-                    "Folder {}\n • ",
-                    format!("{}/{}:", folder_path, sub_folder.name).bright_red()
-                );
-
-                let parent_file_rules: Vec<InheritedFileRule> = folder_config
-                    .map_or(Vec::new(), |folder_config| {
-                        folder_config
-                            .file_rules
-                            .iter()
-                            .filter_map(|rule| match rule.non_recursive {
-                                true => None,
-                                false => {
-                                    Some(InheritedFileRule { rule: rule.clone() })
-                                }
-                            })
-                            .collect()
-                    });
-
-                let sub_folder_inherited_files_rules =
-                    [inherited_files_rules.clone(), parent_file_rules].concat();
-
-                let parent_folder_rules: Vec<InheritedFolderRule> = folder_config
-                    .map_or(Vec::new(), |folder_config| {
-                        folder_config
-                            .folder_rules
-                            .iter()
-                            .filter_map(|rule| match rule.non_recursive {
-                                true => None,
-                                false => {
-                                    Some(InheritedFolderRule { rule: rule.clone() })
-                                }
-                            })
-                            .collect()
-                    });
-
-                let sub_folder_inherited_folders_rules =
-                    [inherited_folders_rules.clone(), parent_folder_rules].concat();
-
-                let mut folder_touched = false;
-                let mut folder_has_error = false;
-                let mut children_was_checked = false;
-                let mut folder_rules_allow_unexpected_files = false;
-                let mut folder_rules_allow_unexpected_folders = false;
-
-                let mut check_folder_rule = |rule: &FolderRule| {
-                    let folder_matches =
-                        folder_matches_condition(sub_folder, &rule.conditions);
-
-                    if let Some(conditions_result) = folder_matches {
-                        folders_missing_check.remove(&sub_folder.name);
-
-                        if !rule.not_touch {
-                            folder_touched = true;
-                        }
-
-                        if rule.allow_unexpected_files {
-                            folder_rules_allow_unexpected_files = true;
-                        }
-
-                        if rule.allow_unexpected_folders {
-                            folder_rules_allow_unexpected_folders = true;
-                        }
-
-                        if let AnyNoneOr::Or(expect_rules) = &rule.expect {
-                            if expect_rules
-                                .iter()
-                                .any(|rule| rule.child_rules.is_some())
-                            {
-                                children_was_checked = true;
-                            }
-                        }
-
-                        if let Err(folder_expect_error) = check_folder_expected(
-                            allow_warnings,
-                            sub_folder,
-                            &rule.expect,
-                            &conditions_result,
-                            &folder_path,
-                            &sub_folder_inherited_files_rules,
-                            &sub_folder_inherited_folders_rules,
-                            &context_conditions,
-                            error_msg_vars,
-                            is_test_config,
-                        ) {
-                            match folder_expect_error {
-                                FolderExpectError::Errors(problems_found) => {
-                                    if !problems_found.is_empty() {
-                                        folder_has_error = true;
-
-                                        let problem_vec =
-                                            if rule.is_warning && allow_warnings {
-                                                &mut warnings
-                                            } else {
-                                                &mut errors
-                                            };
-
-                                        push_to_folder_problem_vec(
-                                            problems_found,
-                                            problem_vec,
-                                            &folder_error_prefix,
-                                            rule,
-                                            &append_error,
-                                        );
-                                    }
-                                }
-                                FolderExpectError::ChildProblems(child_problems) => {
-                                    push_to_folder_problem_vec(
-                                        child_problems.errors,
-                                        &mut errors,
-                                        &folder_error_prefix,
-                                        rule,
-                                        &append_error,
-                                    );
-
-                                    push_to_folder_problem_vec(
-                                        child_problems.warnings,
-                                        &mut warnings,
-                                        &folder_error_prefix,
-                                        rule,
-                                        &append_error,
-                                    );
-                                }
-                            }
-                        }
-                    }
-                };
-
-                if let Some(folder_config) = folder_config {
-                    for rule in &folder_config.folder_rules {
-                        check_folder_rule(rule);
-                    }
-                }
-
-                for inherited_rule in &inherited_folders_rules {
-                    check_folder_rule(&inherited_rule.rule);
-                }
-
-                if folder_has_error {
-                    continue;
-                }
-
-                let sub_folder_cfg: Option<&FolderConfig> = match folder_config {
-                    Some(folder_config) => folder_config
-                        .sub_folders_config
-                        .get(&to_folder_config_name(&sub_folder.name)),
-                    None => None,
-                };
-
-                let parent_path = if folder_path.is_empty() {
-                    sub_folder.name.clone()
-                } else {
-                    format!("{}/{}", folder_path, sub_folder.name)
-                };
-
-                let mut folder_is_not_expected = false;
-
-                if sub_folder_cfg.is_some() {
-                    folders_missing_check.remove(&sub_folder.name);
-                } else if !folder_touched && !allow_unconfigured_folders {
-                    folder_is_not_expected = true;
-                    errors.push(format!(
-                        "Folder {} is not expected in folder {}{}{}",
-                        format!("/{}", sub_folder.name).bright_red(),
-                        folder_path.bright_red(),
-                        folder_config
-                            .and_then(|cfg| cfg
-                                .unexpected_folders_error_msg
-                                .as_ref()
-                                .or(cfg.unexpected_error_msg.as_ref()))
-                            .map(|msg| format!("\n   | {}", msg))
-                            .unwrap_or_default(),
-                        append_error
-                    ));
-                }
-
-                let new_sub_folder_cfg = sub_folder_cfg.map(|sub_folder_cfg| {
-                    let mut cloned = sub_folder_cfg.clone();
-
-                    if cloned.append_error_msg.is_none() {
-                        if let Some(parent_cfg) = folder_config {
-                            cloned.append_error_msg =
-                                parent_cfg.append_error_msg.clone();
-                        }
-                    }
-
-                    if folder_rules_allow_unexpected_files {
-                        cloned.allow_unexpected_files = true;
-                    }
-
-                    if folder_rules_allow_unexpected_folders {
-                        cloned.allow_unexpected_folders = true;
-                    }
-
-                    cloned
-                });
-
-                let mut child_inherited_allow_unconfigured_files =
-                    if inherited_select_all_children {
-                        allow_unconfigured_files
-                    } else {
-                        false
-                    };
-
-                if folder_rules_allow_unexpected_files {
-                    child_inherited_allow_unconfigured_files = true;
-                }
-
-                let mut child_inherited_allow_unconfigured_folders =
-                    if inherited_select_all_children {
-                        allow_unconfigured_folders
-                    } else {
-                        false
-                    };
-
-                if folder_rules_allow_unexpected_folders {
-                    child_inherited_allow_unconfigured_folders = true;
-                }
-
-                if !folder_is_not_expected {
-                    if let Err(Problems {
-                        errors: extra_errors,
-                        warnings: extra_warnings,
-                    }) = check_folder_children(
-                        allow_warnings,
-                        sub_folder,
-                        new_sub_folder_cfg.as_ref(),
-                        parent_path,
-                        sub_folder_inherited_files_rules,
-                        sub_folder_inherited_folders_rules,
-                        Vec::new(),
-                        error_msg_vars,
-                        is_test_config,
-                        true,
-                        child_inherited_allow_unconfigured_files,
-                        child_inherited_allow_unconfigured_folders,
-                    ) {
-                        errors.extend(extra_errors);
-                        warnings.extend(extra_warnings);
-                    }
-                }
-            }
+    for (_, outcome) in child_outcomes {
+        if let Some(folder_name) = outcome.matched_folder_name {
+            folders_missing_check.remove(&folder_name);
         }
+
+        errors.extend(outcome.errors);
+        warnings.extend(outcome.warnings);
     }
 
     for folder_missing in folders_missing_check {
@@ -1012,12 +720,500 @@ fn check_folder_children(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
+fn check_file_child(
+    allow_warnings: bool,
+    file: &File,
+    folder: &Folder,
+    folder_config: Option<&FolderConfig>,
+    folder_path: &str,
+    inherited_files_rules: &[InheritedFileRule],
+    context_conditions: &[Capture],
+    error_msg_vars: &ErrorMsgVars,
+    is_test_config: bool,
+    allow_unconfigured_files: bool,
+    append_error: &str,
+) -> ChildCheckOutcome {
+    let mut errors = Vec::new();
+    let mut warnings = Vec::new();
+    let mut file_touched = false;
+
+    let file_error_prefix = format!(
+        "File {}\n • ",
+        format!("{}/{}:", folder_path, file.name_with_ext).bright_yellow()
+    );
+
+    let mut check_file_rule = |rule: &FileRule| {
+        if let Some(conditions_result) =
+            file_matches_condition(file, &rule.conditions)
+        {
+            if !rule.not_touch {
+                file_touched = true;
+            }
+
+            if is_test_config && rule.ignore_in_config_tests {
+                return;
+            }
+
+            if let Err(expect_errors) = check_file_expect(
+                file,
+                &rule.expect,
+                folder,
+                &conditions_result,
+                context_conditions,
+                error_msg_vars,
+            ) {
+                for error in expect_errors {
+                    let problem_vec = if allow_warnings && rule.is_warning {
+                        &mut warnings
+                    } else {
+                        &mut errors
+                    };
+
+                    problem_vec.push(format!(
+                        "{}{}{}",
+                        file_error_prefix,
+                        if let Some(custom_error) = &rule.error_msg {
+                            format!("{}\n   | {}", custom_error, error)
+                        } else {
+                            error
+                        },
+                        append_error
+                    ));
+                }
+            }
+        }
+    };
+
+    if let Some(folder_config) = folder_config {
+        for rule in &folder_config.file_rules {
+            check_file_rule(rule)
+        }
+    }
+
+    for inherited_rule in inherited_files_rules {
+        check_file_rule(&inherited_rule.rule)
+    }
+
+    if let Some(folder_config) = folder_config {
+        for one_of in &folder_config.one_of_blocks.file_blocks {
+            let mut one_of_matched_at_least_one_condition = false;
+            let mut one_of_matched = false;
+
+            for rule in &one_of.rules {
+                if let Some(conditions_result) =
+                    file_matches_condition(file, &rule.conditions)
+                {
+                    one_of_matched_at_least_one_condition = true;
+
+                    if !rule.not_touch {
+                        file_touched = true;
+                    }
+
+                    if check_file_expect(
+                        file,
+                        &rule.expect,
+                        folder,
+                        &conditions_result,
+                        context_conditions,
+                        error_msg_vars,
+                    )
+                    .is_ok()
+                    {
+                        one_of_matched = true;
+                        break;
+                    }
+                }
+            }
+
+            if one_of_matched_at_least_one_condition && !one_of_matched {
+                errors.push(format!(
+                    "{}{}{}",
+                    file_error_prefix, one_of.error_msg, append_error
+                ));
+            }
+        }
+    }
+
+    if !file_touched && !allow_unconfigured_files {
+        errors.push(format!(
+            "File {} is not expected in folder {}{}{}",
+            file.name_with_ext.bright_yellow(),
+            folder_path.bright_red(),
+            folder_config
+                .and_then(|cfg| {
+                    cfg.unexpected_files_error_msg
+                        .as_ref()
+                        .or(cfg.unexpected_error_msg.as_ref())
+                })
+                .map(|msg| format!("\n   | {}", msg))
+                .unwrap_or_default(),
+            append_error
+        ));
+    }
+
+    ChildCheckOutcome {
+        errors,
+        warnings,
+        matched_folder_name: None,
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn check_sub_folder_child(
+    allow_warnings: bool,
+    sub_folder: &Folder,
+    folder_config: Option<&FolderConfig>,
+    folder_path: &str,
+    inherited_files_rules: &[InheritedFileRule],
+    inherited_folders_rules: &[InheritedFolderRule],
+    context_conditions: &[Capture],
+    error_msg_vars: &ErrorMsgVars,
+    is_test_config: bool,
+    inherited_select_all_children: bool,
+    allow_unconfigured_files: bool,
+    allow_unconfigured_folders: bool,
+    append_error: &str,
+) -> ChildCheckOutcome {
+    let mut errors = Vec::new();
+    let mut warnings = Vec::new();
+    let mut matched_folder_name = None;
+
+    let folder_error_prefix = format!(
+        "Folder {}\n • ",
+        format!("{}/{}:", folder_path, sub_folder.name).bright_red()
+    );
+
+    let parent_file_rules: Vec<InheritedFileRule> =
+        folder_config.map_or(Vec::new(), |folder_config| {
+            folder_config
+                .file_rules
+                .iter()
+                .filter_map(|rule| match rule.non_recursive {
+                    true => None,
+                    false => Some(InheritedFileRule { rule: rule.clone() }),
+                })
+                .collect()
+        });
+
+    let sub_folder_inherited_files_rules =
+        [inherited_files_rules.to_vec(), parent_file_rules].concat();
+
+    let parent_folder_rules: Vec<InheritedFolderRule> =
+        folder_config.map_or(Vec::new(), |folder_config| {
+            folder_config
+                .folder_rules
+                .iter()
+                .filter_map(|rule| match rule.non_recursive {
+                    true => None,
+                    false => Some(InheritedFolderRule { rule: rule.clone() }),
+                })
+                .collect()
+        });
+
+    let sub_folder_inherited_folders_rules =
+        [inherited_folders_rules.to_vec(), parent_folder_rules].concat();
+
+    let mut folder_touched = false;
+    let mut folder_has_error = false;
+    let mut folder_rules_allow_unexpected_files = false;
+    let mut folder_rules_allow_unexpected_folders = false;
+
+    let mut check_folder_rule = |rule: &FolderRule| {
+        let folder_matches = folder_matches_condition(sub_folder, &rule.conditions);
+
+        if let Some(conditions_result) = folder_matches {
+            matched_folder_name = Some(sub_folder.name.clone());
+
+            if !rule.not_touch {
+                folder_touched = true;
+            }
+
+            if rule.allow_unexpected_files {
+                folder_rules_allow_unexpected_files = true;
+            }
+
+            if rule.allow_unexpected_folders {
+                folder_rules_allow_unexpected_folders = true;
+            }
+
+            if let Err(folder_expect_error) = check_folder_expected(
+                allow_warnings,
+                sub_folder,
+                &rule.expect,
+                &conditions_result,
+                folder_path,
+                &sub_folder_inherited_files_rules,
+                &sub_folder_inherited_folders_rules,
+                context_conditions,
+                error_msg_vars,
+                is_test_config,
+            ) {
+                match folder_expect_error {
+                    FolderExpectError::Errors(problems_found) => {
+                        if !problems_found.is_empty() {
+                            folder_has_error = true;
+
+                            let problem_vec = if rule.is_warning && allow_warnings {
+                                &mut warnings
+                            } else {
+                                &mut errors
+                            };
+
+                            push_to_folder_problem_vec(
+                                problems_found,
+                                problem_vec,
+                                &folder_error_prefix,
+                                rule,
+                                append_error,
+                            );
+                        }
+                    }
+                    FolderExpectError::ChildProblems(child_problems) => {
+                        push_to_folder_problem_vec(
+                            child_problems.errors,
+                            &mut errors,
+                            &folder_error_prefix,
+                            rule,
+                            append_error,
+                        );
+
+                        push_to_folder_problem_vec(
+                            child_problems.warnings,
+                            &mut warnings,
+                            &folder_error_prefix,
+                            rule,
+                            append_error,
+                        );
+                    }
+                }
+            }
+        }
+    };
+
+    if let Some(folder_config) = folder_config {
+        for rule in &folder_config.folder_rules {
+            check_folder_rule(rule);
+        }
+    }
+
+    for inherited_rule in inherited_folders_rules {
+        check_folder_rule(&inherited_rule.rule);
+    }
+
+    if folder_has_error {
+        return ChildCheckOutcome {
+            errors,
+            warnings,
+            matched_folder_name,
+        };
+    }
+
+    let sub_folder_cfg = folder_config.and_then(|folder_config| {
+        folder_config
+            .sub_folders_config
+            .get(&to_folder_config_name(&sub_folder.name))
+    });
+
+    let parent_path = if folder_path.is_empty() {
+        sub_folder.name.clone()
+    } else {
+        format!("{}/{}", folder_path, sub_folder.name)
+    };
+
+    let mut folder_is_not_expected = false;
+
+    if sub_folder_cfg.is_some() {
+        matched_folder_name = Some(sub_folder.name.clone());
+    } else if !folder_touched && !allow_unconfigured_folders {
+        folder_is_not_expected = true;
+        errors.push(format!(
+            "Folder {} is not expected in folder {}{}{}",
+            format!("/{}", sub_folder.name).bright_red(),
+            folder_path.bright_red(),
+            folder_config
+                .and_then(|cfg| {
+                    cfg.unexpected_folders_error_msg
+                        .as_ref()
+                        .or(cfg.unexpected_error_msg.as_ref())
+                })
+                .map(|msg| format!("\n   | {}", msg))
+                .unwrap_or_default(),
+            append_error
+        ));
+    }
+
+    let new_sub_folder_cfg = sub_folder_cfg.map(|sub_folder_cfg| {
+        let mut cloned = sub_folder_cfg.clone();
+
+        if cloned.append_error_msg.is_none() {
+            if let Some(parent_cfg) = folder_config {
+                cloned.append_error_msg = parent_cfg.append_error_msg.clone();
+            }
+        }
+
+        if folder_rules_allow_unexpected_files {
+            cloned.allow_unexpected_files = true;
+        }
+
+        if folder_rules_allow_unexpected_folders {
+            cloned.allow_unexpected_folders = true;
+        }
+
+        cloned
+    });
+
+    let mut child_inherited_allow_unconfigured_files =
+        if inherited_select_all_children {
+            allow_unconfigured_files
+        } else {
+            false
+        };
+
+    if folder_rules_allow_unexpected_files {
+        child_inherited_allow_unconfigured_files = true;
+    }
+
+    let mut child_inherited_allow_unconfigured_folders =
+        if inherited_select_all_children {
+            allow_unconfigured_folders
+        } else {
+            false
+        };
+
+    if folder_rules_allow_unexpected_folders {
+        child_inherited_allow_unconfigured_folders = true;
+    }
+
+    if !folder_is_not_expected {
+        if let Err(Problems {
+            errors: extra_errors,
+            warnings: extra_warnings,
+        }) = check_folder_children(
+            allow_warnings,
+            sub_folder,
+            new_sub_folder_cfg.as_ref(),
+            parent_path,
+            sub_folder_inherited_files_rules,
+            sub_folder_inherited_folders_rules,
+            Vec::new(),
+            error_msg_vars,
+            is_test_config,
+            true,
+            child_inherited_allow_unconfigured_files,
+            child_inherited_allow_unconfigured_folders,
+        ) {
+            errors.extend(extra_errors);
+            warnings.extend(extra_warnings);
+        }
+    }
+
+    ChildCheckOutcome {
+        errors,
+        warnings,
+        matched_folder_name,
+    }
+}
+
+fn get_folder_files_with_ts_checks(
+    folder: &Folder,
+    folder_config: Option<&FolderConfig>,
+    inherited_files_rules: &[InheritedFileRule],
+    is_test_config: bool,
+) -> Vec<String> {
+    let mut file_paths = Vec::new();
+
+    for child in &folder.children {
+        let FolderChild::FileChild(file) = child else {
+            continue;
+        };
+
+        let mut should_warm = false;
+
+        if let Some(folder_config) = folder_config {
+            for rule in &folder_config.file_rules {
+                if is_file_ts_rule_match(file, rule, is_test_config) {
+                    should_warm = true;
+                    break;
+                }
+            }
+
+            if !should_warm {
+                for one_of in &folder_config.one_of_blocks.file_blocks {
+                    if one_of
+                        .rules
+                        .iter()
+                        .any(|rule| is_file_ts_rule_match(file, rule, false))
+                    {
+                        should_warm = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if !should_warm {
+            for inherited_rule in inherited_files_rules {
+                if is_file_ts_rule_match(file, &inherited_rule.rule, is_test_config)
+                {
+                    should_warm = true;
+                    break;
+                }
+            }
+        }
+
+        if should_warm {
+            file_paths.push(file.relative_path.clone());
+        }
+    }
+
+    file_paths
+}
+
+fn is_file_ts_rule_match(
+    file: &File,
+    rule: &FileRule,
+    is_test_config: bool,
+) -> bool {
+    if !rule_uses_ts_expect(rule) {
+        return false;
+    }
+
+    if is_test_config && rule.ignore_in_config_tests {
+        return false;
+    }
+
+    file_matches_condition(file, &rule.conditions).is_some()
+}
+
+fn rule_uses_ts_expect(rule: &FileRule) -> bool {
+    match &rule.expect {
+        AnyNoneOr::Or(expects) => expects.iter().any(expect_uses_ts_checks),
+        AnyNoneOr::Any | AnyNoneOr::None => false,
+    }
+}
+
+fn expect_uses_ts_checks(expect: &FileExpect) -> bool {
+    let Some(ts_expect) = &expect.ts else {
+        return false;
+    };
+
+    ts_expect.not_have_unused_exports
+        || ts_expect.not_have_circular_deps
+        || ts_expect.not_have_direct_circular_deps
+        || ts_expect.not_have_deps_from.is_some()
+        || ts_expect.not_have_deps_outside.is_some()
+        || ts_expect.not_have_exports_used_outside.is_some()
+        || ts_expect.have_imports.is_some()
+        || ts_expect.not_have_imports.is_some()
+}
+
 fn push_to_folder_problem_vec(
     problems_found: Vec<String>,
     problem_vec: &mut Vec<String>,
-    folder_error_prefix: &String,
+    folder_error_prefix: &str,
     rule: &FolderRule,
-    append_error: &String,
+    append_error: &str,
 ) {
     for error in problems_found {
         problem_vec.push(format!(
