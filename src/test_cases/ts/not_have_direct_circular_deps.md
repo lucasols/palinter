@@ -110,3 +110,53 @@ expected_errors:
     File ./src/fileB.ts:
      • Unused ignore comment '// palinter-ignore-not-have-direct-circular-deps', remove it
 ```
+
+```yaml
+# ignore comment NOT above the offending import should still fail
+
+structure:
+  /src:
+    index.ts: |
+      import '@src/a';
+    a.ts: |
+      import '@src/b';
+      // palinter-ignore-not-have-direct-circular-deps
+      import '@utils/c';
+    b.ts: |
+      import '@src/a';
+      import '@utils/c';
+  /utils:
+    c.ts: |
+      import '@utils/d';
+    d.ts: |
+      import '@utils/c';
+
+expected_errors:
+  - "File ./src/a.ts:\n • File has direct circular dependencies with '@src/b' (run cmd `palinter circular-deps [file] -D` to get more info)"
+  - "File ./src/b.ts:\n • File has direct circular dependencies with '@src/a' (run cmd `palinter circular-deps [file] -D` to get more info)"
+```
+
+```yaml
+# ignore comment at end of file (not above any import) should report both errors
+
+structure:
+  /src:
+    index.ts: |
+      import '@src/a';
+    a.ts: |
+      import '@src/b';
+      const x = 1;
+      // palinter-ignore-not-have-direct-circular-deps
+    b.ts: |
+      import '@src/a';
+      import '@utils/c';
+  /utils:
+    c.ts: |
+      import '@utils/d';
+    d.ts: |
+      import '@utils/c';
+
+expected_errors:
+  - "File ./src/a.ts:\n • File has direct circular dependencies with '@src/b' (run cmd `palinter circular-deps [file] -D` to get more info)"
+  - "File ./src/b.ts:\n • File has direct circular dependencies with '@src/a' (run cmd `palinter circular-deps [file] -D` to get more info)"
+```

@@ -153,11 +153,53 @@ pub fn check_ts_not_have_unused_exports(file: &File) -> Result<(), String> {
 }
 
 fn file_has_ignore_comment(file: &File, ignore_comment: &str) -> bool {
-    let ignore_comment = format!("palinter-ignore-{}", ignore_comment);
+    count_ignore_comments_in_file(file, ignore_comment) > 0
+}
+
+fn count_ignore_comments_in_file(
+    file: &File,
+    ignore_suffix: &str,
+) -> usize {
+    let ignore_comment = format!("palinter-ignore-{}", ignore_suffix);
 
     if let Some(content) = &file.content {
-        content.contains(&format!("// {}", ignore_comment))
-            || content.contains(&format!("/* {}", ignore_comment))
+        content
+            .matches(&format!("// {}", ignore_comment))
+            .count()
+            + content
+                .matches(&format!("/* {}", ignore_comment))
+                .count()
+    } else {
+        0
+    }
+}
+
+fn import_has_ignore_comment_above(
+    file: &File,
+    import_line: usize,
+    ignore_suffix: &str,
+) -> bool {
+    if import_line <= 1 {
+        return false;
+    }
+
+    let ignore_comment =
+        format!("palinter-ignore-{}", ignore_suffix);
+
+    if let Some(content) = &file.content {
+        let lines: Vec<&str> = content.lines().collect();
+        // import_line is 1-indexed, convert to 0-indexed
+        // and go one line above
+        let above_line_idx = import_line - 2;
+
+        if above_line_idx < lines.len() {
+            let above_line = lines[above_line_idx].trim();
+            above_line.contains(&format!("// {}", ignore_comment))
+                || above_line
+                    .contains(&format!("/* {}", ignore_comment))
+        } else {
+            false
+        }
     } else {
         false
     }
@@ -197,25 +239,24 @@ pub fn check_ts_not_have_circular_deps(file: &File) -> Result<(), String> {
     }
 }
 
-pub fn check_ts_not_have_direct_circular_deps(file: &File) -> Result<(), String> {
-    let deps_info =
-        get_file_deps_result(&PathBuf::from(file.clone().relative_path))?;
+pub fn check_ts_not_have_direct_circular_deps(
+    file: &File,
+) -> Result<(), String> {
+    let ignore_suffix = "not-have-direct-circular-deps";
+    let deps_info = get_file_deps_result(
+        &PathBuf::from(file.clone().relative_path),
+    )?;
 
     if deps_info.deps.contains(&file.relative_path) {
-        if file_has_ignore_comment(file, "not-have-direct-circular-deps") {
-            return Ok(());
-        }
-
-        // Get immediate imports to find which specific file causes the circular dependency
         let file_imports = get_file_imports(
-            PathBuf::from(file.clone().relative_path).to_str().unwrap(),
+            PathBuf::from(file.clone().relative_path)
+                .to_str()
+                .unwrap(),
         )?;
 
-        // Find the first non-type import that creates a circular dependency
-        // Use the map keys (resolved paths) for deps lookup, and the import values for display
+        let mut ignored_count: usize = 0;
+
         for (resolved_import_path, imports) in &file_imports {
-            // Skip paths where all imports are type-only — they
-            // don't create runtime circular dependencies
             let has_non_type = imports
                 .iter()
                 .any(|i| !matches!(i.values, ImportType::Type(_)));
@@ -223,15 +264,41 @@ pub fn check_ts_not_have_direct_circular_deps(file: &File) -> Result<(), String>
                 continue;
             }
 
-            let import_deps_result =
-                get_file_deps_result(&PathBuf::from(resolved_import_path))?;
-            if import_deps_result.deps.contains(&file.relative_path) {
+            let import_deps_result = get_file_deps_result(
+                &PathBuf::from(resolved_import_path),
+            )?;
+            if import_deps_result
+                .deps
+                .contains(&file.relative_path)
+            {
+                // Check if any non-type import from this path
+                // has the ignore comment on the line above
+                let is_ignored = imports
+                    .iter()
+                    .filter(|i| {
+                        !matches!(i.values, ImportType::Type(_))
+                    })
+                    .any(|i| {
+                        import_has_ignore_comment_above(
+                            file,
+                            i.line,
+                            ignore_suffix,
+                        )
+                    });
+
+                if is_ignored {
+                    ignored_count += 1;
+                    continue;
+                }
+
                 let display_path = imports
                     .iter()
                     .find(|i| {
                         !matches!(i.values, ImportType::Type(_))
                     })
-                    .map(|i| i.import_path.to_str().unwrap_or("?"))
+                    .map(|i| {
+                        i.import_path.to_str().unwrap_or("?")
+                    })
                     .unwrap_or("?");
                 return Err(format!(
                     "File has direct circular dependencies with '{}' (run cmd `palinter circular-deps [file] -D` to get more info)",
@@ -240,15 +307,35 @@ pub fn check_ts_not_have_direct_circular_deps(file: &File) -> Result<(), String>
             }
         }
 
-        // Fallback to generic message if we can't identify the specific file
-        Err("File has direct circular dependencies (run cmd `palinter circular-deps [file] -D` to get more info)".to_string())
-    } else if file_has_ignore_comment(file, "not-have-direct-circular-deps") {
-        Err(
-            "Unused ignore comment '// palinter-ignore-not-have-direct-circular-deps', remove it"
-                .to_string(),
-        )
-    } else {
+        if ignored_count == 0 {
+            return Err(
+                "File has direct circular dependencies (run cmd `palinter circular-deps [file] -D` to get more info)".to_string()
+            );
+        }
+
+        // All offending imports were ignored — check for
+        // excess ignore comments
+        let total_comments =
+            count_ignore_comments_in_file(file, ignore_suffix);
+        if total_comments > ignored_count {
+            return Err(
+                "Unused ignore comment '// palinter-ignore-not-have-direct-circular-deps', remove it"
+                    .to_string(),
+            );
+        }
+
         Ok(())
+    } else {
+        let total_comments =
+            count_ignore_comments_in_file(file, ignore_suffix);
+        if total_comments > 0 {
+            Err(
+                "Unused ignore comment '// palinter-ignore-not-have-direct-circular-deps', remove it"
+                    .to_string(),
+            )
+        } else {
+            Ok(())
+        }
     }
 }
 
