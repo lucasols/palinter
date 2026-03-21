@@ -243,6 +243,17 @@ pub fn get_flattened_files_structure(folder: &Folder) -> HashMap<String, File> {
     result
 }
 
+pub fn count_files(folder: &Folder) -> usize {
+    folder
+        .children
+        .iter()
+        .map(|child| match child {
+            FolderChild::FileChild(_) => 1,
+            FolderChild::Folder(folder) => count_files(folder),
+        })
+        .sum()
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::{HashMap, HashSet};
