@@ -1,5 +1,3 @@
-use std::str::Lines;
-
 use lazy_static::lazy_static;
 use regex::Regex;
 
@@ -19,9 +17,9 @@ pub fn split_string_by(string: &str, split_by: &str) -> Option<(String, String)>
     }
 }
 
-pub fn get_code_from_line(lines_iter: &Lines, line: usize) -> String {
-    lines_iter
-        .clone()
+pub fn get_code_from_line(lines: &[&str], line: usize) -> String {
+    lines
+        .iter()
         .skip(line - 1)
         .enumerate()
         .take_while(|(i, l)| {
@@ -32,8 +30,8 @@ pub fn get_code_from_line(lines_iter: &Lines, line: usize) -> String {
                     && !l.starts_with("export")
                     && !l.starts_with("import")
         })
-        .map(|(_, l)| l)
-        .collect::<Vec<&str>>()
+        .map(|(_, l)| *l)
+        .collect::<Vec<_>>()
         .join("\n")
         .trim()
         .to_string()
@@ -88,9 +86,9 @@ mod tests {
     #[test]
     fn test_get_string_from_line() {
         let text = "Line 1\nLine 2\nLine 3\nLine 4";
-        let lines_iter = text.lines();
+        let lines = text.lines().collect::<Vec<_>>();
 
-        assert_eq!(get_code_from_line(&lines_iter, 3), "Line 3\nLine 4");
+        assert_eq!(get_code_from_line(&lines, 3), "Line 3\nLine 4");
     }
 
     #[test]

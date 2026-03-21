@@ -1,4 +1,4 @@
-use globset::Glob;
+use globset::{Glob, GlobSet};
 use std::{
     collections::HashMap,
     fs::read_to_string,
@@ -54,8 +54,21 @@ pub fn load_folder_structure(
     root: &PathBuf,
     is_root: bool,
 ) -> Result<Folder, String> {
-    let mut children: Vec<FolderChild> = vec![];
+    let ignore_paths_set = build_ignore_paths_set(config, is_root)?;
 
+    load_folder_structure_with_ignores(
+        path,
+        config,
+        root,
+        is_root,
+        &ignore_paths_set,
+    )
+}
+
+fn build_ignore_paths_set(
+    config: &Config,
+    is_root: bool,
+) -> Result<GlobSet, String> {
     let mut builder = globset::GlobSetBuilder::new();
 
     for pattern in &config.ignore {
@@ -73,9 +86,19 @@ pub fn load_folder_structure(
         })?);
     }
 
-    let ignore_paths_set = builder
+    builder
         .build()
-        .map_err(|err| format!("Error building ignore patterns: {}", err))?;
+        .map_err(|err| format!("Error building ignore patterns: {}", err))
+}
+
+fn load_folder_structure_with_ignores(
+    path: &Path,
+    config: &Config,
+    root: &PathBuf,
+    is_root: bool,
+    ignore_paths_set: &GlobSet,
+) -> Result<Folder, String> {
+    let mut children: Vec<FolderChild> = vec![];
 
     for entry in path.read_dir().map_err(|err| {
         format!(
@@ -102,7 +125,7 @@ pub fn load_folder_structure(
             )
         })?;
 
-        if !config.ignore.is_empty() && ignore_paths_set.is_match(relative_path) {
+        if ignore_paths_set.is_match(relative_path) {
             continue;
         }
 
@@ -117,8 +140,12 @@ pub fn load_folder_structure(
                 continue;
             }
 
-            children.push(FolderChild::Folder(load_folder_structure(
-                &path, config, root, false,
+            children.push(FolderChild::Folder(load_folder_structure_with_ignores(
+                &path,
+                config,
+                root,
+                false,
+                ignore_paths_set,
             )?));
         } else {
             let extension =
@@ -239,6 +266,50 @@ mod tests {
         let folder = load_folder_structure(&root, &config, &root, true);
 
         assert_debug_snapshot!(folder);
+    }
+
+    #[test]
+    fn ignore_builtin_folders_without_custom_ignore() {
+        let config = Config {
+            allow_warnings: false,
+            analyze_content_of_files_types: vec![],
+            ignore: HashSet::new(),
+            root_folder: FolderConfig {
+                allow_unexpected_files: true,
+                allow_unexpected_folders: true,
+                file_rules: vec![],
+                folder_rules: vec![FolderRule {
+                    conditions: crate::internal_config::AnyOr::Any,
+                    expect: crate::internal_config::AnyNoneOr::Any,
+                    error_msg: None,
+                    non_recursive: false,
+                    not_touch: false,
+                    allow_unexpected_files: false,
+                    allow_unexpected_folders: false,
+                    is_warning: false,
+                }],
+                unexpected_files_error_msg: None,
+                unexpected_folders_error_msg: None,
+                unexpected_error_msg: None,
+                append_error_msg: None,
+                one_of_blocks: OneOfBlocks::default(),
+                optional: false,
+                sub_folders_config: HashMap::new(),
+            },
+            ts_config: None,
+            error_msg_vars: None,
+        };
+
+        let root = PathBuf::from("./src/fixtures/ignore_folder");
+        let folder = load_folder_structure(&root, &config, &root, true).unwrap();
+
+        assert!(folder.children.iter().all(|child| {
+            !matches!(
+                child,
+                FolderChild::Folder(folder) if folder.name == "node_modules"
+                    || folder.name == ".git"
+            )
+        }));
     }
 
     #[test]

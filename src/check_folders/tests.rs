@@ -123,9 +123,7 @@ fn convert_from_parsed_folder_to_project(
     }
 }
 
-fn parse_project_yaml(
-    project_yaml: String,
-) -> Result<Project, serde_norway::Error> {
+fn parse_project_yaml(project_yaml: String) -> Result<Project, serde_norway::Error> {
     let parsed_project_yaml: ParsedProjectYaml =
         serde_norway::from_str(&project_yaml)?;
 

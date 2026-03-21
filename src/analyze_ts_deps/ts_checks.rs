@@ -1,6 +1,11 @@
 use colored::Colorize;
 use globset::Glob;
-use std::path::PathBuf;
+use lazy_static::lazy_static;
+use std::{
+    collections::HashMap,
+    path::PathBuf,
+    sync::{Arc, Mutex},
+};
 
 use crate::{
     analyze_ts_deps::replace_aliases, internal_config::MatchImport,
@@ -11,31 +16,57 @@ use super::{
     add_aliases,
     extract_file_content_exports::Export,
     extract_file_content_imports::{Import, ImportType},
-    get_file_deps_result, get_file_imports, USED_FILES,
+    get_file_deps_result, get_file_imports, REVERSE_IMPORTS, USED_FILES,
 };
+
+lazy_static! {
+    static ref GLOB_SET_CACHE: Mutex<HashMap<String, Arc<globset::GlobSet>>> =
+        Mutex::new(HashMap::new());
+    static ref GLOB_MATCHER_CACHE: Mutex<HashMap<String, Arc<globset::GlobMatcher>>> =
+        Mutex::new(HashMap::new());
+}
 
 fn build_glob_set(
     patterns: &[String],
     context: &str,
-) -> Result<globset::GlobSet, String> {
+) -> Result<Arc<globset::GlobSet>, String> {
+    let expanded_patterns = patterns.iter().map(replace_aliases).collect::<Vec<_>>();
+    let cache_key = expanded_patterns.join("\0");
+
+    if let Some(cached) = GLOB_SET_CACHE.lock().unwrap().get(&cache_key).cloned() {
+        return Ok(cached);
+    }
+
     let mut builder = globset::GlobSetBuilder::new();
 
-    for pattern in patterns {
-        let expanded = replace_aliases(pattern);
+    for (pattern, expanded) in patterns.iter().zip(expanded_patterns.iter()) {
         builder.add(Glob::new(expanded.as_str()).map_err(|err| {
             format!("Invalid {} glob '{}': {}", context, pattern, err)
         })?);
     }
 
-    builder
-        .build()
-        .map_err(|err| format!("Error building {} globs: {}", context, err))
+    let glob_set = Arc::new(
+        builder
+            .build()
+            .map_err(|err| format!("Error building {} globs: {}", context, err))?,
+    );
+
+    GLOB_SET_CACHE
+        .lock()
+        .unwrap()
+        .insert(cache_key, glob_set.clone());
+
+    Ok(glob_set)
 }
 
 pub fn check_ts_not_have_unused_exports(file: &File) -> Result<(), String> {
-    let used_files = USED_FILES.lock().unwrap();
-
-    let deps_info = used_files.get(&file.relative_path);
+    let deps_info = USED_FILES.lock().unwrap().get(&file.relative_path).cloned();
+    let related_importers = REVERSE_IMPORTS
+        .lock()
+        .unwrap()
+        .get(&file.relative_path)
+        .cloned()
+        .unwrap_or_default();
 
     if let Some(deps_info) = deps_info {
         let mut unused_exports = deps_info
@@ -54,51 +85,37 @@ pub fn check_ts_not_have_unused_exports(file: &File) -> Result<(), String> {
 
         let all_ignored_exports_count = ignored_exports.len();
 
-        for (other_used_file, other_deps_info) in used_files.iter() {
+        for importer in related_importers {
             if unused_exports.is_empty() {
                 break;
             }
 
-            if other_used_file == &file.relative_path {
+            if importer.importer_path == file.relative_path {
                 continue;
             }
 
-            if let Some(related_imports) =
-                other_deps_info.imports.get(&file.relative_path)
-            {
-                for related_import in related_imports {
-                    match &related_import.values {
-                        ImportType::All | ImportType::Dynamic => {
-                            unused_exports = vec![];
-                            used_ignored_exports.extend(ignored_exports.clone());
-                        }
-                        ImportType::Named(values) => {
-                            unused_exports
-                                .retain(|export| !values.contains(&export.name));
-
-                            let related_ignored_exports = ignored_exports
-                                .iter()
-                                .filter(|export| values.contains(&export.name))
-                                .cloned()
-                                .collect::<Vec<_>>();
-
-                            used_ignored_exports.extend(related_ignored_exports);
-                        }
-                        ImportType::SideEffect => {}
-                        ImportType::Type(values) => {
-                            unused_exports
-                                .retain(|export| !values.contains(&export.name));
-
-                            let related_ignored_exports = ignored_exports
-                                .iter()
-                                .filter(|export| values.contains(&export.name))
-                                .cloned()
-                                .collect::<Vec<_>>();
-
-                            used_ignored_exports.extend(related_ignored_exports);
-                        }
-                        ImportType::Glob => {}
+            for related_import in &importer.imports {
+                match &related_import.values {
+                    ImportType::All | ImportType::Dynamic => {
+                        unused_exports = vec![];
+                        used_ignored_exports.extend(ignored_exports.clone());
                     }
+                    ImportType::Named(values) | ImportType::Type(values) => {
+                        unused_exports.retain(|export| {
+                            !values.iter().any(|value| value == &export.name)
+                        });
+
+                        let related_ignored_exports = ignored_exports
+                            .iter()
+                            .filter(|export| {
+                                values.iter().any(|value| value == &export.name)
+                            })
+                            .cloned()
+                            .collect::<Vec<_>>();
+
+                        used_ignored_exports.extend(related_ignored_exports);
+                    }
+                    ImportType::SideEffect | ImportType::Glob => {}
                 }
             }
         }
@@ -345,7 +362,7 @@ pub fn check_ts_not_have_deps_from(
     for dep in &deps_info.deps {
         dep_path.push(add_aliases(dep));
 
-        if disable_imports_set.is_match(dep) {
+        if disable_imports_set.is_match(dep.as_str()) {
             return Err(format!(
                 "disallowed dependencies from '{}' found: {}",
                 disallow.join(", "),
@@ -371,7 +388,7 @@ pub fn check_ts_not_have_deps_outside(
     for dep in &deps_info.deps {
         dep_path.push(add_aliases(dep));
 
-        if !allowed_imports_set.is_match(dep) {
+        if !allowed_imports_set.is_match(dep.as_str()) {
             return Err(format!(
                 "disallowed dependencies outside '{}' found: {}",
                 allowed.join(", "),
@@ -387,22 +404,25 @@ pub fn check_ts_not_have_used_exports_outside(
     file: &File,
     allowed: &[String],
 ) -> Result<(), String> {
-    let used_files = USED_FILES.lock().unwrap();
+    let importers = REVERSE_IMPORTS
+        .lock()
+        .unwrap()
+        .get(&file.relative_path)
+        .cloned()
+        .unwrap_or_default();
 
     let allowed_to_use_exports_set =
         build_glob_set(allowed, "not_have_exports_used_outside")?;
 
     let mut errors = vec![];
 
-    for (other_used_file, other_deps_info) in used_files.iter() {
-        if other_used_file == &file.relative_path {
+    for importer in importers {
+        if importer.importer_path == file.relative_path {
             continue;
         }
 
-        if other_deps_info.imports.contains_key(&file.relative_path)
-            && !allowed_to_use_exports_set.is_match(other_used_file)
-        {
-            errors.push(add_aliases(other_used_file));
+        if !allowed_to_use_exports_set.is_match(importer.importer_path.as_str()) {
+            errors.push(add_aliases(&importer.importer_path));
         }
     }
 
@@ -421,7 +441,7 @@ pub fn check_ts_not_have_used_exports_outside(
 
 pub fn check_ts_have_imports(
     file: &File,
-    have_imports: &Vec<MatchImport>,
+    have_imports: &[MatchImport],
 ) -> Result<(), String> {
     let file_imports = get_file_imports(&file.relative_path)?;
 
@@ -456,7 +476,7 @@ pub fn check_ts_have_imports(
                         && matches!(
                             values,
                             ImportType::Named(values)
-                            if values.contains(&"default".to_string())
+                            if values.iter().any(|value| value == "default")
                         )
                     {
                         found = true;
@@ -508,16 +528,31 @@ pub fn check_ts_have_imports(
     }
 }
 
-fn match_glob_path(path: &String, import_path: &PathBuf) -> Result<bool, String> {
-    Ok(globset::Glob::new(replace_aliases(path).as_str())
-        .map_err(|err| format!("Invalid import glob '{}': {}", path, err))?
-        .compile_matcher()
-        .is_match(import_path))
+fn match_glob_path(path: &str, import_path: &PathBuf) -> Result<bool, String> {
+    let expanded = replace_aliases(&path.to_string());
+
+    if let Some(cached) = GLOB_MATCHER_CACHE.lock().unwrap().get(&expanded).cloned()
+    {
+        return Ok(cached.is_match(import_path));
+    }
+
+    let matcher = Arc::new(
+        globset::Glob::new(expanded.as_str())
+            .map_err(|err| format!("Invalid import glob '{}': {}", path, err))?
+            .compile_matcher(),
+    );
+
+    GLOB_MATCHER_CACHE
+        .lock()
+        .unwrap()
+        .insert(expanded, matcher.clone());
+
+    Ok(matcher.is_match(import_path))
 }
 
 pub fn check_ts_not_have_imports(
     file: &File,
-    not_have_imports: &Vec<MatchImport>,
+    not_have_imports: &[MatchImport],
 ) -> Result<(), String> {
     let file_imports = get_file_imports(&file.relative_path)?;
 
@@ -553,7 +588,7 @@ pub fn check_ts_not_have_imports(
                         && matches!(
                             values,
                             ImportType::Named(values)
-                            if values.contains(&"default".to_string())
+                            if values.iter().any(|value| value == "default")
                         )
                     {
                         found = true;

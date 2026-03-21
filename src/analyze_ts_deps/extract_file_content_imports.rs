@@ -2,7 +2,9 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use std::path::PathBuf;
 
-use crate::utils::{get_code_from_line, remove_comments_from_code};
+use crate::utils::get_code_from_line;
+#[cfg(test)]
+use crate::utils::remove_comments_from_code;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum ImportType {
@@ -23,16 +25,22 @@ pub struct Import {
 
 const DEFAULT: &str = "default";
 
+#[cfg(test)]
 pub fn extract_imports_from_file_content(
     file_content: &str,
 ) -> Result<Vec<Import>, String> {
     let file_content = remove_comments_from_code(file_content);
 
+    extract_imports_from_clean_file_content(&file_content)
+}
+
+pub fn extract_imports_from_clean_file_content(
+    file_content: &str,
+) -> Result<Vec<Import>, String> {
     let mut imports = Vec::new();
 
     let mut current_line = 0;
-    let lines_iter = file_content.lines();
-    let lines = lines_iter.clone().collect::<Vec<&str>>();
+    let lines = file_content.lines().collect::<Vec<&str>>();
 
     while current_line < lines.len() {
         current_line += 1;
@@ -86,7 +94,7 @@ pub fn extract_imports_from_file_content(
             let content_to_check = if line.contains("from") {
                 line.to_string()
             } else {
-                get_code_from_line(&lines_iter, current_line)
+                get_code_from_line(&lines, current_line)
             };
 
             if let Some(captures) = IMPORTS_RE.captures(&content_to_check) {
@@ -208,7 +216,7 @@ pub fn extract_imports_from_file_content(
             }
 
             let content_to_check = if IS_MULTILINE_DYNAMIC_IMPORT.is_match(line) {
-                get_code_from_line(&lines_iter, current_line)
+                get_code_from_line(&lines, current_line)
             } else {
                 line.to_string()
             };

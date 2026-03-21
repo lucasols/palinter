@@ -1,23 +1,25 @@
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     fs::read_to_string,
     path::{Path, PathBuf},
     sync::Mutex,
 };
 
-use indexmap::IndexMap;
+use indexmap::{IndexMap, IndexSet};
 use lazy_static::lazy_static;
 
 use crate::{
     internal_config::Config,
     load_folder_structure::{get_flattened_files_structure, File, Folder},
-    utils::clone_extend_vec,
+    utils::{clone_extend_vec, remove_comments_from_code},
 };
 
 use self::{
-    extract_file_content_exports::{extract_file_content_exports, Export},
+    extract_file_content_exports::{
+        extract_file_content_exports_from_clean_content, Export,
+    },
     extract_file_content_imports::{
-        extract_imports_from_file_content, Import, ImportType,
+        extract_imports_from_clean_file_content, Import, ImportType,
     },
     modules_graph::{get_node_deps, DepsResult, DEPS_CACHE},
 };
@@ -39,12 +41,22 @@ struct FileEdgesCache {
     edges: Vec<String>,
 }
 
+#[derive(Debug, Clone)]
+struct ImportUsage {
+    importer_path: String,
+    imports: Vec<Import>,
+}
+
 lazy_static! {
     static ref FILES_CACHE: Mutex<HashMap<String, File>> =
         Mutex::new(HashMap::new());
     static ref RESOLVE_CACHE: Mutex<HashMap<PathBuf, PathBuf>> =
         Mutex::new(HashMap::new());
     static ref IMPORTS_CACHE: Mutex<HashMap<String, IndexMap<String, Vec<Import>>>> =
+        Mutex::new(HashMap::new());
+    static ref EXPORTS_CACHE: Mutex<HashMap<String, Vec<Export>>> =
+        Mutex::new(HashMap::new());
+    static ref CLEAN_FILE_CONTENT_CACHE: Mutex<HashMap<String, String>> =
         Mutex::new(HashMap::new());
     pub static ref ALIASES: Mutex<HashMap<String, String>> =
         Mutex::new(HashMap::new());
@@ -53,6 +65,8 @@ lazy_static! {
     static ref FILE_EDGES_CACHE: Mutex<HashMap<String, FileEdgesCache>> =
         Mutex::new(HashMap::new());
     pub static ref USED_FILES: Mutex<HashMap<String, FileDepsInfo>> =
+        Mutex::new(HashMap::new());
+    static ref REVERSE_IMPORTS: Mutex<HashMap<String, Vec<ImportUsage>>> =
         Mutex::new(HashMap::new());
     static ref FILE_DEPS_RESULT_CACHE: Mutex<HashMap<String, DepsResult>> =
         Mutex::new(HashMap::new());
@@ -63,11 +77,14 @@ pub fn _setup_test() {
     FILES_CACHE.lock().unwrap().clear();
     RESOLVE_CACHE.lock().unwrap().clear();
     IMPORTS_CACHE.lock().unwrap().clear();
+    EXPORTS_CACHE.lock().unwrap().clear();
+    CLEAN_FILE_CONTENT_CACHE.lock().unwrap().clear();
     ALIASES.lock().unwrap().clear();
     *ROOT_DIR.lock().unwrap() = String::from(".");
     *DEBUG_READ_EDGES_COUNT.lock().unwrap() = 0;
     FILE_EDGES_CACHE.lock().unwrap().clear();
     USED_FILES.lock().unwrap().clear();
+    REVERSE_IMPORTS.lock().unwrap().clear();
     FILE_DEPS_RESULT_CACHE.lock().unwrap().clear();
 }
 
@@ -98,47 +115,48 @@ fn file_name_to_string(path: &Path) -> Result<String, String> {
 }
 
 fn load_file_from_cache(file_path: &PathBuf) -> Result<File, String> {
-    let mut from_cache_binding = FILES_CACHE.lock().unwrap();
     let file_path_string = path_to_string(file_path);
 
-    let from_cache = from_cache_binding.get(&file_path_string);
+    if let Some(file) = FILES_CACHE.lock().unwrap().get(&file_path_string).cloned() {
+        return Ok(file);
+    }
 
-    let related_file = match from_cache {
-        Some(file) => file.clone(),
-        None => {
-            let new_file = load_file_from_path(file_path)?;
+    let new_file = load_file_from_path(file_path)?;
 
-            from_cache_binding.insert(file_path_string, new_file.clone());
+    FILES_CACHE
+        .lock()
+        .unwrap()
+        .insert(file_path_string, new_file.clone());
 
-            new_file
-        }
-    };
-
-    Ok(related_file)
+    Ok(new_file)
 }
 
 fn get_file_deps_result(file_path: &Path) -> Result<DepsResult, String> {
-    let mut binding = FILE_DEPS_RESULT_CACHE.lock().unwrap();
     let file_path_string = path_to_string(file_path);
 
-    let from_cache = binding.get(&file_path_string);
-
-    match from_cache {
-        Some(file) => Ok(file.clone()),
-        None => {
-            let deps = get_node_deps(
-                &file_path_string,
-                &mut |path| get_file_edges(path, true),
-                None,
-                false,
-                false,
-            )?;
-
-            binding.insert(file_path_string, deps.clone());
-
-            Ok(deps)
-        }
+    if let Some(file) = FILE_DEPS_RESULT_CACHE
+        .lock()
+        .unwrap()
+        .get(&file_path_string)
+        .cloned()
+    {
+        return Ok(file);
     }
+
+    let deps = get_node_deps(
+        &file_path_string,
+        &mut |path| get_file_edges(path, true),
+        None,
+        false,
+        false,
+    )?;
+
+    FILE_DEPS_RESULT_CACHE
+        .lock()
+        .unwrap()
+        .insert(file_path_string, deps.clone());
+
+    Ok(deps)
 }
 
 fn get_resolved_path(path: &Path) -> Result<Option<PathBuf>, String> {
@@ -256,19 +274,20 @@ fn add_aliases(path: &String) -> String {
 pub fn get_file_imports(
     resolved_path: &str,
 ) -> Result<IndexMap<String, Vec<Import>>, String> {
-    let mut binding = IMPORTS_CACHE.lock().unwrap();
-
-    let from_cache = binding.get(resolved_path);
-
-    if let Some(imports) = from_cache {
-        return Ok(imports.clone());
+    if let Some(imports) = IMPORTS_CACHE.lock().unwrap().get(resolved_path).cloned()
+    {
+        return Ok(imports);
     }
 
-    if let Some(file_content) = get_file_content(resolved_path)? {
-        let edges_imports =
-            normalize_imports(extract_imports_from_file_content(&file_content)?)?;
+    if let Some(file_content) = get_clean_file_content(resolved_path)? {
+        let edges_imports = normalize_imports(
+            extract_imports_from_clean_file_content(&file_content)?,
+        )?;
 
-        binding.insert(resolved_path.to_string(), edges_imports.clone());
+        IMPORTS_CACHE
+            .lock()
+            .unwrap()
+            .insert(resolved_path.to_string(), edges_imports.clone());
 
         Ok(edges_imports)
     } else {
@@ -310,8 +329,8 @@ fn get_file_edges(
         let resolved_path_string = path_to_string(&resolved_path);
         let edges_imports = get_file_imports(&resolved_path_string)?;
 
-        let mut non_type_edges: Vec<String> = Vec::new();
-        let mut edges: Vec<String> = Vec::new();
+        let mut non_type_edges = IndexSet::new();
+        let mut edges = IndexSet::new();
 
         for import in edges_imports.values().flatten() {
             if let Some(resolved_path) = get_resolved_path(&import.import_path)? {
@@ -319,21 +338,18 @@ fn get_file_edges(
 
                 match import.values {
                     ImportType::Type(_) => {
-                        if !edges.contains(&path_str) {
-                            edges.push(path_str);
-                        }
+                        edges.insert(path_str);
                     }
                     _ => {
-                        if !non_type_edges.contains(&path_str) {
-                            non_type_edges.push(path_str.clone());
-                        }
-                        if !edges.contains(&path_str) {
-                            edges.push(path_str);
-                        }
+                        non_type_edges.insert(path_str.clone());
+                        edges.insert(path_str);
                     }
                 }
             }
         }
+
+        let edges = edges.into_iter().collect::<Vec<_>>();
+        let non_type_edges = non_type_edges.into_iter().collect::<Vec<_>>();
 
         file_edges_cache.insert(
             unresolved_path.to_string(),
@@ -362,6 +378,31 @@ fn get_file_content(resolved_path: &str) -> Result<Option<String>, String> {
     Ok(related_file.content)
 }
 
+fn get_clean_file_content(resolved_path: &str) -> Result<Option<String>, String> {
+    if let Some(content) = CLEAN_FILE_CONTENT_CACHE
+        .lock()
+        .unwrap()
+        .get(resolved_path)
+        .cloned()
+    {
+        return Ok(Some(content));
+    }
+
+    let file_content = match get_file_content(resolved_path)? {
+        Some(file_content) => file_content,
+        None => return Ok(None),
+    };
+
+    let clean_content = remove_comments_from_code(&file_content);
+
+    CLEAN_FILE_CONTENT_CACHE
+        .lock()
+        .unwrap()
+        .insert(resolved_path.to_string(), clean_content.clone());
+
+    Ok(Some(clean_content))
+}
+
 fn visit_file(
     resolved_path: &Path,
     result: &mut HashMap<String, FileDepsInfo>,
@@ -388,18 +429,34 @@ fn visit_file(
 pub fn get_basic_file_deps_info(
     resolved_path_string: &str,
 ) -> Result<FileDepsInfo, String> {
-    let file_content = get_file_content(resolved_path_string)?;
+    let exports = get_file_exports(resolved_path_string)?;
+    let imports = get_file_imports(resolved_path_string)?;
 
-    if let Some(file_content) = file_content {
-        let exports = extract_file_content_exports(&file_content)?;
+    if exports.is_empty() && imports.is_empty() {
+        return Ok(FileDepsInfo::default());
+    }
 
-        let imports = get_file_imports(resolved_path_string)?;
+    Ok(FileDepsInfo { exports, imports })
+}
 
-        let file_deps_info = FileDepsInfo { exports, imports };
+fn get_file_exports(resolved_path: &str) -> Result<Vec<Export>, String> {
+    if let Some(exports) = EXPORTS_CACHE.lock().unwrap().get(resolved_path).cloned()
+    {
+        return Ok(exports);
+    }
 
-        Ok(file_deps_info)
+    if let Some(file_content) = get_clean_file_content(resolved_path)? {
+        let exports =
+            extract_file_content_exports_from_clean_content(&file_content)?;
+
+        EXPORTS_CACHE
+            .lock()
+            .unwrap()
+            .insert(resolved_path.to_string(), exports.clone());
+
+        Ok(exports)
     } else {
-        Ok(FileDepsInfo::default())
+        Ok(Vec::new())
     }
 }
 
@@ -582,7 +639,12 @@ fn get_used_project_files_deps_info(
 
     *ALIASES.lock().unwrap() = aliases;
 
-    for entry in non_glob_entry_points {
+    let mut seen_entry_points = HashSet::new();
+
+    for entry in non_glob_entry_points
+        .into_iter()
+        .filter(|entry| seen_entry_points.insert(path_to_string(entry)))
+    {
         if let Some(resolved_path) = get_resolved_path(&entry)? {
             visit_file(&resolved_path, &mut result)?;
         } else {
@@ -593,9 +655,30 @@ fn get_used_project_files_deps_info(
         }
     }
 
+    *REVERSE_IMPORTS.lock().unwrap() = build_reverse_imports(&result);
     *USED_FILES.lock().unwrap() = result;
 
     Ok(())
+}
+
+fn build_reverse_imports(
+    used_files: &HashMap<String, FileDepsInfo>,
+) -> HashMap<String, Vec<ImportUsage>> {
+    let mut reverse_imports: HashMap<String, Vec<ImportUsage>> = HashMap::new();
+
+    for (importer_path, deps_info) in used_files {
+        for (imported_path, imports) in &deps_info.imports {
+            reverse_imports
+                .entry(imported_path.clone())
+                .or_default()
+                .push(ImportUsage {
+                    importer_path: importer_path.clone(),
+                    imports: imports.clone(),
+                });
+        }
+    }
+
+    reverse_imports
 }
 
 pub fn load_used_project_files_deps_info_from_cfg(
@@ -604,8 +687,8 @@ pub fn load_used_project_files_deps_info_from_cfg(
     root_path: &Path,
 ) -> Result<(), String> {
     let unused_exports_entry_points = config
-        .clone()
         .ts_config
+        .as_ref()
         .map(|c| {
             c.unused_exports_entry_points
                 .iter()

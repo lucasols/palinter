@@ -1,7 +1,9 @@
 use lazy_static::lazy_static;
 use regex::Regex;
 
-use crate::utils::{get_code_from_line, remove_comments_from_code, split_string_by};
+use crate::utils::{get_code_from_line, split_string_by};
+#[cfg(test)]
+use crate::utils::remove_comments_from_code;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Export {
@@ -12,16 +14,22 @@ pub struct Export {
 
 const DEFAULT: &str = "default";
 
+#[cfg(test)]
 pub fn extract_file_content_exports(
     file_content: &str,
 ) -> Result<Vec<Export>, String> {
     let file_content = remove_comments_from_code(file_content);
 
+    extract_file_content_exports_from_clean_content(&file_content)
+}
+
+pub fn extract_file_content_exports_from_clean_content(
+    file_content: &str,
+) -> Result<Vec<Export>, String> {
     let mut exports = Vec::new();
 
     let mut current_line = 0;
-    let lines_iter = file_content.lines();
-    let lines = lines_iter.clone().collect::<Vec<&str>>();
+    let lines = file_content.lines().collect::<Vec<&str>>();
 
     let mut ignore_exports_in_line = 0;
 
@@ -76,7 +84,7 @@ pub fn extract_file_content_exports(
 
             if CAN_BE_VALUE_MULTILINE_EXPORT.is_match(line) {
                 let remaining_file_content =
-                    get_code_from_line(&lines_iter, current_line);
+                    get_code_from_line(&lines, current_line);
 
                 if let Some(captures) =
                     DESTRUCTURED_VALUE_EXPORT.captures(&remaining_file_content)
@@ -117,7 +125,7 @@ pub fn extract_file_content_exports(
                 }
             } else if CAN_BE_MULTILINE_EXPORT.is_match(line) {
                 let remaining_file_content =
-                    get_code_from_line(&lines_iter, current_line);
+                    get_code_from_line(&lines, current_line);
 
                 if let Some(captures) =
                     DESTRUCTURED_EXPORT.captures(&remaining_file_content)
