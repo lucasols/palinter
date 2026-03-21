@@ -159,6 +159,20 @@ fn get_file_deps_result(file_path: &Path) -> Result<DepsResult, String> {
     Ok(deps)
 }
 
+pub fn warm_file_deps_results_for_paths(
+    file_paths: &[String],
+) -> Result<(), String> {
+    let mut sorted_file_paths = file_paths.to_vec();
+    sorted_file_paths.sort();
+    sorted_file_paths.dedup();
+
+    for path in sorted_file_paths {
+        get_file_deps_result(Path::new(&path))?;
+    }
+
+    Ok(())
+}
+
 fn get_resolved_path(path: &Path) -> Result<Option<PathBuf>, String> {
     let path_string = path_to_string(path);
 
