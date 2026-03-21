@@ -15,7 +15,7 @@ use check_folders::{check_root_folder, Problems};
 
 use cli::{get_cli_command, CliCommand};
 use internal_config::{get_config, Config};
-use load_folder_structure::load_folder_structure;
+use load_folder_structure::{count_files, load_folder_structure};
 use parse_config_file::parse_config_file;
 use test_config::test_config;
 
@@ -148,6 +148,9 @@ fn lint(config: Config, root: PathBuf, allow_warnings: bool) {
         }
     }
 
+    let total_files_processed = count_files(&root_structure);
+
     println!("\n✨ The project architecture is valid!");
+    println!("📄 files processed: {}", total_files_processed);
     println!("⌛ time: {:.3}s", measure_time.elapsed().as_secs_f32());
 }

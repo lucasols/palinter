@@ -1,9 +1,9 @@
 use lazy_static::lazy_static;
 use regex::Regex;
 
-use crate::utils::{get_code_from_line, split_string_by};
 #[cfg(test)]
 use crate::utils::remove_comments_from_code;
+use crate::utils::{get_code_from_line, split_string_by};
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Export {
