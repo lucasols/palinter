@@ -1,4 +1,5 @@
 use globset::{Glob, GlobSet};
+use rayon::prelude::*;
 use std::{
     collections::HashMap,
     fs::read_to_string,
@@ -98,70 +99,37 @@ fn load_folder_structure_with_ignores(
     is_root: bool,
     ignore_paths_set: &GlobSet,
 ) -> Result<Folder, String> {
-    let mut children: Vec<FolderChild> = vec![];
-
-    for entry in path.read_dir().map_err(|err| {
-        format!(
-            "Error reading directory: {}, Error: {}",
-            path.display(),
-            err
-        )
-    })? {
-        let entry = entry.map_err(|err| {
+    let mut child_paths = path
+        .read_dir()
+        .map_err(|err| {
             format!(
-                "Error reading directory entry in '{}': {}",
+                "Error reading directory: {}, Error: {}",
                 path.display(),
                 err
             )
-        })?;
-        let path = entry.path();
+        })?
+        .map(|entry| {
+            entry.map(|entry| entry.path()).map_err(|err| {
+                format!(
+                    "Error reading directory entry in '{}': {}",
+                    path.display(),
+                    err
+                )
+            })
+        })
+        .collect::<Result<Vec<_>, _>>()?;
 
-        let relative_path = path.strip_prefix(root).map_err(|err| {
-            format!(
-                "Error getting relative path for '{}' from '{}': {}",
-                path.display(),
-                root.display(),
-                err
-            )
-        })?;
+    child_paths.sort_by_cached_key(|child_path| path_to_string(child_path));
 
-        if ignore_paths_set.is_match(relative_path) {
-            continue;
-        }
-
-        if path.is_dir() {
-            if is_root
-                && config.root_folder.folder_rules.is_empty()
-                && !config
-                    .root_folder
-                    .sub_folders_config
-                    .contains_key(&format!("/{}", file_name_to_string(&path)?))
-            {
-                continue;
-            }
-
-            children.push(FolderChild::Folder(load_folder_structure_with_ignores(
-                &path,
-                config,
-                root,
-                false,
-                ignore_paths_set,
-            )?));
-        } else {
-            let extension =
-                path.extension().map(|s| s.to_string_lossy().into_owned());
-
-            let file = File {
-                basename: file_stem_to_string(&path)?,
-                name_with_ext: file_name_to_string(&path)?,
-                content: get_file_content(config, &extension, path.clone())?,
-                extension,
-                relative_path: format!("./{}", path_to_string(relative_path)),
-            };
-
-            children.push(FolderChild::FileChild(file));
-        }
-    }
+    let children = child_paths
+        .into_par_iter()
+        .map(|child_path| {
+            load_folder_child(child_path, config, root, is_root, ignore_paths_set)
+        })
+        .collect::<Result<Vec<_>, _>>()?
+        .into_iter()
+        .flatten()
+        .collect();
 
     let folder_name = match path.file_name() {
         Some(name) => name.to_string_lossy().into_owned(),
@@ -180,6 +148,66 @@ fn load_folder_structure_with_ignores(
         name: folder_name,
         children,
     })
+}
+
+fn load_folder_child(
+    path: PathBuf,
+    config: &Config,
+    root: &PathBuf,
+    is_root: bool,
+    ignore_paths_set: &GlobSet,
+) -> Result<Option<FolderChild>, String> {
+    let relative_path = path.strip_prefix(root).map_err(|err| {
+        format!(
+            "Error getting relative path for '{}' from '{}': {}",
+            path.display(),
+            root.display(),
+            err
+        )
+    })?;
+
+    if ignore_paths_set.is_match(relative_path) {
+        return Ok(None);
+    }
+
+    if path.is_dir() {
+        if should_skip_root_dir(&path, config, is_root)? {
+            return Ok(None);
+        }
+
+        return load_folder_structure_with_ignores(
+            &path,
+            config,
+            root,
+            false,
+            ignore_paths_set,
+        )
+        .map(FolderChild::Folder)
+        .map(Some);
+    }
+
+    let extension = path.extension().map(|s| s.to_string_lossy().into_owned());
+
+    Ok(Some(FolderChild::FileChild(File {
+        basename: file_stem_to_string(&path)?,
+        name_with_ext: file_name_to_string(&path)?,
+        content: get_file_content(config, &extension, path.clone())?,
+        extension,
+        relative_path: format!("./{}", path_to_string(relative_path)),
+    })))
+}
+
+fn should_skip_root_dir(
+    path: &Path,
+    config: &Config,
+    is_root: bool,
+) -> Result<bool, String> {
+    Ok(is_root
+        && config.root_folder.folder_rules.is_empty()
+        && !config
+            .root_folder
+            .sub_folders_config
+            .contains_key(&format!("/{}", file_name_to_string(path)?)))
 }
 
 fn get_file_content(
