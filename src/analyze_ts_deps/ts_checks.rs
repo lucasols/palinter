@@ -14,6 +14,24 @@ use super::{
     get_file_deps_result, get_file_imports, USED_FILES,
 };
 
+fn build_glob_set(
+    patterns: &[String],
+    context: &str,
+) -> Result<globset::GlobSet, String> {
+    let mut builder = globset::GlobSetBuilder::new();
+
+    for pattern in patterns {
+        let expanded = replace_aliases(pattern);
+        builder.add(Glob::new(expanded.as_str()).map_err(|err| {
+            format!("Invalid {} glob '{}': {}", context, pattern, err)
+        })?);
+    }
+
+    builder
+        .build()
+        .map_err(|err| format!("Error building {} globs: {}", context, err))
+}
+
 pub fn check_ts_not_have_unused_exports(file: &File) -> Result<(), String> {
     let used_files = USED_FILES.lock().unwrap();
 
@@ -52,41 +70,32 @@ pub fn check_ts_not_have_unused_exports(file: &File) -> Result<(), String> {
                     match &related_import.values {
                         ImportType::All | ImportType::Dynamic => {
                             unused_exports = vec![];
-                            used_ignored_exports
-                                .extend(ignored_exports.clone());
+                            used_ignored_exports.extend(ignored_exports.clone());
                         }
                         ImportType::Named(values) => {
-                            unused_exports.retain(|export| {
-                                !values.contains(&export.name)
-                            });
+                            unused_exports
+                                .retain(|export| !values.contains(&export.name));
 
                             let related_ignored_exports = ignored_exports
                                 .iter()
-                                .filter(|export| {
-                                    values.contains(&export.name)
-                                })
+                                .filter(|export| values.contains(&export.name))
                                 .cloned()
                                 .collect::<Vec<_>>();
 
-                            used_ignored_exports
-                                .extend(related_ignored_exports);
+                            used_ignored_exports.extend(related_ignored_exports);
                         }
                         ImportType::SideEffect => {}
                         ImportType::Type(values) => {
-                            unused_exports.retain(|export| {
-                                !values.contains(&export.name)
-                            });
+                            unused_exports
+                                .retain(|export| !values.contains(&export.name));
 
                             let related_ignored_exports = ignored_exports
                                 .iter()
-                                .filter(|export| {
-                                    values.contains(&export.name)
-                                })
+                                .filter(|export| values.contains(&export.name))
                                 .cloned()
                                 .collect::<Vec<_>>();
 
-                            used_ignored_exports
-                                .extend(related_ignored_exports);
+                            used_ignored_exports.extend(related_ignored_exports);
                         }
                         ImportType::Glob => {}
                     }
@@ -156,12 +165,8 @@ fn file_has_ignore_comment(file: &File, ignore_comment: &str) -> bool {
     !find_ignore_comment_lines(file, ignore_comment).is_empty()
 }
 
-fn find_ignore_comment_lines(
-    file: &File,
-    ignore_suffix: &str,
-) -> Vec<usize> {
-    let ignore_comment =
-        format!("palinter-ignore-{}", ignore_suffix);
+fn find_ignore_comment_lines(file: &File, ignore_suffix: &str) -> Vec<usize> {
+    let ignore_comment = format!("palinter-ignore-{}", ignore_suffix);
     let line_comment = format!("// {}", ignore_comment);
     let block_comment = format!("/* {}", ignore_comment);
 
@@ -171,8 +176,7 @@ fn find_ignore_comment_lines(
             .enumerate()
             .filter(|(_, line)| {
                 let trimmed = line.trim();
-                trimmed.contains(&line_comment)
-                    || trimmed.contains(&block_comment)
+                trimmed.contains(&line_comment) || trimmed.contains(&block_comment)
             })
             .map(|(idx, _)| idx + 1) // 1-indexed
             .collect()
@@ -190,8 +194,7 @@ fn import_has_ignore_comment_above(
         return false;
     }
 
-    let ignore_comment =
-        format!("palinter-ignore-{}", ignore_suffix);
+    let ignore_comment = format!("palinter-ignore-{}", ignore_suffix);
 
     if let Some(content) = &file.content {
         let lines: Vec<&str> = content.lines().collect();
@@ -202,8 +205,7 @@ fn import_has_ignore_comment_above(
         if above_line_idx < lines.len() {
             let above_line = lines[above_line_idx].trim();
             above_line.contains(&format!("// {}", ignore_comment))
-                || above_line
-                    .contains(&format!("/* {}", ignore_comment))
+                || above_line.contains(&format!("/* {}", ignore_comment))
         } else {
             false
         }
@@ -246,23 +248,15 @@ pub fn check_ts_not_have_circular_deps(file: &File) -> Result<(), String> {
     }
 }
 
-pub fn check_ts_not_have_direct_circular_deps(
-    file: &File,
-) -> Result<(), String> {
+pub fn check_ts_not_have_direct_circular_deps(file: &File) -> Result<(), String> {
     let ignore_suffix = "not-have-direct-circular-deps";
-    let deps_info = get_file_deps_result(
-        &PathBuf::from(file.clone().relative_path),
-    )?;
+    let deps_info =
+        get_file_deps_result(&PathBuf::from(file.clone().relative_path))?;
 
-    let all_comment_lines =
-        find_ignore_comment_lines(file, ignore_suffix);
+    let all_comment_lines = find_ignore_comment_lines(file, ignore_suffix);
 
     if deps_info.deps.contains(&file.relative_path) {
-        let file_imports = get_file_imports(
-            PathBuf::from(file.clone().relative_path)
-                .to_str()
-                .unwrap(),
-        )?;
+        let file_imports = get_file_imports(&file.relative_path)?;
 
         let mut used_comment_lines: Vec<usize> = vec![];
 
@@ -274,26 +268,16 @@ pub fn check_ts_not_have_direct_circular_deps(
                 continue;
             }
 
-            let import_deps_result = get_file_deps_result(
-                &PathBuf::from(resolved_import_path),
-            )?;
-            if import_deps_result
-                .deps
-                .contains(&file.relative_path)
-            {
+            let import_deps_result =
+                get_file_deps_result(&PathBuf::from(resolved_import_path))?;
+            if import_deps_result.deps.contains(&file.relative_path) {
                 // Check if any non-type import from this path
                 // has the ignore comment on the line above
                 let ignored_import = imports
                     .iter()
-                    .filter(|i| {
-                        !matches!(i.values, ImportType::Type(_))
-                    })
+                    .filter(|i| !matches!(i.values, ImportType::Type(_)))
                     .find(|i| {
-                        import_has_ignore_comment_above(
-                            file,
-                            i.line,
-                            ignore_suffix,
-                        )
+                        import_has_ignore_comment_above(file, i.line, ignore_suffix)
                     });
 
                 if let Some(import) = ignored_import {
@@ -303,17 +287,11 @@ pub fn check_ts_not_have_direct_circular_deps(
 
                 let non_type_import = imports
                     .iter()
-                    .find(|i| {
-                        !matches!(i.values, ImportType::Type(_))
-                    });
+                    .find(|i| !matches!(i.values, ImportType::Type(_)));
                 let display_path = non_type_import
-                    .map(|i| {
-                        i.import_path.to_str().unwrap_or("?")
-                    })
+                    .map(|i| i.import_path.to_str().unwrap_or("?"))
                     .unwrap_or("?");
-                let line = non_type_import
-                    .map(|i| i.line)
-                    .unwrap_or(0);
+                let line = non_type_import.map(|i| i.line).unwrap_or(0);
                 return Err(format!(
                     "File has direct circular dependencies with '{}' in line {} (run cmd `palinter circular-deps [file] -D` to get more info)",
                     display_path, line
@@ -360,13 +338,7 @@ pub fn check_ts_not_have_deps_from(
     let deps_info =
         get_file_deps_result(&PathBuf::from(file.clone().relative_path))?;
 
-    let mut builder = globset::GlobSetBuilder::new();
-
-    for pattern in disallow {
-        builder.add(Glob::new(replace_aliases(pattern).as_str()).unwrap());
-    }
-
-    let disable_imports_set = builder.build().unwrap();
+    let disable_imports_set = build_glob_set(disallow, "not_have_deps_from")?;
 
     let mut dep_path: Vec<String> = vec![];
 
@@ -392,13 +364,7 @@ pub fn check_ts_not_have_deps_outside(
     let deps_info =
         get_file_deps_result(&PathBuf::from(file.clone().relative_path))?;
 
-    let mut builder = globset::GlobSetBuilder::new();
-
-    for pattern in allowed {
-        builder.add(Glob::new(replace_aliases(pattern).as_str()).unwrap());
-    }
-
-    let allowed_imports_set = builder.build().unwrap();
+    let allowed_imports_set = build_glob_set(allowed, "not_have_deps_outside")?;
 
     let mut dep_path: Vec<String> = vec![];
 
@@ -423,13 +389,8 @@ pub fn check_ts_not_have_used_exports_outside(
 ) -> Result<(), String> {
     let used_files = USED_FILES.lock().unwrap();
 
-    let mut builder = globset::GlobSetBuilder::new();
-
-    for pattern in allowed {
-        builder.add(Glob::new(replace_aliases(pattern).as_str()).unwrap());
-    }
-
-    let allowed_to_use_exports_set = builder.build().unwrap();
+    let allowed_to_use_exports_set =
+        build_glob_set(allowed, "not_have_exports_used_outside")?;
 
     let mut errors = vec![];
 
@@ -462,47 +423,48 @@ pub fn check_ts_have_imports(
     file: &File,
     have_imports: &Vec<MatchImport>,
 ) -> Result<(), String> {
-    let file_imports = get_file_imports(
-        PathBuf::from(file.clone().relative_path).to_str().unwrap(),
-    )?;
+    let file_imports = get_file_imports(&file.relative_path)?;
 
     let mut errors: Vec<String> = vec![];
 
     for have_import in have_imports {
         match have_import {
             MatchImport::From(path) => {
-                if !file_imports
-                    .values()
-                    .flatten()
-                    .any(|Import { import_path, .. }| {
-                        match_glob_path(path, import_path)
-                    })
-                {
-                    errors.push(format!(
-                        "Should have any import from '{}'",
-                        path
-                    ));
+                let mut found = false;
+
+                for Import { import_path, .. } in file_imports.values().flatten() {
+                    if match_glob_path(path, import_path)? {
+                        found = true;
+                        break;
+                    }
+                }
+
+                if !found {
+                    errors.push(format!("Should have any import from '{}'", path));
                 }
             }
             MatchImport::DefaultFrom(path) => {
-                if !file_imports.values().flatten().any(
-                    |Import {
-                         import_path,
-                         values,
-                         ..
-                     }| {
-                        if match_glob_path(path, import_path) {
-                            if let ImportType::Named(values) = values {
-                                values
-                                    .contains(&"default".to_string())
-                            } else {
-                                false
-                            }
-                        } else {
-                            false
-                        }
-                    },
-                ) {
+                let mut found = false;
+
+                for Import {
+                    import_path,
+                    values,
+                    ..
+                } in file_imports.values().flatten()
+                {
+                    if match_glob_path(path, import_path)?
+                        && matches!(
+                            values,
+                            ImportType::Named(values)
+                            if values.contains(&"default".to_string())
+                        )
+                    {
+                        found = true;
+                        break;
+                    }
+                }
+
+                if !found {
                     errors.push(format!(
                         "Should have a default import from '{}'",
                         path
@@ -510,23 +472,26 @@ pub fn check_ts_have_imports(
                 }
             }
             MatchImport::Named { from, name } => {
-                if !file_imports.values().flatten().any(
-                    |Import {
-                         import_path,
-                         values,
-                         ..
-                     }| {
-                        if match_glob_path(from, import_path) {
-                            if let ImportType::Named(values) = values {
-                                values.contains(name)
-                            } else {
-                                false
-                            }
-                        } else {
-                            false
-                        }
-                    },
-                ) {
+                let mut found = false;
+
+                for Import {
+                    import_path,
+                    values,
+                    ..
+                } in file_imports.values().flatten()
+                {
+                    if match_glob_path(from, import_path)?
+                        && matches!(
+                            values,
+                            ImportType::Named(values) if values.contains(name)
+                        )
+                    {
+                        found = true;
+                        break;
+                    }
+                }
+
+                if !found {
                     errors.push(format!(
                         "Should have a named import '{}' from '{}'",
                         name, from
@@ -543,58 +508,60 @@ pub fn check_ts_have_imports(
     }
 }
 
-fn match_glob_path(path: &String, import_path: &PathBuf) -> bool {
-    globset::Glob::new(replace_aliases(path).as_str())
-        .unwrap()
+fn match_glob_path(path: &String, import_path: &PathBuf) -> Result<bool, String> {
+    Ok(globset::Glob::new(replace_aliases(path).as_str())
+        .map_err(|err| format!("Invalid import glob '{}': {}", path, err))?
         .compile_matcher()
-        .is_match(import_path)
+        .is_match(import_path))
 }
 
 pub fn check_ts_not_have_imports(
     file: &File,
     not_have_imports: &Vec<MatchImport>,
 ) -> Result<(), String> {
-    let file_imports = get_file_imports(
-        PathBuf::from(file.clone().relative_path).to_str().unwrap(),
-    )?;
+    let file_imports = get_file_imports(&file.relative_path)?;
 
     let mut errors: Vec<String> = vec![];
 
     for not_have_import in not_have_imports {
         match not_have_import {
             MatchImport::From(path) => {
-                if file_imports
-                    .values()
-                    .flatten()
-                    .any(|Import { import_path, .. }| {
-                        match_glob_path(path, import_path)
-                    })
-                {
-                    errors.push(format!(
-                        "Should not have any import from '{}'",
-                        path
-                    ));
+                let mut found = false;
+
+                for Import { import_path, .. } in file_imports.values().flatten() {
+                    if match_glob_path(path, import_path)? {
+                        found = true;
+                        break;
+                    }
+                }
+
+                if found {
+                    errors
+                        .push(format!("Should not have any import from '{}'", path));
                 }
             }
             MatchImport::DefaultFrom(path) => {
-                if file_imports.values().flatten().any(
-                    |Import {
-                         import_path,
-                         values,
-                         ..
-                     }| {
-                        if match_glob_path(path, import_path) {
-                            if let ImportType::Named(values) = values {
-                                values
-                                    .contains(&"default".to_string())
-                            } else {
-                                false
-                            }
-                        } else {
-                            false
-                        }
-                    },
-                ) {
+                let mut found = false;
+
+                for Import {
+                    import_path,
+                    values,
+                    ..
+                } in file_imports.values().flatten()
+                {
+                    if match_glob_path(path, import_path)?
+                        && matches!(
+                            values,
+                            ImportType::Named(values)
+                            if values.contains(&"default".to_string())
+                        )
+                    {
+                        found = true;
+                        break;
+                    }
+                }
+
+                if found {
                     errors.push(format!(
                         "Should not have a default import from '{}'",
                         path
@@ -602,23 +569,26 @@ pub fn check_ts_not_have_imports(
                 }
             }
             MatchImport::Named { from, name } => {
-                if file_imports.values().flatten().any(
-                    |Import {
-                         import_path,
-                         values,
-                         ..
-                     }| {
-                        if match_glob_path(from, import_path) {
-                            if let ImportType::Named(values) = values {
-                                values.contains(name)
-                            } else {
-                                false
-                            }
-                        } else {
-                            false
-                        }
-                    },
-                ) {
+                let mut found = false;
+
+                for Import {
+                    import_path,
+                    values,
+                    ..
+                } in file_imports.values().flatten()
+                {
+                    if match_glob_path(from, import_path)?
+                        && matches!(
+                            values,
+                            ImportType::Named(values) if values.contains(name)
+                        )
+                    {
+                        found = true;
+                        break;
+                    }
+                }
+
+                if found {
                     errors.push(format!(
                         "Should not have a named import '{}' from '{}'",
                         name, from

@@ -199,7 +199,7 @@ pub fn has_sibling_file(
     condition_captures: &[Capture],
 ) -> Result<(), String> {
     let (pattern, regex) =
-        normalize_check_pattern(condition_captures, sibling_file_pattern);
+        normalize_check_pattern(condition_captures, sibling_file_pattern)?;
 
     for child in &folder.children {
         if let FolderChild::FileChild(file) = child {
@@ -218,17 +218,20 @@ pub fn has_sibling_file(
 fn normalize_check_pattern(
     captures: &[Capture],
     check_pattern: &String,
-) -> (String, Regex) {
+) -> Result<(String, Regex), String> {
     let pattern =
         replace_with_captures(check_pattern, captures, ContextVars::default());
 
     let regex = if pattern.starts_with("regex:") {
-        Regex::new(pattern.strip_prefix("regex:").unwrap_or("")).unwrap()
+        Regex::new(pattern.strip_prefix("regex:").unwrap_or(""))
+            .map_err(|err| format!("Invalid regex pattern '{}': {}", pattern, err))?
     } else {
-        Regex::new(escape(&pattern).as_str()).unwrap()
+        Regex::new(escape(&pattern).as_str()).map_err(|err| {
+            format!("Invalid generated regex pattern '{}': {}", pattern, err)
+        })?
     };
 
-    (pattern, regex)
+    Ok((pattern, regex))
 }
 
 pub fn check_path_pattern(
@@ -289,7 +292,7 @@ pub fn check_content(
 
                 for pattern in matches {
                     let (_, regex) =
-                        normalize_check_pattern(condition_captures, &pattern);
+                        normalize_check_pattern(condition_captures, &pattern)?;
 
                     let pattern_matches =
                         regex.captures_iter(content.as_str()).count();
@@ -326,7 +329,7 @@ pub fn check_content(
             crate::internal_config::Matches::All(matches) => {
                 for pattern in matches {
                     let (_, regex) =
-                        normalize_check_pattern(condition_captures, &pattern);
+                        normalize_check_pattern(condition_captures, &pattern)?;
 
                     let pattern_matches =
                         regex.captures_iter(content.as_str()).count();
@@ -479,7 +482,7 @@ pub fn check_content_not_matches(
     )?;
 
     for pattern in content_not_matches {
-        let (_, regex) = normalize_check_pattern(condition_captures, pattern);
+        let (_, regex) = normalize_check_pattern(condition_captures, pattern)?;
 
         if regex.is_match(content.as_str()) {
             return Err(format!(

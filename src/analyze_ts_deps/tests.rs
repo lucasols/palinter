@@ -487,8 +487,7 @@ fn normalize_imports_preserves_type_and_named_separately() {
     );
 
     let index_info = used_files.get("./src/index.ts").unwrap();
-    let imports_to_file_a =
-        index_info.imports.get("./src/fileA.ts").unwrap();
+    let imports_to_file_a = index_info.imports.get("./src/fileA.ts").unwrap();
 
     let has_named = imports_to_file_a.iter().any(|i| {
         matches!(&i.values, ImportType::Named(v) if v.contains(&"foo".to_string()))
@@ -519,9 +518,7 @@ fn inline_type_only_import_does_not_create_circular_dep() {
         vec![
             SimplifiedFile {
                 path: PathBuf::from("./src/index.ts"),
-                content: String::from(
-                    "import { a } from '@src/fileA';",
-                ),
+                content: String::from("import { a } from '@src/fileA';"),
             },
             SimplifiedFile {
                 path: PathBuf::from("./src/fileA.ts"),
@@ -570,9 +567,7 @@ fn mixed_inline_type_and_named_import_creates_circular_dep() {
         vec![
             SimplifiedFile {
                 path: PathBuf::from("./src/index.ts"),
-                content: String::from(
-                    "import { a } from '@src/fileA';",
-                ),
+                content: String::from("import { a } from '@src/fileA';"),
             },
             SimplifiedFile {
                 path: PathBuf::from("./src/fileA.ts"),
@@ -634,10 +629,8 @@ fn inline_type_imports_normalized_separately() {
         "@src/index.ts",
     );
 
-    let index_info =
-        used_files.get("./src/index.ts").unwrap();
-    let imports_to_file_a =
-        index_info.imports.get("./src/fileA.ts").unwrap();
+    let index_info = used_files.get("./src/index.ts").unwrap();
+    let imports_to_file_a = index_info.imports.get("./src/fileA.ts").unwrap();
 
     let has_named = imports_to_file_a.iter().any(|i| {
         matches!(
@@ -651,13 +644,12 @@ fn inline_type_imports_normalized_separately() {
             ImportType::Type(v) if v.contains(&"Bar".to_string())
         )
     });
-    let named_does_not_contain_type =
-        imports_to_file_a.iter().all(|i| {
-            !matches!(
-                &i.values,
-                ImportType::Named(v) if v.contains(&"Bar".to_string())
-            )
-        });
+    let named_does_not_contain_type = imports_to_file_a.iter().all(|i| {
+        !matches!(
+            &i.values,
+            ImportType::Named(v) if v.contains(&"Bar".to_string())
+        )
+    });
 
     assert!(
         has_named,
@@ -692,9 +684,7 @@ fn side_effect_with_type_import_still_detects_circular_dep() {
         vec![
             SimplifiedFile {
                 path: PathBuf::from("./src/index.ts"),
-                content: String::from(
-                    "import { a } from '@src/fileA';",
-                ),
+                content: String::from("import { a } from '@src/fileA';"),
             },
             SimplifiedFile {
                 path: PathBuf::from("./src/fileA.ts"),
@@ -738,9 +728,7 @@ fn type_import_then_side_effect_still_detects_circular_dep() {
         vec![
             SimplifiedFile {
                 path: PathBuf::from("./src/index.ts"),
-                content: String::from(
-                    "import { a } from '@src/fileA';",
-                ),
+                content: String::from("import { a } from '@src/fileA';"),
             },
             SimplifiedFile {
                 path: PathBuf::from("./src/fileA.ts"),
@@ -785,9 +773,7 @@ fn dynamic_import_with_type_import_still_detects_circular_dep() {
         vec![
             SimplifiedFile {
                 path: PathBuf::from("./src/index.ts"),
-                content: String::from(
-                    "import { a } from '@src/fileA';",
-                ),
+                content: String::from("import { a } from '@src/fileA';"),
             },
             SimplifiedFile {
                 path: PathBuf::from("./src/fileA.ts"),
@@ -831,9 +817,7 @@ fn type_import_then_dynamic_still_detects_circular_dep() {
         vec![
             SimplifiedFile {
                 path: PathBuf::from("./src/index.ts"),
-                content: String::from(
-                    "import { a } from '@src/fileA';",
-                ),
+                content: String::from("import { a } from '@src/fileA';"),
             },
             SimplifiedFile {
                 path: PathBuf::from("./src/fileA.ts"),
@@ -885,9 +869,7 @@ fn direct_circular_dep_error_blames_runtime_import_not_type() {
         vec![
             SimplifiedFile {
                 path: PathBuf::from("./src/index.ts"),
-                content: String::from(
-                    "import { a } from '@src/fileA';",
-                ),
+                content: String::from("import { a } from '@src/fileA';"),
             },
             SimplifiedFile {
                 path: PathBuf::from("./src/fileA.ts"),
@@ -929,8 +911,7 @@ fn direct_circular_dep_error_blames_runtime_import_not_type() {
         relative_path: "./src/fileA.ts".to_string(),
     };
 
-    let result =
-        ts_checks::check_ts_not_have_direct_circular_deps(&file_a);
+    let result = ts_checks::check_ts_not_have_direct_circular_deps(&file_a);
     let err = result.unwrap_err();
 
     assert!(
@@ -948,10 +929,8 @@ fn get_resolved_path_consistent_with_non_default_root() {
     _setup_test();
 
     *ROOT_DIR.lock().unwrap() = "/project".to_string();
-    *ALIASES.lock().unwrap() = HashMap::from_iter(vec![(
-        String::from("@src"),
-        String::from("./src"),
-    )]);
+    *ALIASES.lock().unwrap() =
+        HashMap::from_iter(vec![(String::from("@src"), String::from("./src"))]);
 
     let file = File {
         basename: "fileA".to_string(),
@@ -987,17 +966,14 @@ fn get_resolved_path_consistent_with_non_default_root() {
 }
 
 #[test]
-fn get_resolved_path_extension_consistent_with_non_default_root()
-{
+fn get_resolved_path_extension_consistent_with_non_default_root() {
     let _guard = TEST_MUTEX.lock().unwrap();
 
     _setup_test();
 
     *ROOT_DIR.lock().unwrap() = "/project".to_string();
-    *ALIASES.lock().unwrap() = HashMap::from_iter(vec![(
-        String::from("@src"),
-        String::from("./src"),
-    )]);
+    *ALIASES.lock().unwrap() =
+        HashMap::from_iter(vec![(String::from("@src"), String::from("./src"))]);
 
     let file = File {
         basename: "fileA".to_string(),
@@ -1013,10 +989,8 @@ fn get_resolved_path_extension_consistent_with_non_default_root()
         .insert("./src/fileA.ts".to_string(), file);
 
     // Resolve via alias (goes through extension-trying loop)
-    let first =
-        get_resolved_path(Path::new("@src/fileA")).unwrap().unwrap();
-    let second =
-        get_resolved_path(Path::new("@src/fileA")).unwrap().unwrap();
+    let first = get_resolved_path(Path::new("@src/fileA")).unwrap().unwrap();
+    let second = get_resolved_path(Path::new("@src/fileA")).unwrap().unwrap();
 
     assert_eq!(
         first, second,

@@ -71,18 +71,44 @@ pub fn _setup_test() {
     FILE_DEPS_RESULT_CACHE.lock().unwrap().clear();
 }
 
+fn path_to_string(path: &Path) -> String {
+    path.to_string_lossy().into_owned()
+}
+
+fn file_stem_to_string(path: &Path) -> Result<String, String> {
+    path.file_stem()
+        .map(|stem| stem.to_string_lossy().into_owned())
+        .ok_or_else(|| {
+            format!(
+                "TS: Path does not have a valid file stem: {}",
+                path.display()
+            )
+        })
+}
+
+fn file_name_to_string(path: &Path) -> Result<String, String> {
+    path.file_name()
+        .map(|name| name.to_string_lossy().into_owned())
+        .ok_or_else(|| {
+            format!(
+                "TS: Path does not have a valid file name: {}",
+                path.display()
+            )
+        })
+}
+
 fn load_file_from_cache(file_path: &PathBuf) -> Result<File, String> {
     let mut from_cache_binding = FILES_CACHE.lock().unwrap();
+    let file_path_string = path_to_string(file_path);
 
-    let from_cache = from_cache_binding.get(file_path.to_str().unwrap());
+    let from_cache = from_cache_binding.get(&file_path_string);
 
     let related_file = match from_cache {
         Some(file) => file.clone(),
         None => {
             let new_file = load_file_from_path(file_path)?;
 
-            from_cache_binding
-                .insert(file_path.to_str().unwrap().to_string(), new_file.clone());
+            from_cache_binding.insert(file_path_string, new_file.clone());
 
             new_file
         }
@@ -93,21 +119,22 @@ fn load_file_from_cache(file_path: &PathBuf) -> Result<File, String> {
 
 fn get_file_deps_result(file_path: &Path) -> Result<DepsResult, String> {
     let mut binding = FILE_DEPS_RESULT_CACHE.lock().unwrap();
+    let file_path_string = path_to_string(file_path);
 
-    let from_cache = binding.get(file_path.to_str().unwrap());
+    let from_cache = binding.get(&file_path_string);
 
     match from_cache {
         Some(file) => Ok(file.clone()),
         None => {
             let deps = get_node_deps(
-                &file_path.to_str().unwrap().to_string(),
+                &file_path_string,
                 &mut |path| get_file_edges(path, true),
                 None,
                 false,
                 false,
             )?;
 
-            binding.insert(file_path.to_str().unwrap().to_string(), deps.clone());
+            binding.insert(file_path_string, deps.clone());
 
             Ok(deps)
         }
@@ -115,6 +142,8 @@ fn get_file_deps_result(file_path: &Path) -> Result<DepsResult, String> {
 }
 
 fn get_resolved_path(path: &Path) -> Result<Option<PathBuf>, String> {
+    let path_string = path_to_string(path);
+
     if !ALIASES
         .lock()
         .unwrap()
@@ -124,7 +153,7 @@ fn get_resolved_path(path: &Path) -> Result<Option<PathBuf>, String> {
         return Ok(None);
     }
 
-    if path.to_str().unwrap().contains("?") {
+    if path_string.contains("?") {
         return Ok(None);
     }
 
@@ -132,34 +161,28 @@ fn get_resolved_path(path: &Path) -> Result<Option<PathBuf>, String> {
         return Ok(Some(resolved_path.clone()));
     }
 
-    let file_with_replaced_alias =
-        PathBuf::from(replace_aliases(&path.to_str().unwrap().to_string()));
+    let file_with_replaced_alias = PathBuf::from(replace_aliases(&path_string));
+    let file_with_replaced_alias_string = path_to_string(&file_with_replaced_alias);
 
     let file_abs_path = format!(
         "{}{}",
-        ROOT_DIR.lock().unwrap(),
-        file_with_replaced_alias
-            .to_str()
-            .unwrap()
-            .trim_start_matches('.')
+        ROOT_DIR.lock().unwrap().clone(),
+        file_with_replaced_alias_string.trim_start_matches('.')
     );
 
     let file_exists = FILES_CACHE
         .lock()
         .unwrap()
-        .contains_key(file_with_replaced_alias.to_str().unwrap())
+        .contains_key(&file_with_replaced_alias_string)
         || PathBuf::from(file_abs_path.clone()).is_file();
 
     if !file_exists {
-        let file_name_start_with_uppercase = file_with_replaced_alias
-            .file_name()
-            .unwrap()
-            .to_str()
-            .unwrap()
+        let file_name = file_name_to_string(&file_with_replaced_alias)?;
+        let file_name_start_with_uppercase = file_name
             .chars()
             .next()
-            .unwrap()
-            .is_uppercase();
+            .map(|char| char.is_uppercase())
+            .unwrap_or(false);
 
         let test_extensions = if file_name_start_with_uppercase {
             vec![".tsx", ".ts", "/index.tsx", "/index.ts"]
@@ -168,11 +191,8 @@ fn get_resolved_path(path: &Path) -> Result<Option<PathBuf>, String> {
         };
 
         for paths_to_try in &test_extensions {
-            let cache_name = format!(
-                "{}{}",
-                file_with_replaced_alias.to_str().unwrap(),
-                paths_to_try
-            );
+            let cache_name =
+                format!("{}{}", file_with_replaced_alias_string, paths_to_try);
 
             let file_is_in_cache =
                 FILES_CACHE.lock().unwrap().contains_key(&cache_name);
@@ -180,21 +200,14 @@ fn get_resolved_path(path: &Path) -> Result<Option<PathBuf>, String> {
             let load_path = if file_is_in_cache {
                 PathBuf::from(&cache_name)
             } else {
-                PathBuf::from(format!(
-                    "{}{}",
-                    file_abs_path, paths_to_try
-                ))
+                PathBuf::from(format!("{}{}", file_abs_path, paths_to_try))
             };
 
-            if let Ok(loaded_file) = load_file_from_cache(&load_path)
-            {
+            if let Ok(loaded_file) = load_file_from_cache(&load_path) {
                 let result_path = PathBuf::from(&cache_name);
 
                 if !file_is_in_cache {
-                    FILES_CACHE
-                        .lock()
-                        .unwrap()
-                        .insert(cache_name, loaded_file);
+                    FILES_CACHE.lock().unwrap().insert(cache_name, loaded_file);
                 }
 
                 RESOLVE_CACHE
@@ -214,10 +227,7 @@ fn get_resolved_path(path: &Path) -> Result<Option<PathBuf>, String> {
         RESOLVE_CACHE
             .lock()
             .unwrap()
-            .insert(
-                path.to_path_buf(),
-                file_with_replaced_alias.clone(),
-            );
+            .insert(path.to_path_buf(), file_with_replaced_alias.clone());
 
         Ok(Some(file_with_replaced_alias))
     }
@@ -297,14 +307,15 @@ fn get_file_edges(
             }
         }
 
-        let edges_imports = get_file_imports(resolved_path.to_str().unwrap())?;
+        let resolved_path_string = path_to_string(&resolved_path);
+        let edges_imports = get_file_imports(&resolved_path_string)?;
 
         let mut non_type_edges: Vec<String> = Vec::new();
         let mut edges: Vec<String> = Vec::new();
 
         for import in edges_imports.values().flatten() {
             if let Some(resolved_path) = get_resolved_path(&import.import_path)? {
-                let path_str = resolved_path.to_str().unwrap().to_string();
+                let path_str = path_to_string(&resolved_path);
 
                 match import.values {
                     ImportType::Type(_) => {
@@ -355,7 +366,7 @@ fn visit_file(
     resolved_path: &Path,
     result: &mut HashMap<String, FileDepsInfo>,
 ) -> Result<(), String> {
-    let resolved_path_string = resolved_path.to_str().unwrap().to_string();
+    let resolved_path_string = path_to_string(resolved_path);
 
     let file_deps_info = get_basic_file_deps_info(&resolved_path_string)?;
 
@@ -395,40 +406,34 @@ pub fn get_basic_file_deps_info(
 fn normalize_imports(
     imports: Vec<Import>,
 ) -> Result<IndexMap<String, Vec<Import>>, String> {
-    let mut normalized_imports: IndexMap<String, Vec<Import>> =
-        IndexMap::new();
+    let mut normalized_imports: IndexMap<String, Vec<Import>> = IndexMap::new();
 
     for new_import in imports {
-        let resolved_import_name =
-            if new_import.values == ImportType::Glob {
-                None
-            } else {
-                get_resolved_path(&new_import.import_path)?
-            };
+        let resolved_import_name = if new_import.values == ImportType::Glob {
+            None
+        } else {
+            get_resolved_path(&new_import.import_path)?
+        };
 
         let use_name = pb_to_string(
-            resolved_import_name
-                .unwrap_or(new_import.import_path.clone()),
+            resolved_import_name.unwrap_or(new_import.import_path.clone()),
         );
 
         match &new_import.values {
             ImportType::Glob => {
-                let normalized_glob =
-                    if new_import.import_path.starts_with("/") {
-                        format!(
-                            ".{}",
-                            new_import.import_path.to_str().unwrap()
-                        )
-                    } else {
-                        new_import
-                            .import_path
-                            .to_str()
-                            .unwrap()
-                            .to_string()
-                    };
+                let normalized_glob = if new_import.import_path.starts_with("/") {
+                    format!(".{}", path_to_string(&new_import.import_path))
+                } else {
+                    path_to_string(&new_import.import_path)
+                };
 
                 let glob = globset::Glob::new(&normalized_glob)
-                    .unwrap()
+                    .map_err(|err| {
+                        format!(
+                            "TS: Invalid import glob '{}': {}",
+                            normalized_glob, err
+                        )
+                    })?
                     .compile_matcher();
 
                 for file in FILES_CACHE.lock().unwrap().values() {
@@ -447,9 +452,7 @@ fn normalize_imports(
                 }
             }
             _ => {
-                let entries = normalized_imports
-                    .entry(use_name)
-                    .or_default();
+                let entries = normalized_imports.entry(use_name).or_default();
 
                 let merged = try_merge_import(entries, &new_import);
 
@@ -463,10 +466,7 @@ fn normalize_imports(
     Ok(normalized_imports)
 }
 
-fn try_merge_import(
-    entries: &mut [Import],
-    new_import: &Import,
-) -> bool {
+fn try_merge_import(entries: &mut [Import], new_import: &Import) -> bool {
     for existing in entries.iter_mut() {
         match (&existing.values, &new_import.values) {
             (ImportType::All | ImportType::Glob, _) => {
@@ -475,50 +475,31 @@ fn try_merge_import(
             (_, ImportType::All) => {
                 existing.values = ImportType::All;
                 existing.line = new_import.line;
-                existing.import_path =
-                    new_import.import_path.clone();
+                existing.import_path = new_import.import_path.clone();
                 return true;
             }
-            (
-                ImportType::Named(current),
-                ImportType::Named(new),
-            ) => {
-                existing.values = ImportType::Named(
-                    clone_extend_vec(current, new),
-                );
+            (ImportType::Named(current), ImportType::Named(new)) => {
+                existing.values = ImportType::Named(clone_extend_vec(current, new));
                 existing.line = new_import.line;
-                existing.import_path =
-                    new_import.import_path.clone();
+                existing.import_path = new_import.import_path.clone();
                 return true;
             }
-            (
-                ImportType::Type(current),
-                ImportType::Type(new),
-            ) => {
-                existing.values = ImportType::Type(
-                    clone_extend_vec(current, new),
-                );
+            (ImportType::Type(current), ImportType::Type(new)) => {
+                existing.values = ImportType::Type(clone_extend_vec(current, new));
                 existing.line = new_import.line;
-                existing.import_path =
-                    new_import.import_path.clone();
+                existing.import_path = new_import.import_path.clone();
                 return true;
             }
             (
                 ImportType::SideEffect | ImportType::Dynamic,
-                ImportType::SideEffect
-                | ImportType::Dynamic
-                | ImportType::Named(_),
+                ImportType::SideEffect | ImportType::Dynamic | ImportType::Named(_),
             ) => {
                 existing.values = new_import.values.clone();
                 existing.line = new_import.line;
-                existing.import_path =
-                    new_import.import_path.clone();
+                existing.import_path = new_import.import_path.clone();
                 return true;
             }
-            (
-                ImportType::Named(_),
-                ImportType::SideEffect | ImportType::Dynamic,
-            ) => {
+            (ImportType::Named(_), ImportType::SideEffect | ImportType::Dynamic) => {
                 return true;
             }
             _ => {}
@@ -528,7 +509,7 @@ fn try_merge_import(
 }
 
 fn pb_to_string(import_path: PathBuf) -> String {
-    import_path.to_str().unwrap().to_string()
+    path_to_string(&import_path)
 }
 
 pub fn load_file_from_path(path: &PathBuf) -> Result<File, String> {
@@ -552,13 +533,13 @@ pub fn load_file_from_path(path: &PathBuf) -> Result<File, String> {
     };
 
     let file = File {
-        basename: path.file_stem().unwrap().to_str().unwrap().to_string(),
-        name_with_ext: path.file_name().unwrap().to_str().unwrap().to_string(),
+        basename: file_stem_to_string(path)?,
+        name_with_ext: file_name_to_string(path)?,
         content: file_content,
         extension: path
             .extension()
-            .map(|ext| ext.to_str().unwrap().to_string()),
-        relative_path: path.to_str().unwrap().to_string(),
+            .map(|ext| ext.to_string_lossy().into_owned()),
+        relative_path: path_to_string(path),
     };
 
     Ok(file)
@@ -576,11 +557,17 @@ fn get_used_project_files_deps_info(
         Vec<PathBuf>,
     ) = entry_points
         .into_iter()
-        .partition(|entry| !entry.to_str().unwrap_or("").contains('*'));
+        .partition(|entry| !path_to_string(entry).contains('*'));
 
     for entry in glob_entry_points {
-        let glob = globset::Glob::new(entry.to_str().unwrap())
-            .unwrap()
+        let glob_pattern = path_to_string(&entry);
+        let glob = globset::Glob::new(&glob_pattern)
+            .map_err(|err| {
+                format!(
+                    "TS: Invalid unused_exports_entry_points glob '{}': {}",
+                    glob_pattern, err
+                )
+            })?
             .compile_matcher();
 
         for file in flattened_root_structure.values() {
@@ -631,7 +618,7 @@ pub fn load_used_project_files_deps_info_from_cfg(
         return Ok(());
     }
 
-    *ROOT_DIR.lock().unwrap() = root_path.to_str().unwrap().to_string();
+    *ROOT_DIR.lock().unwrap() = path_to_string(root_path);
 
     let flattened_root_structure = if !unused_exports_entry_points.is_empty() {
         get_flattened_files_structure(root_structure)

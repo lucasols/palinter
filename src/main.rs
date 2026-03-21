@@ -35,14 +35,20 @@ fn main() {
                 Err(err) => {
                     println!(
                         "❌ Error parsing config file: {}, {}",
-                        cfg_path.to_str().unwrap(),
+                        cfg_path.display(),
                         err
                     );
                     std::process::exit(1);
                 }
             };
 
-            let config = get_config(&parsed_config).unwrap();
+            let config = match get_config(&parsed_config) {
+                Ok(config) => config,
+                Err(err) => {
+                    eprintln!("❌ Error building config: {}", err);
+                    std::process::exit(1);
+                }
+            };
 
             if let Err(err) = get_detailed_file_circular_deps_result(
                 &file_name,
@@ -79,14 +85,20 @@ fn main() {
                 Err(err) => {
                     println!(
                         "❌ Error parsing config file '{}': {}",
-                        cfg_path.to_str().unwrap(),
+                        cfg_path.display(),
                         err
                     );
                     std::process::exit(1);
                 }
             };
 
-            let config = get_config(&parsed_config).unwrap();
+            let config = match get_config(&parsed_config) {
+                Ok(config) => config,
+                Err(err) => {
+                    eprintln!("❌ Error building config: {}", err);
+                    std::process::exit(1);
+                }
+            };
 
             lint(config, root, allow_warnings);
         }

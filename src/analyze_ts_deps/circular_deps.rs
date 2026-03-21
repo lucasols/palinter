@@ -11,22 +11,19 @@ use super::{
 
 use std::path::Path;
 
-fn get_imports_between(
-    from_file: &str,
-    to_file: &str,
-) -> Vec<Import> {
+fn path_to_string(path: &Path) -> String {
+    path.to_string_lossy().into_owned()
+}
+
+fn get_imports_between(from_file: &str, to_file: &str) -> Vec<Import> {
     let inner = || -> Option<Vec<Import>> {
-        let resolved =
-            get_resolved_path(Path::new(from_file)).ok()??;
-        let imports =
-            get_file_imports(resolved.to_str()?).ok()?;
+        let resolved = get_resolved_path(Path::new(from_file)).ok()??;
+        let imports = get_file_imports(resolved.to_str()?).ok()?;
         Some(
             imports
                 .get(to_file)?
                 .iter()
-                .filter(|i| {
-                    !matches!(i.values, ImportType::Type(_))
-                })
+                .filter(|i| !matches!(i.values, ImportType::Type(_)))
                 .cloned()
                 .collect(),
         )
@@ -43,17 +40,9 @@ fn format_import_statement(import: &Import) -> String {
             if values.len() > 3 {
                 let truncated: Vec<&str> =
                     values.iter().take(3).map(|s| s.as_str()).collect();
-                format!(
-                    "import {{ {}, ... }} from '{}'",
-                    truncated.join(", "),
-                    path
-                )
+                format!("import {{ {}, ... }} from '{}'", truncated.join(", "), path)
             } else {
-                format!(
-                    "import {{ {} }} from '{}'",
-                    values.join(", "),
-                    path
-                )
+                format!("import {{ {} }} from '{}'", values.join(", "), path)
             }
         }
         ImportType::All => format!("import * from '{}'", path),
@@ -69,11 +58,7 @@ fn format_import_statement(import: &Import) -> String {
                     path
                 )
             } else {
-                format!(
-                    "import type {{ {} }} from '{}'",
-                    values.join(", "),
-                    path
-                )
+                format!("import type {{ {} }} from '{}'", values.join(", "), path)
             }
         }
         ImportType::Glob => {
@@ -96,34 +81,19 @@ pub fn get_detailed_file_circular_deps_result(
         .as_ref()
         .map(|c| c.aliases.clone())
         .unwrap_or_default();
-    *ROOT_DIR.lock().unwrap() = root_dir.to_str().unwrap().to_string();
+    *ROOT_DIR.lock().unwrap() = path_to_string(root_dir);
 
-    let resolved_path = get_resolved_path(file_path)?.unwrap();
+    let resolved_path = get_resolved_path(file_path)?
+        .ok_or_else(|| format!("TS: Can't resolve path: {}", file_path.display()))?;
+    let resolved_path_string = path_to_string(&resolved_path);
 
-    let root_structure = match load_folder_structure(
-        root_dir,
-        &config,
-        &root_dir.to_path_buf(),
-        true,
-    ) {
-        Ok(root_structure) => root_structure,
-        Err(err) => {
-            println!("❌ Error loading folder structure: {}", err);
-            std::process::exit(1);
-        }
-    };
+    let root_structure =
+        load_folder_structure(root_dir, &config, &root_dir.to_path_buf(), true)?;
 
-    if let Err(err) = load_used_project_files_deps_info_from_cfg(
-        &config,
-        &root_structure,
-        root_dir,
-    ) {
-        println!("❌ Error getting used files deps info: {}", err);
-        std::process::exit(1);
-    };
+    load_used_project_files_deps_info_from_cfg(&config, &root_structure, root_dir)?;
 
     let result = get_node_deps(
-        &resolved_path.to_str().unwrap().to_string(),
+        &resolved_path_string,
         &mut |path| get_file_edges(path, true),
         None,
         true,
@@ -133,7 +103,7 @@ pub fn get_detailed_file_circular_deps_result(
     if let Some(circular_deps) = result.circular_deps {
         let mut cdeps = circular_deps;
 
-        let current_dep_path = format!("|{}|", resolved_path.to_str().unwrap());
+        let current_dep_path = format!("|{}|", resolved_path_string);
 
         cdeps.sort_by_key(|dep| {
             if dep.ends_with(&current_dep_path) {
@@ -152,10 +122,7 @@ pub fn get_detailed_file_circular_deps_result(
 
         println!("🔁 {} circular deps found:", cdeps.len());
 
-        if result
-            .deps
-            .contains(&resolved_path.to_str().unwrap().to_string())
-        {
+        if result.deps.contains(&resolved_path_string) {
             println!("\n{}", "Direct circular deps found".bright_yellow());
         }
 
@@ -181,14 +148,11 @@ pub fn get_detailed_file_circular_deps_result(
                 if i < parts.len() - 1 {
                     let from_file = parts[i].trim_matches('|');
                     let to_file = parts[i + 1].trim_matches('|');
-                    let imports =
-                        get_imports_between(from_file, to_file);
-                    let indent =
-                        if i == 0 { 3 } else { 3 + i * 2 };
+                    let imports = get_imports_between(from_file, to_file);
+                    let indent = if i == 0 { 3 } else { 3 + i * 2 };
 
                     for import in &imports {
-                        let formatted =
-                            format_import_statement(import);
+                        let formatted = format_import_statement(import);
                         println!(
                             "{}{}",
                             " ".repeat(indent),

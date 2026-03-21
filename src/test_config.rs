@@ -202,9 +202,10 @@ pub fn test_config(
                                         expected_errors_to_update.push(
                                             UpdateExpectedErrors {
                                                 test_case_path: format!(
-                                                    "{}/{}",
-                                                    test_cases_dir.to_str().unwrap(),
-                                                    file_name
+                                                    "{}",
+                                                    test_cases_dir
+                                                        .join(&file_name)
+                                                        .display()
                                                 ),
                                                 project_index: i,
                                                 expected_errors: sort_vector(
@@ -253,7 +254,7 @@ pub fn test_config(
     }
 
     if update_expected_errors {
-        apply_expected_errors_updates(&expected_errors_to_update);
+        apply_expected_errors_updates(&expected_errors_to_update)?;
     }
 
     if !test_errors.is_empty() {
@@ -269,14 +270,17 @@ pub fn test_config(
 
 fn apply_expected_errors_updates(
     expected_errors_to_update: &[UpdateExpectedErrors],
-) {
+) -> Result<(), String> {
     for UpdateExpectedErrors {
         test_case_path,
         project_index,
         expected_errors,
     } in expected_errors_to_update
     {
-        let test_case_content = std::fs::read_to_string(test_case_path).unwrap();
+        let test_case_content =
+            std::fs::read_to_string(test_case_path).map_err(|err| {
+                format!("Error reading test case '{}': {}", test_case_path, err)
+            })?;
 
         let projects_caputres = get_projects_capture(&test_case_content);
 
@@ -291,7 +295,12 @@ fn apply_expected_errors_updates(
                 let mut new_project_yaml = project_yaml.to_string();
 
                 let expected_errors_index =
-                    new_project_yaml.find("expected_errors:").unwrap();
+                    new_project_yaml.find("expected_errors:").ok_or_else(|| {
+                        format!(
+                            "Missing 'expected_errors:' section in '{}'",
+                            test_case_path
+                        )
+                    })?;
 
                 new_project_yaml.replace_range(
                     expected_errors_index..,
@@ -320,8 +329,15 @@ fn apply_expected_errors_updates(
             }
         }
 
-        std::fs::write(test_case_path, new_test_case_content).unwrap();
+        std::fs::write(test_case_path, new_test_case_content).map_err(|err| {
+            format!(
+                "Error writing updated test case '{}': {}",
+                test_case_path, err
+            )
+        })?;
     }
+
+    Ok(())
 }
 
 fn extract_projects_from_file_content(
@@ -373,68 +389,81 @@ fn convert_from_parsed_folder_to_project(
     folder_name: String,
     path: &str,
     files: &Option<BTreeMap<String, String>>,
-) -> Folder {
+) -> Result<Folder, String> {
     let childs = parsed
         .childs
         .iter()
-        .map(|(child_name, child)| match child {
-            ParsedStructureChild::File(file_content) => {
+        .map(|(child_name, child)| -> Result<FolderChild, String> {
+            match child {
+                ParsedStructureChild::File(file_content) => {
                 let child_string = child_name.to_string();
 
-                let (basename, extension) = {
-                    let parts = child_string.split('.').collect::<Vec<&str>>();
-
-                    let basename = parts[0..parts.len() - 1].join(".");
-
-                    let extension = parts.last().unwrap().to_string();
-
-                    (basename, extension)
-                };
+                let (basename, extension) = child_string
+                    .rsplit_once('.')
+                    .map(|(basename, extension)| {
+                        (basename.to_string(), extension.to_string())
+                    })
+                    .ok_or_else(|| {
+                        format!(
+                            "Invalid file name '{}' in test project structure",
+                            child_string
+                        )
+                    })?;
 
                 let content_to_use = if file_content.starts_with("use:") {
                     let file_name = file_content.replace("use:", "");
 
-                    files.as_ref().unwrap().get(&file_name).unwrap().to_owned()
+                    files
+                        .as_ref()
+                        .and_then(|files| files.get(&file_name))
+                        .cloned()
+                        .ok_or_else(|| {
+                            format!(
+                                "Missing file template '{}' in test project structure",
+                                file_name
+                            )
+                        })?
                 } else {
                     file_content.to_owned()
                 };
 
-                FolderChild::FileChild(File {
+                Ok(FolderChild::FileChild(File {
                     basename,
                     name_with_ext: child_string.clone(),
                     content: Some(content_to_use),
                     extension: Some(extension),
                     relative_path: format!("{}/{}", path, child_string),
-                })
-            }
-            ParsedStructureChild::Folder(folder) => {
-                FolderChild::Folder(convert_from_parsed_folder_to_project(
+                }))
+                }
+                ParsedStructureChild::Folder(folder) => {
+                    Ok(FolderChild::Folder(convert_from_parsed_folder_to_project(
                     folder,
                     child_name.to_owned(),
                     format!("{}/{}", path, normalize_folder_config_name(child_name))
                         .as_str(),
                     files,
-                ))
+                )?))
+                }
             }
         })
-        .collect();
+        .collect::<Result<Vec<_>, _>>()?;
 
-    Folder {
+    Ok(Folder {
         name: normalize_folder_config_name(&folder_name),
         children: childs,
-    }
+    })
 }
 
-fn parse_project_yaml(project_yaml: String) -> Result<Project, serde_yaml::Error> {
+fn parse_project_yaml(project_yaml: String) -> Result<Project, String> {
     let parsed_project_yaml: ParsedProjectYaml =
-        serde_yaml::from_str(&project_yaml)?;
+        serde_yaml::from_str(&project_yaml).map_err(|err| err.to_string())?;
 
     let structure = convert_from_parsed_folder_to_project(
         &parsed_project_yaml.structure,
         ".".to_string(),
         ".",
         &parsed_project_yaml.files,
-    );
+    )?;
 
     Ok(Project {
         only: parsed_project_yaml.only.unwrap_or(false),
@@ -455,27 +484,46 @@ fn get_test_cases(dir: &PathBuf) -> Result<Vec<TestCase>, String> {
         ));
     }
 
-    Ok(std::fs::read_dir(dir)
-        .unwrap()
-        .flat_map(|entry| {
-            let entry = entry.unwrap();
-            let path = entry.path();
+    let mut test_cases = Vec::new();
 
-            if path.is_dir() {
-                vec![]
-            } else {
-                let file_name =
-                    path.file_name().unwrap().to_str().unwrap().to_string();
+    for entry in std::fs::read_dir(dir).map_err(|err| {
+        format!(
+            "Error reading test cases folder '{}': {}",
+            dir.display(),
+            err
+        )
+    })? {
+        let entry = entry.map_err(|err| {
+            format!(
+                "Error reading an entry in test cases folder '{}': {}",
+                dir.display(),
+                err
+            )
+        })?;
+        let path = entry.path();
 
-                let file_content = std::fs::read_to_string(path).unwrap();
+        if path.is_dir() {
+            continue;
+        }
 
-                vec![TestCase {
-                    file_name,
-                    file_content,
-                }]
-            }
-        })
-        .collect::<Vec<TestCase>>())
+        let file_name = path
+            .file_name()
+            .map(|name| name.to_string_lossy().into_owned())
+            .ok_or_else(|| {
+                format!("Error getting file name for test case '{}'", path.display())
+            })?;
+
+        let file_content = std::fs::read_to_string(&path).map_err(|err| {
+            format!("Error reading test case '{}': {}", path.display(), err)
+        })?;
+
+        test_cases.push(TestCase {
+            file_name,
+            file_content,
+        });
+    }
+
+    Ok(test_cases)
 }
 
 fn do_vecs_match<T: Eq + Hash>(a: &[T], b: &[T]) -> bool {

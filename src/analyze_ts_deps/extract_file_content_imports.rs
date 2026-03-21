@@ -248,9 +248,7 @@ pub fn extract_imports_from_file_content(
     Ok(imports)
 }
 
-fn filter_map_named_import_value(
-    captured_string: &str,
-) -> Option<(String, bool)> {
+fn filter_map_named_import_value(captured_string: &str) -> Option<(String, bool)> {
     let value = if captured_string.contains(" as ") {
         let split = captured_string.split(" as ");
 
@@ -259,12 +257,12 @@ fn filter_map_named_import_value(
         captured_string.trim().to_string()
     };
 
-    let (clean_value, is_type) =
-        if let Some(stripped) = value.strip_prefix("type ") {
-            (stripped.to_string(), true)
-        } else {
-            (value, false)
-        };
+    let (clean_value, is_type) = if let Some(stripped) = value.strip_prefix("type ")
+    {
+        (stripped.to_string(), true)
+    } else {
+        (value, false)
+    };
 
     if clean_value.is_empty() {
         None
@@ -1109,18 +1107,14 @@ const tableBodyCellViewerComponents = import.meta.glob(
             vec![Import {
                 import_path: PathBuf::from("@src/foo"),
                 line: 2,
-                values: ImportType::Type(vec![
-                    "Foo".to_string(),
-                    "Bar".to_string()
-                ]),
+                values: ImportType::Type(vec!["Foo".to_string(), "Bar".to_string()]),
             }],
         );
     }
 
     #[test]
     fn named_with_default_and_inline_type() {
-        let file_content =
-            r#"import Foo, { Bar, type Baz } from '@src/foo';"#;
+        let file_content = r#"import Foo, { Bar, type Baz } from '@src/foo';"#;
         let imports = extract_imports_from_file_content(file_content).unwrap();
 
         assert_eq!(
@@ -1137,9 +1131,7 @@ const tableBodyCellViewerComponents = import.meta.glob(
                 Import {
                     import_path: PathBuf::from("@src/foo"),
                     line: 1,
-                    values: ImportType::Type(vec![
-                        "Baz".to_string(),
-                    ]),
+                    values: ImportType::Type(vec!["Baz".to_string(),]),
                 },
             ],
         );

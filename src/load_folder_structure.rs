@@ -28,6 +28,26 @@ pub struct Folder {
     pub children: Vec<FolderChild>,
 }
 
+fn path_to_string(path: &Path) -> String {
+    path.to_string_lossy().into_owned()
+}
+
+fn file_name_to_string(path: &Path) -> Result<String, String> {
+    path.file_name()
+        .map(|name| name.to_string_lossy().into_owned())
+        .ok_or_else(|| {
+            format!("Error getting file name from path '{}'", path.display())
+        })
+}
+
+fn file_stem_to_string(path: &Path) -> Result<String, String> {
+    path.file_stem()
+        .map(|stem| stem.to_string_lossy().into_owned())
+        .ok_or_else(|| {
+            format!("Error getting file stem from path '{}'", path.display())
+        })
+}
+
 pub fn load_folder_structure(
     path: &Path,
     config: &Config,
@@ -39,27 +59,48 @@ pub fn load_folder_structure(
     let mut builder = globset::GlobSetBuilder::new();
 
     for pattern in &config.ignore {
-        builder.add(Glob::new(pattern).unwrap());
+        builder.add(Glob::new(pattern).map_err(|err| {
+            format!("Invalid ignore pattern '{}': {}", pattern, err)
+        })?);
     }
 
     if is_root {
-        builder.add(Glob::new("**/node_modules").unwrap());
-        builder.add(Glob::new("**/.git").unwrap());
+        builder.add(Glob::new("**/node_modules").map_err(|err| {
+            format!("Invalid built-in ignore pattern '**/node_modules': {}", err)
+        })?);
+        builder.add(Glob::new("**/.git").map_err(|err| {
+            format!("Invalid built-in ignore pattern '**/.git': {}", err)
+        })?);
     }
 
-    let ignore_paths_set = builder.build().unwrap();
+    let ignore_paths_set = builder
+        .build()
+        .map_err(|err| format!("Error building ignore patterns: {}", err))?;
 
     for entry in path.read_dir().map_err(|err| {
         format!(
             "Error reading directory: {}, Error: {}",
-            path.to_str().unwrap_or("invalid path"),
+            path.display(),
             err
         )
     })? {
-        let entry = entry.unwrap();
+        let entry = entry.map_err(|err| {
+            format!(
+                "Error reading directory entry in '{}': {}",
+                path.display(),
+                err
+            )
+        })?;
         let path = entry.path();
 
-        let relative_path = path.strip_prefix(root).unwrap();
+        let relative_path = path.strip_prefix(root).map_err(|err| {
+            format!(
+                "Error getting relative path for '{}' from '{}': {}",
+                path.display(),
+                root.display(),
+                err
+            )
+        })?;
 
         if !config.ignore.is_empty() && ignore_paths_set.is_match(relative_path) {
             continue;
@@ -68,10 +109,10 @@ pub fn load_folder_structure(
         if path.is_dir() {
             if is_root
                 && config.root_folder.folder_rules.is_empty()
-                && !config.root_folder.sub_folders_config.contains_key(&format!(
-                    "/{}",
-                    path.file_name().unwrap().to_str().unwrap()
-                ))
+                && !config
+                    .root_folder
+                    .sub_folders_config
+                    .contains_key(&format!("/{}", file_name_to_string(&path)?))
             {
                 continue;
             }
@@ -81,19 +122,14 @@ pub fn load_folder_structure(
             )?));
         } else {
             let extension =
-                path.extension().map(|s| s.to_str().unwrap().to_string());
+                path.extension().map(|s| s.to_string_lossy().into_owned());
 
             let file = File {
-                basename: path.file_stem().unwrap().to_str().unwrap().to_string(),
-                name_with_ext: path
-                    .file_name()
-                    .unwrap()
-                    .to_str()
-                    .unwrap()
-                    .to_string(),
-                content: get_file_content(config, &extension, path.clone()),
+                basename: file_stem_to_string(&path)?,
+                name_with_ext: file_name_to_string(&path)?,
+                content: get_file_content(config, &extension, path.clone())?,
                 extension,
-                relative_path: format!("./{}", relative_path.to_str().unwrap()),
+                relative_path: format!("./{}", path_to_string(relative_path)),
             };
 
             children.push(FolderChild::FileChild(file));
@@ -101,12 +137,12 @@ pub fn load_folder_structure(
     }
 
     let folder_name = match path.file_name() {
-        Some(name) => name.to_str().unwrap().to_string(),
+        Some(name) => name.to_string_lossy().into_owned(),
         None => {
-            let name = path.to_str().unwrap_or("invalid path");
+            let name = path_to_string(path);
 
             if name == "." {
-                name.to_string()
+                name
             } else {
                 return Err(format!("Error getting folder name: {}", name));
             }
@@ -123,14 +159,16 @@ fn get_file_content(
     config: &Config,
     extension: &Option<String>,
     path: PathBuf,
-) -> Option<String> {
+) -> Result<Option<String>, String> {
     if let Some(extension) = extension {
         if config.analyze_content_of_files_types.contains(extension) {
-            return Some(read_to_string(path).unwrap());
+            return read_to_string(&path).map(Some).map_err(|err| {
+                format!("Error reading file '{}': {}", path.display(), err)
+            });
         }
     }
 
-    None
+    Ok(None)
 }
 
 pub fn get_flattened_files_structure(folder: &Folder) -> HashMap<String, File> {
