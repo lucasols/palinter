@@ -515,7 +515,7 @@ pub fn check_file_is_not_empty(file: &File) -> Result<(), String> {
     let is_empty = file
         .content
         .as_ref()
-        .map_or(true, |content| content.trim().is_empty());
+        .is_none_or(|content| content.trim().is_empty());
 
     if is_empty {
         Err("file is empty".to_string())

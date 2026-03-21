@@ -1,5 +1,4 @@
 use colored::Colorize;
-use jsonschema::JSONSchema;
 use regex::Regex;
 use serde::Deserialize;
 use std::{
@@ -124,9 +123,11 @@ fn convert_from_parsed_folder_to_project(
     }
 }
 
-fn parse_project_yaml(project_yaml: String) -> Result<Project, serde_yaml::Error> {
+fn parse_project_yaml(
+    project_yaml: String,
+) -> Result<Project, serde_norway::Error> {
     let parsed_project_yaml: ParsedProjectYaml =
-        serde_yaml::from_str(&project_yaml)?;
+        serde_norway::from_str(&project_yaml)?;
 
     let structure = convert_from_parsed_folder_to_project(
         &parsed_project_yaml.structure,
@@ -197,18 +198,19 @@ fn extract_config_and_projects_from_test_case(
         );
 
         if expect_config_error.is_none() {
-            let cfg_schema =
+            let cfg_schema: serde_json::Value =
                 serde_json::from_str(include_str!("../config.schema.json"))
                     .map_err(|e| format!("Schema parsing error: {}", e))?;
 
-            let cfg_data = serde_yaml::from_str(&config_string)
+            let cfg_data: serde_json::Value = serde_norway::from_str(&config_string)
                 .map_err(|e| format!("Config data parsing error: {}", e))?;
 
             let compiled_schema =
-                JSONSchema::compile(&cfg_schema).map_err(|e| e.to_string())?;
+                jsonschema::validator_for(&cfg_schema).map_err(|e| e.to_string())?;
 
-            if let Err(errors) = compiled_schema.validate(&cfg_data) {
-                let errors: Vec<_> = errors.collect();
+            if let Err(error) = compiled_schema.validate(&cfg_data) {
+                let errors: Vec<_> =
+                    compiled_schema.iter_errors(&cfg_data).collect();
 
                 if !errors.is_empty() {
                     return Err(format!(
@@ -216,6 +218,8 @@ fn extract_config_and_projects_from_test_case(
                         errors
                     ));
                 }
+
+                return Err(format!("Schema validation for cfg failed: {}", error));
             };
         }
 

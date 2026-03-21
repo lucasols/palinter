@@ -456,7 +456,7 @@ fn convert_from_parsed_folder_to_project(
 
 fn parse_project_yaml(project_yaml: String) -> Result<Project, String> {
     let parsed_project_yaml: ParsedProjectYaml =
-        serde_yaml::from_str(&project_yaml).map_err(|err| err.to_string())?;
+        serde_norway::from_str(&project_yaml).map_err(|err| err.to_string())?;
 
     let structure = convert_from_parsed_folder_to_project(
         &parsed_project_yaml.structure,

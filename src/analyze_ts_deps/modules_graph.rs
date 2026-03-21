@@ -61,7 +61,6 @@ where
 }
 
 #[allow(clippy::too_many_arguments)]
-
 fn dfs<F>(
     main_node_deps: &mut IndexSet<String>,
     node_name: &String,
@@ -135,7 +134,7 @@ where
         if let Some(cached) = cache.get(node_name) {
             main_node_deps.extend(cached.deps.clone());
 
-            path.remove(node_name);
+            path.shift_remove(node_name);
 
             return if cached.circular_deps.is_some() {
                 for circular_path in cached.circular_deps.clone().unwrap() {
@@ -186,7 +185,7 @@ where
         deps.insert(edge.to_string());
     }
 
-    path.remove(node_name);
+    path.shift_remove(node_name);
 
     if !has_circular_deps {
         return Ok(Some(deps));

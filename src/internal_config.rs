@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 
-use serde_yaml::Value;
+use serde_norway::Value;
 
 use crate::{
     parse_config_file::{
@@ -712,10 +712,9 @@ fn normalize_rules(
                             conditions: conditions.clone(),
                             expect: expect.clone(),
                             expect_one_of: expect_one_of.clone(),
-                            allow_unexpected_files: allow_unexpected_files.clone(),
-                            allow_unexpected_folders: allow_unexpected_folders
-                                .clone(),
-                            allow_unexpected: allow_unexpected.clone(),
+                            allow_unexpected_files: *allow_unexpected_files,
+                            allow_unexpected_folders: *allow_unexpected_folders,
+                            allow_unexpected: *allow_unexpected,
                             non_recursive: custom_non_recursive.or(*non_recursive),
                             not_touch: custom_not_touch.or(*not_touch),
                             error_msg: custom_error.clone().or(error_msg.clone()),

@@ -1,5 +1,5 @@
 use serde::Deserialize;
-use serde_yaml::Value;
+use serde_norway::Value;
 use std::{
     collections::{BTreeMap, HashMap},
     path::PathBuf,
@@ -229,7 +229,7 @@ pub fn parse_config_string(
     from: ParseFrom,
 ) -> Result<ParsedConfig, String> {
     match from {
-        ParseFrom::Yaml => match serde_yaml::from_str(config) {
+        ParseFrom::Yaml => match serde_norway::from_str(config) {
             Ok(config) => Ok(config),
             Err(err) => Err(format!(
                 "Error parsing config: {}\n---\n{}\n---\n",
