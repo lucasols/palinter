@@ -13,7 +13,7 @@ use std::{path::PathBuf, process};
 use analyze_ts_deps::circular_deps::get_detailed_file_circular_deps_result;
 use check_folders::{check_root_folder, Problems};
 
-use cli::{get_cli_command, CliCommand};
+use cli::{get_cli_args, CliCommand};
 use internal_config::{get_config, Config};
 use load_folder_structure::{count_files, load_folder_structure};
 use parse_config_file::parse_config_file;
@@ -22,7 +22,27 @@ use test_config::test_config;
 use crate::analyze_ts_deps::load_used_project_files_deps_info_from_cfg;
 
 fn main() {
-    match get_cli_command() {
+    let cli_args = get_cli_args();
+
+    if let Some(threads) = &cli_args.threads {
+        let threads = match threads.resolve() {
+            Ok(threads) => threads,
+            Err(err) => {
+                eprintln!("❌ {}", err);
+                std::process::exit(1);
+            }
+        };
+
+        if let Err(err) = rayon::ThreadPoolBuilder::new()
+            .num_threads(threads)
+            .build_global()
+        {
+            eprintln!("❌ Error configuring thread pool: {}", err);
+            std::process::exit(1);
+        }
+    }
+
+    match cli_args.command {
         CliCommand::CircularDeps {
             file_name,
             cfg_path,

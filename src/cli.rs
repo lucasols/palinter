@@ -2,6 +2,77 @@ use std::path::PathBuf;
 
 use clap::{builder, Arg, ArgAction, ArgMatches, Command};
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum ThreadsArg {
+    Count(usize),
+    Percentage(usize),
+}
+
+impl ThreadsArg {
+    pub fn resolve(&self) -> Result<usize, String> {
+        match self {
+            Self::Count(threads) => Ok(*threads),
+            Self::Percentage(percentage) => {
+                let available_cpus = std::thread::available_parallelism()
+                    .map_err(|err| {
+                        format!(
+                            "Error determining available CPUs for '--threads {}%': {}",
+                            percentage, err
+                        )
+                    })?
+                    .get() as u128;
+
+                let resolved_threads =
+                    (available_cpus * (*percentage as u128)).div_ceil(100) as usize;
+
+                Ok(resolved_threads.max(1))
+            }
+        }
+    }
+}
+
+fn parse_threads_arg(value: &str) -> Result<ThreadsArg, String> {
+    if let Some(value) = value.strip_suffix('%') {
+        let percentage = value.parse::<usize>().map_err(|_| {
+            format!(
+                "Invalid '--threads' value '{}'. Use a positive integer or a percentage like '50%'",
+                value
+            )
+        })?;
+
+        if !(1..=100).contains(&percentage) {
+            return Err(format!(
+                "Invalid '--threads' percentage '{}%'. Expected a value between 1% and 100%",
+                percentage
+            ));
+        }
+
+        return Ok(ThreadsArg::Percentage(percentage));
+    }
+
+    let threads = value.parse::<usize>().map_err(|_| {
+        format!(
+            "Invalid '--threads' value '{}'. Use a positive integer or a percentage like '50%'",
+            value
+        )
+    })?;
+
+    if threads == 0 {
+        return Err(
+            "Invalid '--threads' value '0'. Expected a value greater than 0"
+                .to_string(),
+        );
+    }
+
+    Ok(ThreadsArg::Count(threads))
+}
+
+#[derive(Debug, PartialEq)]
+pub struct CliArgs {
+    pub command: CliCommand,
+    pub threads: Option<ThreadsArg>,
+}
+
 #[derive(Debug, PartialEq)]
 pub enum CliCommand {
     CircularDeps {
@@ -46,6 +117,13 @@ fn get_clap_command() -> Command {
                 .long("allow-warnings")
                 .action(ArgAction::SetTrue)
                 .help("Show rules with `is_warning` set to true as warnings instead of errors")
+        )
+        .arg(
+            Arg::new("threads")
+                .long("threads")
+                .global(true)
+                .help("Number of threads or CPU percentage to use, e.g. 4 or 50%")
+                .value_parser(parse_threads_arg),
         )
          .subcommand(
             Command::new("circular-deps")
@@ -142,8 +220,17 @@ fn get_cli_cmd_from_matches(matches: &ArgMatches) -> CliCommand {
     }
 }
 
-pub fn get_cli_command() -> CliCommand {
-    get_cli_cmd_from_matches(&get_clap_command().get_matches())
+fn get_threads_from_matches(matches: &ArgMatches) -> Option<ThreadsArg> {
+    matches.get_one::<ThreadsArg>("threads").cloned()
+}
+
+pub fn get_cli_args() -> CliArgs {
+    let matches = get_clap_command().get_matches();
+
+    CliArgs {
+        command: get_cli_cmd_from_matches(&matches),
+        threads: get_threads_from_matches(&matches),
+    }
 }
 
 #[cfg(test)]
