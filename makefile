@@ -40,6 +40,9 @@ publish_patch:
 jestor_test:
 	cargo run -- --root ../jestor/web-app --config ../jestor/web-app/palinter.yaml
 
+jestor_test_release:
+	cargo run --release -- --root ../jestor/web-app --config ../jestor/web-app/palinter.yaml
+
 jestor_test_allow_warnings:
 	cargo run -- --root ../jestor/web-app --config ../jestor/web-app/palinter.yaml --allow-warnings
 
