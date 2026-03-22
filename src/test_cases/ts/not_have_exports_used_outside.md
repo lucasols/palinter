@@ -174,3 +174,22 @@ structure:
 expected_errors:
   - "File ./src/ok/fileB.ts:\n • disallowed used exports in files '@src/tests/fileC.ts', this file can only be imported from '@src/ok/*, @src/index.ts'"
 ```
+
+```yaml
+structure:
+  /src:
+    index.ts: |
+      console.log('hello world');
+      import '@src/ok/fileA';
+      import '@src/tests/fileC';
+
+    /ok:
+      fileA.ts: |
+        export const a = 1;
+    /tests:
+      fileC.ts: |
+        import '@src/ok/fileA';
+        console.log('side effect only');
+
+expected_errors: false
+```

@@ -188,10 +188,10 @@ fn get_resolved_path_from(
     path: &Path,
 ) -> Result<Option<PathBuf>, String> {
     let path_string = path_to_string(path);
-    let is_relative_import = importer_path.is_some()
-        && (path_string.starts_with("./") || path_string.starts_with("../"));
+    let is_relative_path =
+        path_string.starts_with("./") || path_string.starts_with("../");
 
-    if !is_relative_import
+    if !is_relative_path
         && !ALIASES.lock().unwrap().iter().any(|(alias, replace)| {
             path.starts_with(alias) || path.starts_with(replace)
         })
@@ -204,7 +204,7 @@ fn get_resolved_path_from(
     }
 
     let cache_key = ResolveCacheKey {
-        importer_path: if is_relative_import {
+        importer_path: if is_relative_path {
             importer_path.map(Path::to_path_buf)
         } else {
             None
@@ -216,7 +216,7 @@ fn get_resolved_path_from(
         return Ok(Some(resolved_path.clone()));
     }
 
-    let unresolved_file_path = if is_relative_import {
+    let unresolved_file_path = if is_relative_path {
         let importer_dir = importer_path
             .and_then(Path::parent)
             .unwrap_or_else(|| Path::new("."));
@@ -786,26 +786,28 @@ pub fn load_used_project_files_deps_info_from_cfg(
         })
         .unwrap_or_default();
 
-    if unused_exports_entry_points.is_empty() {
-        return Ok(());
-    }
-
     *ROOT_DIR.lock().unwrap() = path_to_string(root_path);
 
-    let flattened_root_structure = if !unused_exports_entry_points.is_empty() {
-        get_flattened_files_structure(root_structure)
-    } else {
-        HashMap::default()
-    };
+    let flattened_root_structure = get_flattened_files_structure(root_structure);
+    let aliases = config
+        .ts_config
+        .as_ref()
+        .map(|c| c.aliases.clone())
+        .unwrap_or_default();
+
+    if unused_exports_entry_points.is_empty() {
+        FILES_CACHE.lock().unwrap().extend(flattened_root_structure);
+        *ALIASES.lock().unwrap() = aliases;
+        REVERSE_IMPORTS.lock().unwrap().clear();
+        USED_FILES.lock().unwrap().clear();
+
+        return Ok(());
+    }
 
     get_used_project_files_deps_info(
         unused_exports_entry_points,
         flattened_root_structure,
-        config
-            .ts_config
-            .as_ref()
-            .map(|c| c.aliases.clone())
-            .unwrap_or_default(),
+        aliases,
     )?;
 
     Ok(())

@@ -422,6 +422,14 @@ pub fn check_ts_not_have_used_exports_outside(
             continue;
         }
 
+        if importer
+            .imports
+            .iter()
+            .all(|import| matches!(import.values, ImportType::SideEffect))
+        {
+            continue;
+        }
+
         if !allowed_to_use_exports_set.is_match(importer.importer_path.as_str()) {
             errors.push(add_aliases(&importer.importer_path));
         }
