@@ -3,7 +3,7 @@ use globset::Glob;
 use lazy_static::lazy_static;
 use std::{
     collections::HashMap,
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::{Arc, Mutex},
 };
 
@@ -16,7 +16,8 @@ use super::{
     add_aliases,
     extract_file_content_exports::Export,
     extract_file_content_imports::{Import, ImportType},
-    get_file_deps_result, get_file_imports, REVERSE_IMPORTS, USED_FILES,
+    get_file_deps_result, get_file_imports, get_resolved_path_from, REVERSE_IMPORTS,
+    USED_FILES,
 };
 
 lazy_static! {
@@ -453,7 +454,7 @@ pub fn check_ts_have_imports(
                 let mut found = false;
 
                 for Import { import_path, .. } in file_imports.values().flatten() {
-                    if match_glob_path(path, import_path)? {
+                    if match_import_path(&file.relative_path, path, import_path)? {
                         found = true;
                         break;
                     }
@@ -472,7 +473,7 @@ pub fn check_ts_have_imports(
                     ..
                 } in file_imports.values().flatten()
                 {
-                    if match_glob_path(path, import_path)?
+                    if match_import_path(&file.relative_path, path, import_path)?
                         && matches!(
                             values,
                             ImportType::Named(values)
@@ -500,7 +501,7 @@ pub fn check_ts_have_imports(
                     ..
                 } in file_imports.values().flatten()
                 {
-                    if match_glob_path(from, import_path)?
+                    if match_import_path(&file.relative_path, from, import_path)?
                         && matches!(
                             values,
                             ImportType::Named(values) if values.contains(name)
@@ -550,6 +551,24 @@ fn match_glob_path(path: &str, import_path: &PathBuf) -> Result<bool, String> {
     Ok(matcher.is_match(import_path))
 }
 
+fn match_import_path(
+    current_file_path: &str,
+    pattern: &str,
+    import_path: &PathBuf,
+) -> Result<bool, String> {
+    if match_glob_path(pattern, import_path)? {
+        return Ok(true);
+    }
+
+    if let Some(resolved_path) =
+        get_resolved_path_from(Some(Path::new(current_file_path)), import_path)?
+    {
+        return match_glob_path(pattern, &resolved_path);
+    }
+
+    Ok(false)
+}
+
 pub fn check_ts_not_have_imports(
     file: &File,
     not_have_imports: &[MatchImport],
@@ -564,7 +583,7 @@ pub fn check_ts_not_have_imports(
                 let mut found = false;
 
                 for Import { import_path, .. } in file_imports.values().flatten() {
-                    if match_glob_path(path, import_path)? {
+                    if match_import_path(&file.relative_path, path, import_path)? {
                         found = true;
                         break;
                     }
@@ -584,7 +603,7 @@ pub fn check_ts_not_have_imports(
                     ..
                 } in file_imports.values().flatten()
                 {
-                    if match_glob_path(path, import_path)?
+                    if match_import_path(&file.relative_path, path, import_path)?
                         && matches!(
                             values,
                             ImportType::Named(values)
@@ -612,7 +631,7 @@ pub fn check_ts_not_have_imports(
                     ..
                 } in file_imports.values().flatten()
                 {
-                    if match_glob_path(from, import_path)?
+                    if match_import_path(&file.relative_path, from, import_path)?
                         && matches!(
                             values,
                             ImportType::Named(values) if values.contains(name)

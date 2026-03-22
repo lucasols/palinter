@@ -121,3 +121,21 @@ expected_errors:
     File ./src/fileB.ts:
      • Unused ignore comment '// palinter-ignore-not-have-circular-deps', remove it
 ```
+
+```yaml
+structure:
+  /src:
+    index.ts: |
+      import './fileA';
+    fileA.ts: |
+      import { c } from './fileB';
+      export const a = c;
+    fileB.ts: |
+      import { a } from './fileA';
+      export const c = a;
+
+expected_errors:
+  - "File ./src/fileA.ts:\n • File has circular dependencies: ./src/fileA.ts (run cmd `palinter circular-deps [file]` to get more info)"
+  - "File ./src/fileB.ts:\n • File has circular dependencies: ./src/fileA.ts (run cmd `palinter circular-deps [file]` to get more info)"
+  - "File ./src/index.ts:\n • File has circular dependencies: ./src/fileA.ts (run cmd `palinter circular-deps [file]` to get more info)"
+```

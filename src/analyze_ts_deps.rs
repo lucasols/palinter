@@ -1,7 +1,7 @@
 use std::{
     collections::{HashMap, HashSet},
     fs::read_to_string,
-    path::{Path, PathBuf},
+    path::{Component, Path, PathBuf},
     sync::Mutex,
 };
 
@@ -47,10 +47,16 @@ struct ImportUsage {
     imports: Vec<Import>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct ResolveCacheKey {
+    importer_path: Option<PathBuf>,
+    import_path: PathBuf,
+}
+
 lazy_static! {
     static ref FILES_CACHE: Mutex<HashMap<String, File>> =
         Mutex::new(HashMap::new());
-    static ref RESOLVE_CACHE: Mutex<HashMap<PathBuf, PathBuf>> =
+    static ref RESOLVE_CACHE: Mutex<HashMap<ResolveCacheKey, PathBuf>> =
         Mutex::new(HashMap::new());
     static ref IMPORTS_CACHE: Mutex<HashMap<String, IndexMap<String, Vec<Import>>>> =
         Mutex::new(HashMap::new());
@@ -174,13 +180,21 @@ pub fn warm_file_deps_results_for_paths(
 }
 
 fn get_resolved_path(path: &Path) -> Result<Option<PathBuf>, String> {
-    let path_string = path_to_string(path);
+    get_resolved_path_from(None, path)
+}
 
-    if !ALIASES
-        .lock()
-        .unwrap()
-        .iter()
-        .any(|(alias, replace)| path.starts_with(alias) || path.starts_with(replace))
+fn get_resolved_path_from(
+    importer_path: Option<&Path>,
+    path: &Path,
+) -> Result<Option<PathBuf>, String> {
+    let path_string = path_to_string(path);
+    let is_relative_import = importer_path.is_some()
+        && (path_string.starts_with("./") || path_string.starts_with("../"));
+
+    if !is_relative_import
+        && !ALIASES.lock().unwrap().iter().any(|(alias, replace)| {
+            path.starts_with(alias) || path.starts_with(replace)
+        })
     {
         return Ok(None);
     }
@@ -189,27 +203,44 @@ fn get_resolved_path(path: &Path) -> Result<Option<PathBuf>, String> {
         return Ok(None);
     }
 
-    if let Some(resolved_path) = RESOLVE_CACHE.lock().unwrap().get(path) {
+    let cache_key = ResolveCacheKey {
+        importer_path: if is_relative_import {
+            importer_path.map(Path::to_path_buf)
+        } else {
+            None
+        },
+        import_path: path.to_path_buf(),
+    };
+
+    if let Some(resolved_path) = RESOLVE_CACHE.lock().unwrap().get(&cache_key) {
         return Ok(Some(resolved_path.clone()));
     }
 
-    let file_with_replaced_alias = PathBuf::from(replace_aliases(&path_string));
-    let file_with_replaced_alias_string = path_to_string(&file_with_replaced_alias);
+    let unresolved_file_path = if is_relative_import {
+        let importer_dir = importer_path
+            .and_then(Path::parent)
+            .unwrap_or_else(|| Path::new("."));
+        normalize_relative_path(&importer_dir.join(path))
+    } else {
+        PathBuf::from(replace_aliases(&path_string))
+    };
+
+    let unresolved_file_path_string = path_to_string(&unresolved_file_path);
 
     let file_abs_path = format!(
         "{}{}",
         ROOT_DIR.lock().unwrap().clone(),
-        file_with_replaced_alias_string.trim_start_matches('.')
+        unresolved_file_path_string.trim_start_matches('.')
     );
 
     let file_exists = FILES_CACHE
         .lock()
         .unwrap()
-        .contains_key(&file_with_replaced_alias_string)
+        .contains_key(&unresolved_file_path_string)
         || PathBuf::from(file_abs_path.clone()).is_file();
 
     if !file_exists {
-        let file_name = file_name_to_string(&file_with_replaced_alias)?;
+        let file_name = file_name_to_string(&unresolved_file_path)?;
         let file_name_start_with_uppercase = file_name
             .chars()
             .next()
@@ -224,7 +255,7 @@ fn get_resolved_path(path: &Path) -> Result<Option<PathBuf>, String> {
 
         for paths_to_try in &test_extensions {
             let cache_name =
-                format!("{}{}", file_with_replaced_alias_string, paths_to_try);
+                format!("{}{}", unresolved_file_path_string, paths_to_try);
 
             let file_is_in_cache =
                 FILES_CACHE.lock().unwrap().contains_key(&cache_name);
@@ -245,7 +276,7 @@ fn get_resolved_path(path: &Path) -> Result<Option<PathBuf>, String> {
                 RESOLVE_CACHE
                     .lock()
                     .unwrap()
-                    .insert(path.to_path_buf(), result_path.clone());
+                    .insert(cache_key.clone(), result_path.clone());
 
                 return Ok(Some(result_path));
             }
@@ -253,16 +284,42 @@ fn get_resolved_path(path: &Path) -> Result<Option<PathBuf>, String> {
 
         Err(format!(
             "TS: Can't resolve path: {:?}",
-            file_with_replaced_alias
+            unresolved_file_path
         ))
     } else {
         RESOLVE_CACHE
             .lock()
             .unwrap()
-            .insert(path.to_path_buf(), file_with_replaced_alias.clone());
+            .insert(cache_key, unresolved_file_path.clone());
 
-        Ok(Some(file_with_replaced_alias))
+        Ok(Some(unresolved_file_path))
     }
+}
+
+fn normalize_relative_path(path: &Path) -> PathBuf {
+    let mut normalized_path = PathBuf::from(".");
+
+    for component in path.components() {
+        match component {
+            Component::CurDir => {}
+            Component::Normal(part) => normalized_path.push(part),
+            Component::ParentDir => {
+                if normalized_path == Path::new(".") || !normalized_path.pop() {
+                    normalized_path.push("..");
+                } else if normalized_path.as_os_str().is_empty() {
+                    normalized_path.push(".");
+                }
+            }
+            Component::Prefix(prefix) => {
+                normalized_path = PathBuf::from(prefix.as_os_str());
+            }
+            Component::RootDir => {
+                normalized_path = PathBuf::from(component.as_os_str());
+            }
+        }
+    }
+
+    normalized_path
 }
 
 fn replace_aliases(path: &String) -> String {
@@ -296,6 +353,7 @@ pub fn get_file_imports(
     if let Some(file_content) = get_clean_file_content(resolved_path)? {
         let edges_imports = normalize_imports(
             extract_imports_from_clean_file_content(&file_content)?,
+            resolved_path,
         )?;
 
         IMPORTS_CACHE
@@ -346,17 +404,30 @@ fn get_file_edges(
         let mut non_type_edges = IndexSet::new();
         let mut edges = IndexSet::new();
 
-        for import in edges_imports.values().flatten() {
-            if let Some(resolved_path) = get_resolved_path(&import.import_path)? {
+        let files_cache = FILES_CACHE.lock().unwrap();
+
+        for (import_name, imports) in &edges_imports {
+            let resolved_path = if files_cache.contains_key(import_name) {
+                Some(PathBuf::from(import_name))
+            } else {
+                get_resolved_path_from(
+                    Some(Path::new(&resolved_path_string)),
+                    Path::new(import_name),
+                )?
+            };
+
+            if let Some(resolved_path) = resolved_path {
                 let path_str = path_to_string(&resolved_path);
 
-                match import.values {
-                    ImportType::Type(_) => {
-                        edges.insert(path_str);
-                    }
-                    _ => {
-                        non_type_edges.insert(path_str.clone());
-                        edges.insert(path_str);
+                for import in imports {
+                    match import.values {
+                        ImportType::Type(_) => {
+                            edges.insert(path_str.clone());
+                        }
+                        _ => {
+                            non_type_edges.insert(path_str.clone());
+                            edges.insert(path_str.clone());
+                        }
                     }
                 }
             }
@@ -476,6 +547,7 @@ fn get_file_exports(resolved_path: &str) -> Result<Vec<Export>, String> {
 
 fn normalize_imports(
     imports: Vec<Import>,
+    importer_path: &str,
 ) -> Result<IndexMap<String, Vec<Import>>, String> {
     let mut normalized_imports: IndexMap<String, Vec<Import>> = IndexMap::new();
 
@@ -483,7 +555,10 @@ fn normalize_imports(
         let resolved_import_name = if new_import.values == ImportType::Glob {
             None
         } else {
-            get_resolved_path(&new_import.import_path)?
+            get_resolved_path_from(
+                Some(Path::new(importer_path)),
+                &new_import.import_path,
+            )?
         };
 
         let use_name = pb_to_string(

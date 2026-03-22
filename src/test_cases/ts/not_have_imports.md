@@ -17,6 +17,7 @@ ts:
               - name: FC
                 from: react
   /not-have-react-imports:
+    optional: true
     rules:
       - if_file: any
         expect:
@@ -25,6 +26,7 @@ ts:
               - from: react
 
   /not-have-default-imports:
+    optional: true
     rules:
       - if_file: any
         expect:
@@ -32,6 +34,16 @@ ts:
             not_have_imports:
               - from: react
                 name: default
+  /not-have-relative-imports:
+    optional: true
+    allow_unexpected_files: true
+    rules:
+      - if_file:
+          has_name: Component.tsx
+        expect:
+          ts:
+            not_have_imports:
+              - from: ./not-have-relative-imports/Button.tsx
 ```
 
 # Projects
@@ -67,4 +79,18 @@ expected_errors:
   - |
     File ./not-have-default-imports/Component.tsx:
      • Should not have a default import from 'react'
+```
+
+```yaml
+structure:
+  /src:
+    Component.tsx: 'import { produce } from "immer";'
+  /not-have-relative-imports:
+    Component.tsx: 'import { Button } from "./Button";'
+    Button.tsx: 'export const Button = 1;'
+
+expected_errors:
+  - |
+    File ./not-have-relative-imports/Component.tsx:
+     • Should not have any import from './not-have-relative-imports/Button.tsx'
 ```

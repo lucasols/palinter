@@ -1,6 +1,6 @@
 # AGENTS.md
 
-This file provides guidance to Codex (Codex.ai/code) when working with code in this repository.
+This file provides guidance to coding agents when working with code in this repository.
 
 ## Project Overview
 
@@ -27,28 +27,32 @@ PALinter is a Rust-based architecture linter for projects, primarily focused on 
 - `cargo run -- circular-deps <file>` - Check circular dependencies
 - `cargo insta test --unreferenced=delete` - Delete unused snapshots
 
+### Testing real projects
+
+Real project commands can be configured in `makefile.local`, use it for testing the linter on actual projects and configurations:
+
+- `make real_project_test` - Run linter on the configured real project
+- `make real_project_test_allow_warnings` - Run linter on the configured real project allowing warnings
+- `make real_project_test_config` - Run config tests for the configured real project
+
 ## Architecture
 
 ### Core Modules
 
 1. **CLI (`cli.rs`)** - Command-line interface with three main commands:
-
    - `lint` (default) - Lint project structure
    - `circular-deps` - Check circular dependencies
    - `test-config` - Test configuration against test cases
 
 2. **Config System**:
-
    - `parse_config_file.rs` - Parse YAML config files
    - `internal_config.rs` - Internal config representation with types like `FileExpected`, `FolderConfig`, etc.
 
 3. **Folder Analysis (`check_folders/`)**:
-
    - `check_folders.rs` - Main folder checking logic
    - `checks.rs` - Individual check implementations (file/folder rules)
 
 4. **TypeScript Analysis (`analyze_ts_deps/`)**:
-
    - `modules_graph.rs` - Build dependency graphs
    - `circular_deps.rs` - Detect circular dependencies
    - `ts_checks.rs` - TypeScript-specific validations

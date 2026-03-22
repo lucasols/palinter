@@ -37,23 +37,7 @@ publish_patch:
 	git commit -am "patch version bump"
 	make publish_current
 
-jestor_test:
-	cargo run -- --root ../jestor/web-app --config ../jestor/web-app/palinter.yaml
-
-jestor_test_release:
-	cargo run --release -- --root ../jestor/web-app --config ../jestor/web-app/palinter.yaml
-
-jestor_test_allow_warnings:
-	cargo run -- --root ../jestor/web-app --config ../jestor/web-app/palinter.yaml --allow-warnings
-
-flamegraph:
-	cargo flamegraph -- --config projects_test/jestor_store_folder.yaml --root ../jestor/web-app
-
 delete_unused_snapshots:
 	cargo insta test --unreferenced=delete
 
-jestor_test_circular_dep:
-	cargo run --release -- circular-deps '@src/_components/forms/CreationAndUpdateBlockFormInput/toolsEditors/ConnectedRecordsConfigEditor.tsx' --config ../jestor/web-app/palinter.yaml --root ../jestor/web-app -D
-
-jestor_test_config:
-	cargo run -- test-config ../jestor/web-app/tests/palinter-config --config ../jestor/web-app/palinter.yaml
+-include makefile.local

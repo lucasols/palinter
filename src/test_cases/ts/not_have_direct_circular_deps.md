@@ -220,6 +220,24 @@ expected_errors:
 ```
 
 ```yaml
+structure:
+  /src:
+    index.ts: |
+      import './a';
+    a.ts: |
+      import './b';
+    b.ts: |
+      import './a';
+  /utils:
+    c.ts: |
+      export const c = 1;
+
+expected_errors:
+  - "File ./src/a.ts:\n • File has direct circular dependencies with './b' in line 1 (run cmd `palinter circular-deps [file] -D` to get more info)"
+  - "File ./src/b.ts:\n • File has direct circular dependencies with './a' in line 1 (run cmd `palinter circular-deps [file] -D` to get more info)"
+```
+
+```yaml
 # no circular deps + multiple unused comments
 
 structure:

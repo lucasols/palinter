@@ -65,3 +65,24 @@ expected_errors:
   - "File ./src/ok/fileA.ts:\n • disallowed dependencies from '@src/tests/*' found: @src/ok/fileB.ts > @src/tests/fileC.ts"
   - "File ./src/ok/fileB.ts:\n • disallowed dependencies from '@src/tests/*' found: @src/tests/fileC.ts"
 ```
+
+```yaml
+structure:
+  /src:
+    index.ts: |
+      console.log('hello world');
+    /ok:
+      fileA.ts: |
+        import { d } from './fileB';
+        export const c = d;
+      fileB.ts: |
+        import { c } from '../tests/fileC';
+        export const d = c;
+    /tests:
+      fileC.ts: |
+        export const c = 1;
+
+expected_errors:
+  - "File ./src/ok/fileA.ts:\n • disallowed dependencies from '@src/tests/*' found: @src/ok/fileB.ts > @src/tests/fileC.ts"
+  - "File ./src/ok/fileB.ts:\n • disallowed dependencies from '@src/tests/*' found: @src/tests/fileC.ts"
+```

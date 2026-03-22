@@ -1004,3 +1004,167 @@ fn get_resolved_path_extension_consistent_with_non_default_root() {
         "Should return relative path with extension"
     );
 }
+
+#[test]
+fn get_resolved_relative_path_for_sibling_import() {
+    let _guard = TEST_MUTEX.lock().unwrap();
+
+    _setup_test();
+
+    *ROOT_DIR.lock().unwrap() = "/project".to_string();
+
+    let file = File {
+        basename: "fileB".to_string(),
+        name_with_ext: "fileB.ts".to_string(),
+        content: Some("export const b = 1;".to_string()),
+        extension: Some("ts".to_string()),
+        relative_path: "./src/feature/fileB.ts".to_string(),
+    };
+
+    FILES_CACHE
+        .lock()
+        .unwrap()
+        .insert("./src/feature/fileB.ts".to_string(), file);
+
+    let resolved = get_resolved_path_from(
+        Some(Path::new("./src/feature/fileA.ts")),
+        Path::new("./fileB.ts"),
+    )
+    .unwrap()
+    .unwrap();
+
+    assert_eq!(resolved, PathBuf::from("./src/feature/fileB.ts"));
+}
+
+#[test]
+fn get_resolved_relative_path_for_parent_import_with_extension_lookup() {
+    let _guard = TEST_MUTEX.lock().unwrap();
+
+    _setup_test();
+
+    *ROOT_DIR.lock().unwrap() = "/project".to_string();
+
+    let file = File {
+        basename: "fileB".to_string(),
+        name_with_ext: "fileB.ts".to_string(),
+        content: Some("export const b = 1;".to_string()),
+        extension: Some("ts".to_string()),
+        relative_path: "./src/shared/fileB.ts".to_string(),
+    };
+
+    FILES_CACHE
+        .lock()
+        .unwrap()
+        .insert("./src/shared/fileB.ts".to_string(), file);
+
+    let resolved = get_resolved_path_from(
+        Some(Path::new("./src/feature/fileA.ts")),
+        Path::new("../shared/fileB"),
+    )
+    .unwrap()
+    .unwrap();
+
+    assert_eq!(resolved, PathBuf::from("./src/shared/fileB.ts"));
+}
+
+#[test]
+fn relative_path_resolution_cache_is_scoped_by_importer() {
+    let _guard = TEST_MUTEX.lock().unwrap();
+
+    _setup_test();
+
+    *ROOT_DIR.lock().unwrap() = "/project".to_string();
+
+    for relative_path in ["./src/featureA/shared.ts", "./src/featureB/shared.ts"] {
+        FILES_CACHE.lock().unwrap().insert(
+            relative_path.to_string(),
+            File {
+                basename: "shared".to_string(),
+                name_with_ext: "shared.ts".to_string(),
+                content: Some("export const value = 1;".to_string()),
+                extension: Some("ts".to_string()),
+                relative_path: relative_path.to_string(),
+            },
+        );
+    }
+
+    let first = get_resolved_path_from(
+        Some(Path::new("./src/featureA/fileA.ts")),
+        Path::new("./shared"),
+    )
+    .unwrap()
+    .unwrap();
+    let second = get_resolved_path_from(
+        Some(Path::new("./src/featureB/fileB.ts")),
+        Path::new("./shared"),
+    )
+    .unwrap()
+    .unwrap();
+
+    assert_eq!(first, PathBuf::from("./src/featureA/shared.ts"));
+    assert_eq!(second, PathBuf::from("./src/featureB/shared.ts"));
+}
+
+#[test]
+fn project_with_relative_and_alias_imports() {
+    let _guard = TEST_MUTEX.lock().unwrap();
+
+    _setup_test();
+
+    let (results, _) = get_results(
+        vec![
+            SimplifiedFile {
+                path: PathBuf::from("./src/index.ts"),
+                content: String::from("import '@src/feature/fileA';"),
+            },
+            SimplifiedFile {
+                path: PathBuf::from("./src/feature/fileA.ts"),
+                content: String::from(
+                    r#"
+                    import { b } from './fileB';
+                    export const a = b;
+                    "#,
+                ),
+            },
+            SimplifiedFile {
+                path: PathBuf::from("./src/feature/fileB.ts"),
+                content: String::from(
+                    r#"
+                    import { c } from '../shared/fileC';
+                    export const b = c;
+                    "#,
+                ),
+            },
+            SimplifiedFile {
+                path: PathBuf::from("./src/shared/fileC.ts"),
+                content: String::from(
+                    r#"
+                    import { d } from '@src/utils/fileD';
+                    export const c = d;
+                    "#,
+                ),
+            },
+            SimplifiedFile {
+                path: PathBuf::from("./src/utils/fileD.ts"),
+                content: String::from("export const d = 1;"),
+            },
+        ],
+        "@src/index.ts",
+    );
+
+    assert_eq!(
+        results
+            .get("./src/index.ts")
+            .unwrap()
+            .deps
+            .iter()
+            .cloned()
+            .collect::<Vec<_>>(),
+        vec![
+            "./src/feature/fileA.ts".to_string(),
+            "./src/feature/fileB.ts".to_string(),
+            "./src/shared/fileC.ts".to_string(),
+            "./src/utils/fileD.ts".to_string(),
+        ]
+    );
+}

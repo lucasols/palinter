@@ -151,3 +151,26 @@ expected_errors:
   - "File ./src/ok/fileB.ts:\n • disallowed used exports in files '@src/ok2/fileA.ts', this file can only be imported from '@src/ok/*, @src/index.ts'"
   - "File ./src/ok2/fileB.ts:\n • disallowed used exports in files '@src/tests/fileC.ts', this file can only be imported from '@src/ok/*, @src/ok2/*, @src/index.ts'"
 ```
+
+```yaml
+structure:
+  /src:
+    index.ts: |
+      console.log('hello world');
+      import './ok/fileA';
+      import './tests/fileC';
+
+    /ok:
+      fileA.ts: |
+        import { c } from './fileB';
+        export const a = c;
+      fileB.ts: |
+        export const c = 2;
+    /tests:
+      fileC.ts: |
+        import { c } from '../ok/fileB';
+        export const a = c;
+
+expected_errors:
+  - "File ./src/ok/fileB.ts:\n • disallowed used exports in files '@src/tests/fileC.ts', this file can only be imported from '@src/ok/*, @src/index.ts'"
+```
