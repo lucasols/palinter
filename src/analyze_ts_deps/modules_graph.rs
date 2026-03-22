@@ -25,10 +25,10 @@ pub fn get_node_deps<F>(
 where
     F: FnMut(&str) -> Result<Vec<String>, String>,
 {
-    let mut cache = DEPS_CACHE.lock().unwrap();
-
-    if let Some(cached) = cache.get(start) {
-        return Ok(cached.clone());
+    if !disable_cache {
+        if let Some(cached) = DEPS_CACHE.lock().unwrap().get(start).cloned() {
+            return Ok(cached);
+        }
     }
 
     let mut deps = IndexSet::new();
@@ -45,7 +45,6 @@ where
         &mut path,
         max_calls,
         &mut calls,
-        &mut cache,
         detailed_circular_deps,
         disable_cache,
     )?;
@@ -55,7 +54,12 @@ where
         circular_deps: (!circular_deps.is_empty()).then_some(circular_deps),
     };
 
-    cache.insert(start.to_string(), deps_result.clone());
+    if !disable_cache {
+        DEPS_CACHE
+            .lock()
+            .unwrap()
+            .insert(start.to_string(), deps_result.clone());
+    }
 
     Ok(deps_result)
 }
@@ -70,7 +74,6 @@ fn dfs<F>(
     path: &mut IndexSet<String>,
     max_calls: Option<usize>,
     calls: &mut usize,
-    cache: &mut DepsCache,
     detailed_circular_deps: bool,
     disable_cache: bool,
 ) -> Result<Option<IndexSet<String>>, String>
@@ -131,7 +134,7 @@ where
     let edges = get_node_edges(node_name)?;
 
     if !disable_cache {
-        if let Some(cached) = cache.get(node_name) {
+        if let Some(cached) = DEPS_CACHE.lock().unwrap().get(node_name).cloned() {
             main_node_deps.extend(cached.deps.clone());
 
             path.shift_remove(node_name);
@@ -163,12 +166,11 @@ where
             path,
             max_calls,
             calls,
-            cache,
             detailed_circular_deps,
             disable_cache,
         )? {
             if !disable_cache {
-                cache.insert(
+                DEPS_CACHE.lock().unwrap().insert(
                     edge.to_string(),
                     DepsResult {
                         deps: edge_deps.clone(),

@@ -5,42 +5,46 @@ use crate::{
     utils::wrap_vec_string_items_in,
 };
 use convert_case::{Case, Casing};
+use lazy_static::lazy_static;
 use regex::{escape, Regex};
+
+lazy_static! {
+    static ref KEBAB_CASE_REGEX: Regex =
+        Regex::new(r"^[a-z0-9][a-z0-9-.]+$").unwrap();
+    static ref CAMEL_CASE_REGEX: Regex =
+        Regex::new(r"^[a-z][a-zA-Z0-9.]+$").unwrap();
+    static ref SNAKE_CASE_REGEX: Regex =
+        Regex::new(r"^[a-z0-9][a-z0-9_.]+$").unwrap();
+    static ref PASCAL_CASE_REGEX: Regex =
+        Regex::new(r"^[A-Z][a-zA-Z0-9.]+$").unwrap();
+    static ref CONSTANT_CASE_REGEX: Regex =
+        Regex::new(r"^[A-Z][A-Z0-9_.]+$").unwrap();
+}
 
 pub fn name_case_is(name: &str, name_case_is: &NameCase) -> Result<(), String> {
     match name_case_is {
         NameCase::Kebab => {
-            let kebab_case_regex = Regex::new(r"^[a-z0-9][a-z0-9-.]+$").unwrap();
-
-            if !kebab_case_regex.is_match(name) {
+            if !KEBAB_CASE_REGEX.is_match(name) {
                 return Err("should be named in kebab-case".to_string());
             }
         }
         NameCase::Camel => {
-            let camel_case_regex = Regex::new(r"^[a-z][a-zA-Z0-9.]+$").unwrap();
-
-            if !camel_case_regex.is_match(name) {
+            if !CAMEL_CASE_REGEX.is_match(name) {
                 return Err("should be named in camelCase".to_string());
             }
         }
         NameCase::Snake => {
-            let snake_case_regex = Regex::new(r"^[a-z0-9][a-z0-9_.]+$").unwrap();
-
-            if !snake_case_regex.is_match(name) {
+            if !SNAKE_CASE_REGEX.is_match(name) {
                 return Err("should be named in snake_case".to_string());
             }
         }
         NameCase::Pascal => {
-            let pascal_case_regex = Regex::new(r"^[A-Z][a-zA-Z0-9.]+$").unwrap();
-
-            if !pascal_case_regex.is_match(name) {
+            if !PASCAL_CASE_REGEX.is_match(name) {
                 return Err("should be named in PascalCase".to_string());
             }
         }
         NameCase::Constant => {
-            let constant_case_regex = Regex::new(r"^[A-Z][A-Z0-9_.]+$").unwrap();
-
-            if !constant_case_regex.is_match(name) {
+            if !CONSTANT_CASE_REGEX.is_match(name) {
                 return Err("should be named in CONSTANT_CASE".to_string());
             }
         }
@@ -527,6 +531,8 @@ pub fn check_file_is_not_empty(file: &File) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::internal_config::{ContentMatches, Matches, NameCase};
+    use std::{hint::black_box, time::Instant};
 
     #[test]
     fn test_get_regex_from_path_pattern() {
@@ -537,5 +543,68 @@ mod tests {
         let regex = get_regex_from_path_pattern("test.file*".to_string());
 
         assert_eq!(regex.unwrap().as_str(), r"^test\.file(.+)$");
+    }
+
+    #[test]
+    #[ignore = "benchmark"]
+    fn bench_name_case_is_hot_loop() {
+        let iterations = 250_000;
+        let started_at = Instant::now();
+
+        for _ in 0..iterations {
+            black_box(name_case_is(
+                black_box("someLongFeatureComponentName.tsx"),
+                black_box(&NameCase::Camel),
+            ))
+            .unwrap();
+        }
+
+        println!(
+            "bench_name_case_is_hot_loop: {} iterations in {:?}",
+            iterations,
+            started_at.elapsed()
+        );
+    }
+
+    #[test]
+    #[ignore = "benchmark"]
+    fn bench_check_content_pattern_matching() {
+        let content = Some(
+            (0..400)
+                .map(|index| {
+                    format!(
+                        "export const featureFlag{} = useFeatureFlag('feature-{}');\n",
+                        index, index
+                    )
+                })
+                .collect::<String>(),
+        );
+        let content_matches = vec![ContentMatches {
+            matches: Matches::All(vec![
+                "export const ${1} =".to_string(),
+                "regex:useFeatureFlag\\('feature-[0-9]+'\\)".to_string(),
+            ]),
+            at_least: 1,
+            at_most: None,
+        }];
+        let captures = vec![Capture::new("1", "featureFlag200")];
+        let iterations = 5_000;
+        let started_at = Instant::now();
+
+        for _ in 0..iterations {
+            black_box(check_content(
+                black_box(&content),
+                black_box(&content_matches),
+                black_box(&captures),
+                false,
+            ))
+            .unwrap();
+        }
+
+        println!(
+            "bench_check_content_pattern_matching: {} iterations in {:?}",
+            iterations,
+            started_at.elapsed()
+        );
     }
 }
