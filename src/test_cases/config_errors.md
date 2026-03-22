@@ -103,3 +103,52 @@ blocks:
         expect:
           name_case_is: camelCase
 ```
+
+```yaml
+# expect_error: Config error: Duplicate sub folder name: '/src' in '.', expanded folder paths should not conflict with existing ones
+
+./:
+  /src:
+    rules:
+      - if_file: any
+        expect:
+          name_case_is: camelCase
+  /src,/test:
+    rules:
+      - if_file: any
+        expect:
+          extension_is: ts
+```
+
+```yaml
+# expect_error: Config error: Duplicate grouped sub folder name: '/src' in '.'
+
+./:
+  /src,/src:
+    rules:
+      - if_file: any
+        expect:
+          name_case_is: camelCase
+```
+
+```yaml
+# expect_error: Config error: Invalid grouped sub folder name: '/src,test' in '.', each folder name should start with '/'
+
+./:
+  /src,test:
+    rules:
+      - if_file: any
+        expect:
+          name_case_is: camelCase
+```
+
+```yaml
+# expect_error: Config error: Invalid grouped sub folder name: '/src/utils,/test' in '.', grouped folder names should be sibling folders and cannot contain nested paths
+
+./:
+  /src/utils,/test:
+    rules:
+      - if_file: any
+        expect:
+          name_case_is: camelCase
+```

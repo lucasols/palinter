@@ -523,6 +523,7 @@
     },
     "folderConfig": {
       "type": "object",
+      "description": "Folder configuration. Nested folder keys should start with '/'. You can group sibling folders with a comma-separated key like '/src,/test'.",
       "properties": {
         "has_files_in_root": {
           "type": "array",

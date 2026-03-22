@@ -110,7 +110,22 @@ This is the basic of how to use the linter. There are a lot of other conditions 
 
 # Selecting folders
 
-TODO
+Folder keys start with `/` and select a direct child folder.
+
+You can also select multiple sibling folders with a comma-separated key:
+
+```yaml
+./:
+  /src,/test:
+    rules:
+      - if_file: any
+        expect:
+          extension_is: ts
+```
+
+This is equivalent to writing the same config twice, once for `/src` and once for `/test`.
+
+Grouped keys only support sibling folders in the same parent level. Nested grouped paths such as `/src/utils,/test` are not supported.
 
 Check the test_cases folder for examples for now
 

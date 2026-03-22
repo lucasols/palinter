@@ -1164,6 +1164,47 @@ fn check_rules_expects<T, B>(
     Ok(())
 }
 
+fn normalize_multi_sub_folder_names(
+    sub_folder_name: &String,
+    folder_path: &String,
+) -> Result<Vec<String>, String> {
+    let split_names = sub_folder_name
+        .split(',')
+        .map(|name| name.trim().to_string())
+        .collect::<Vec<String>>();
+
+    if split_names.len() == 1 {
+        return Ok(split_names);
+    }
+
+    let mut unique_names = HashSet::new();
+
+    for name in &split_names {
+        if !name.starts_with('/') {
+            return Err(format!(
+                "Config error: Invalid grouped sub folder name: '{}' in '{}', each folder name should start with '/'",
+                sub_folder_name, folder_path
+            ));
+        }
+
+        if name.split('/').count() > 2 {
+            return Err(format!(
+                "Config error: Invalid grouped sub folder name: '{}' in '{}', grouped folder names should be sibling folders and cannot contain nested paths",
+                sub_folder_name, folder_path
+            ));
+        }
+
+        if !unique_names.insert(name.clone()) {
+            return Err(format!(
+                "Config error: Duplicate grouped sub folder name: '{}' in '{}'",
+                name, folder_path
+            ));
+        }
+    }
+
+    Ok(split_names)
+}
+
 pub fn normalize_folder_config(
     folder_config: &ParsedFolderConfig,
     folder_path: String,
@@ -1216,67 +1257,89 @@ pub fn normalize_folder_config(
 
             let mut sub_folders_config: HashMap<String, FolderConfig> =
                 HashMap::new();
+            let mut expanded_direct_sub_folder_names = HashSet::new();
+
+            for sub_folder_name in config.folders.keys() {
+                for expanded_sub_folder_name in
+                    normalize_multi_sub_folder_names(sub_folder_name, &folder_path)?
+                {
+                    if expanded_sub_folder_name.split('/').count() == 2
+                        && !expanded_direct_sub_folder_names
+                            .insert(expanded_sub_folder_name.clone())
+                    {
+                        return Err(format!(
+                            "Config error: Duplicate sub folder name: '{}' in '{}', expanded folder paths should not conflict with existing ones",
+                            expanded_sub_folder_name, folder_path
+                        ));
+                    }
+                }
+            }
 
             for (sub_folder_name, sub_folder_config) in &config.folders {
-                if !sub_folder_name.starts_with('/') {
-                    return Err(format!(
-                        "Config error: Invalid sub folder name: '{}' in '{}', folders name should start with '/'",
-                        sub_folder_name, folder_path
-                    ));
-                }
-
-                let compound_path_parts =
-                    sub_folder_name.split('/').collect::<Vec<&str>>();
-
-                if compound_path_parts.len() > 2 {
-                    let first_part = format!("/{}", compound_path_parts[1]);
-
-                    if config.folders.contains_key(&first_part) {
+                for expanded_sub_folder_name in
+                    normalize_multi_sub_folder_names(sub_folder_name, &folder_path)?
+                {
+                    if !expanded_sub_folder_name.starts_with('/') {
                         return Err(format!(
-                            "Config error: Duplicate compound folder path: '{}' in '{}', compound folder paths should not conflict with existing ones",
-                            sub_folder_name, folder_path
+                            "Config error: Invalid sub folder name: '{}' in '{}', folders name should start with '/'",
+                            expanded_sub_folder_name, folder_path
                         ));
                     }
 
-                    let sub_folder_name =
-                        format!("/{}", compound_path_parts[2..].join("/"));
+                    let compound_path_parts =
+                        expanded_sub_folder_name.split('/').collect::<Vec<&str>>();
 
-                    sub_folders_config.insert(
-                        first_part,
-                        normalize_folder_config(
-                            &ParsedFolderConfig::Ok(CorrectParsedFolderConfig {
-                                rules: None,
-                                has_files_in_root: None,
-                                optional: None,
-                                folders: BTreeMap::from([(
-                                    sub_folder_name,
-                                    sub_folder_config.clone(),
-                                )]),
-                                allow_unexpected_files: None,
-                                allow_unexpected_folders: None,
-                                append_error_msg: None,
-                                unexpected_error_msg: None,
-                                allow_unexpected: None,
-                                unexpected_files_error_msg: None,
-                                unexpected_folders_error_msg: None,
-                            }),
-                            folder_path.clone(),
-                            normalize_blocks,
-                            parsed_config,
-                        )?,
-                    );
-                } else {
-                    let folder_path = format!("{}{}", folder_path, sub_folder_name);
+                    if compound_path_parts.len() > 2 {
+                        let first_part = format!("/{}", compound_path_parts[1]);
 
-                    sub_folders_config.insert(
-                        sub_folder_name.to_string(),
-                        normalize_folder_config(
-                            sub_folder_config,
-                            folder_path,
-                            normalize_blocks,
-                            parsed_config,
-                        )?,
-                    );
+                        if expanded_direct_sub_folder_names.contains(&first_part) {
+                            return Err(format!(
+                                "Config error: Duplicate compound folder path: '{}' in '{}', compound folder paths should not conflict with existing ones",
+                                expanded_sub_folder_name, folder_path
+                            ));
+                        }
+
+                        let sub_folder_name =
+                            format!("/{}", compound_path_parts[2..].join("/"));
+
+                        sub_folders_config.insert(
+                            first_part,
+                            normalize_folder_config(
+                                &ParsedFolderConfig::Ok(CorrectParsedFolderConfig {
+                                    rules: None,
+                                    has_files_in_root: None,
+                                    optional: None,
+                                    folders: BTreeMap::from([(
+                                        sub_folder_name,
+                                        sub_folder_config.clone(),
+                                    )]),
+                                    allow_unexpected_files: None,
+                                    allow_unexpected_folders: None,
+                                    append_error_msg: None,
+                                    unexpected_error_msg: None,
+                                    allow_unexpected: None,
+                                    unexpected_files_error_msg: None,
+                                    unexpected_folders_error_msg: None,
+                                }),
+                                folder_path.clone(),
+                                normalize_blocks,
+                                parsed_config,
+                            )?,
+                        );
+                    } else {
+                        let folder_path =
+                            format!("{}{}", folder_path, expanded_sub_folder_name);
+
+                        sub_folders_config.insert(
+                            expanded_sub_folder_name.to_string(),
+                            normalize_folder_config(
+                                sub_folder_config,
+                                folder_path,
+                                normalize_blocks,
+                                parsed_config,
+                            )?,
+                        );
+                    }
                 }
             }
 
@@ -1636,5 +1699,45 @@ mod tests {
         }
         "###
         );
+    }
+
+    #[test]
+    fn config_with_multiple_folder_keys() {
+        let config_string = r#"
+        ./:
+          /src,/test:
+            optional: true
+            rules:
+              - if_file: any
+                expect:
+                  extension_is: ts
+            /helpers:
+              rules:
+                - if_file: any
+                  expect:
+                    name_case_is: camelCase
+        "#;
+
+        let config = config_from_string(&config_string.to_string()).unwrap();
+
+        assert_eq!(config.root_folder.sub_folders_config.len(), 2);
+
+        for folder_name in ["/src", "/test"] {
+            let folder_config = config
+                .root_folder
+                .sub_folders_config
+                .get(folder_name)
+                .unwrap_or_else(|| panic!("missing folder config: {}", folder_name));
+
+            assert!(folder_config.optional);
+            assert_eq!(folder_config.file_rules.len(), 1);
+            assert!(folder_config.sub_folders_config.contains_key("/helpers"));
+
+            let helpers_config =
+                folder_config.sub_folders_config.get("/helpers").unwrap();
+
+            assert_eq!(helpers_config.file_rules.len(), 1);
+            assert!(helpers_config.sub_folders_config.is_empty());
+        }
     }
 }
