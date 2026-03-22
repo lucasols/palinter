@@ -1,3 +1,4 @@
+use indexmap::IndexMap;
 use serde::Deserialize;
 use serde_norway::Value;
 use std::{
@@ -197,7 +198,7 @@ pub enum ParsedFolderConfig {
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct ParsedTsConfig {
-    pub aliases: BTreeMap<String, String>,
+    pub aliases: IndexMap<String, String>,
     pub unused_exports_entry_points: Vec<String>,
 }
 

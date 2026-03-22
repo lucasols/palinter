@@ -64,8 +64,8 @@ lazy_static! {
         Mutex::new(HashMap::new());
     static ref CLEAN_FILE_CONTENT_CACHE: Mutex<HashMap<String, String>> =
         Mutex::new(HashMap::new());
-    pub static ref ALIASES: Mutex<HashMap<String, String>> =
-        Mutex::new(HashMap::new());
+    pub static ref ALIASES: Mutex<IndexMap<String, String>> =
+        Mutex::new(IndexMap::new());
     static ref ROOT_DIR: Mutex<String> = Mutex::new(String::from("."));
     static ref DEBUG_READ_EDGES_COUNT: Mutex<usize> = Mutex::new(0);
     static ref FILE_EDGES_CACHE: Mutex<HashMap<String, FileEdgesCache>> =
@@ -85,13 +85,17 @@ pub fn _setup_test() {
     IMPORTS_CACHE.lock().unwrap().clear();
     EXPORTS_CACHE.lock().unwrap().clear();
     CLEAN_FILE_CONTENT_CACHE.lock().unwrap().clear();
-    ALIASES.lock().unwrap().clear();
+    set_aliases(IndexMap::new());
     *ROOT_DIR.lock().unwrap() = String::from(".");
     *DEBUG_READ_EDGES_COUNT.lock().unwrap() = 0;
     FILE_EDGES_CACHE.lock().unwrap().clear();
     USED_FILES.lock().unwrap().clear();
     REVERSE_IMPORTS.lock().unwrap().clear();
     FILE_DEPS_RESULT_CACHE.lock().unwrap().clear();
+}
+
+pub fn set_aliases(aliases: IndexMap<String, String>) {
+    *ALIASES.lock().unwrap() = aliases;
 }
 
 fn path_to_string(path: &Path) -> String {
@@ -191,14 +195,6 @@ fn get_resolved_path_from(
     let is_relative_path =
         path_string.starts_with("./") || path_string.starts_with("../");
 
-    if !is_relative_path
-        && !ALIASES.lock().unwrap().iter().any(|(alias, replace)| {
-            path.starts_with(alias) || path.starts_with(replace)
-        })
-    {
-        return Ok(None);
-    }
-
     if path_string.contains("?") {
         return Ok(None);
     }
@@ -222,7 +218,10 @@ fn get_resolved_path_from(
             .unwrap_or_else(|| Path::new("."));
         normalize_relative_path(&importer_dir.join(path))
     } else {
-        PathBuf::from(replace_aliases(&path_string))
+        let Some(path) = normalize_non_relative_import_path(&path_string) else {
+            return Ok(None);
+        };
+        PathBuf::from(path)
     };
 
     let unresolved_file_path_string = path_to_string(&unresolved_file_path);
@@ -322,24 +321,58 @@ fn normalize_relative_path(path: &Path) -> PathBuf {
     normalized_path
 }
 
-fn replace_aliases(path: &String) -> String {
-    for (alias, real_path) in ALIASES.lock().unwrap().iter() {
-        if path.starts_with(alias) {
-            return path.replace(alias, real_path);
-        }
-    }
+fn matches_alias_prefix(path: &str, prefix: &str) -> bool {
+    path == prefix
+        || path
+            .strip_prefix(prefix)
+            .map(|rest| prefix.ends_with('/') || rest.starts_with('/'))
+            .unwrap_or(false)
+}
 
-    path.to_string()
+fn join_prefix_replacement(replacement: &str, rest: &str) -> String {
+    if replacement.ends_with('/') && rest.starts_with('/') {
+        format!("{}{}", replacement, &rest[1..])
+    } else {
+        format!("{}{}", replacement, rest)
+    }
+}
+
+fn normalize_non_relative_import_path(path: &str) -> Option<String> {
+    ALIASES
+        .lock()
+        .unwrap()
+        .iter()
+        .find_map(|(alias, real_path)| {
+            if matches_alias_prefix(path, alias) {
+                Some(join_prefix_replacement(
+                    real_path,
+                    path.strip_prefix(alias).unwrap_or_default(),
+                ))
+            } else if matches_alias_prefix(path, real_path) {
+                Some(path.to_string())
+            } else {
+                None
+            }
+        })
+}
+
+fn replace_aliases(path: &String) -> String {
+    normalize_non_relative_import_path(path).unwrap_or_else(|| path.to_string())
 }
 
 fn add_aliases(path: &String) -> String {
-    for (alias, real_path) in ALIASES.lock().unwrap().iter() {
-        if path.starts_with(real_path) {
-            return path.replace(real_path, alias);
-        }
-    }
-
-    path.to_string()
+    ALIASES
+        .lock()
+        .unwrap()
+        .iter()
+        .find(|(_, real_path)| matches_alias_prefix(path, real_path))
+        .map(|(alias, real_path)| {
+            join_prefix_replacement(
+                alias,
+                path.strip_prefix(real_path).unwrap_or_default(),
+            )
+        })
+        .unwrap_or_else(|| path.to_string())
 }
 
 pub fn get_file_imports(
@@ -694,7 +727,7 @@ pub fn load_file_from_path(path: &PathBuf) -> Result<File, String> {
 fn get_used_project_files_deps_info(
     entry_points: Vec<PathBuf>,
     flattened_root_structure: HashMap<String, File>,
-    aliases: HashMap<String, String>,
+    aliases: IndexMap<String, String>,
 ) -> Result<(), String> {
     let mut result: HashMap<String, FileDepsInfo> = HashMap::new();
 
@@ -726,7 +759,7 @@ fn get_used_project_files_deps_info(
 
     FILES_CACHE.lock().unwrap().extend(flattened_root_structure);
 
-    *ALIASES.lock().unwrap() = aliases;
+    set_aliases(aliases);
 
     let mut seen_entry_points = HashSet::new();
 
@@ -797,7 +830,7 @@ pub fn load_used_project_files_deps_info_from_cfg(
 
     if unused_exports_entry_points.is_empty() {
         FILES_CACHE.lock().unwrap().extend(flattened_root_structure);
-        *ALIASES.lock().unwrap() = aliases;
+        set_aliases(aliases);
         REVERSE_IMPORTS.lock().unwrap().clear();
         USED_FILES.lock().unwrap().clear();
 

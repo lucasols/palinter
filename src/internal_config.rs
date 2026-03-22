@@ -1,3 +1,4 @@
+use indexmap::IndexMap;
 use std::collections::{BTreeMap, HashMap, HashSet};
 
 use serde_norway::Value;
@@ -179,7 +180,7 @@ pub struct FolderConfig {
 
 #[derive(Debug, Clone)]
 pub struct TsConfig {
-    pub aliases: HashMap<String, String>,
+    pub aliases: IndexMap<String, String>,
     pub unused_exports_entry_points: Vec<String>,
 }
 
@@ -1444,7 +1445,7 @@ pub fn get_config(parsed_config: &ParsedConfig) -> Result<Config, String> {
         ),
         analyze_content_of_files_types,
         ts_config: parsed_config.ts.as_ref().map(|ts| TsConfig {
-            aliases: HashMap::from_iter(ts.aliases.clone()),
+            aliases: ts.aliases.clone(),
             unused_exports_entry_points: ts.unused_exports_entry_points.clone(),
         }),
     })

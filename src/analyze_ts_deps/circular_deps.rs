@@ -4,9 +4,9 @@ use colored::Colorize;
 use super::{
     extract_file_content_imports::{Import, ImportType},
     get_file_edges, get_file_imports, get_resolved_path,
-    load_used_project_files_deps_info_from_cfg,
+    load_used_project_files_deps_info_from_cfg, set_aliases,
     modules_graph::get_node_deps,
-    ALIASES, ROOT_DIR,
+    ROOT_DIR,
 };
 
 use std::path::Path;
@@ -76,11 +76,13 @@ pub fn get_detailed_file_circular_deps_result(
     truncate: usize,
     only_direct_deps: bool,
 ) -> Result<(), String> {
-    *ALIASES.lock().unwrap() = config
-        .ts_config
-        .as_ref()
-        .map(|c| c.aliases.clone())
-        .unwrap_or_default();
+    set_aliases(
+        config
+            .ts_config
+            .as_ref()
+            .map(|c| c.aliases.clone())
+            .unwrap_or_default(),
+    );
     *ROOT_DIR.lock().unwrap() = path_to_string(root_dir);
 
     let resolved_path = get_resolved_path(file_path)?

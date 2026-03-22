@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use crate::test_utils::TEST_MUTEX;
+use indexmap::IndexMap;
 
 use super::*;
 use insta::assert_debug_snapshot;
@@ -14,6 +15,18 @@ fn get_results(
     files: Vec<SimplifiedFile>,
     entry_point: &str,
 ) -> (BTreeMap<String, DepsResult>, BTreeMap<String, FileDepsInfo>) {
+    get_results_with_aliases(
+        files,
+        entry_point,
+        IndexMap::from_iter(vec![(String::from("@src"), String::from("./src"))]),
+    )
+}
+
+fn get_results_with_aliases(
+    files: Vec<SimplifiedFile>,
+    entry_point: &str,
+    aliases: IndexMap<String, String>,
+) -> (BTreeMap<String, DepsResult>, BTreeMap<String, FileDepsInfo>) {
     let mut results = BTreeMap::new();
 
     let flatten_root_structure = create_flatten_root_structure(files);
@@ -21,7 +34,7 @@ fn get_results(
     get_used_project_files_deps_info(
         [PathBuf::from(entry_point)].to_vec(),
         flatten_root_structure.clone(),
-        HashMap::from_iter(vec![(String::from("@src"), String::from("./src"))]),
+        aliases,
     )
     .unwrap();
 
@@ -45,6 +58,81 @@ fn get_results(
         results,
         BTreeMap::from_iter(USED_FILES.lock().unwrap().clone()),
     )
+}
+
+#[test]
+fn project_with_overlapping_aliases_uses_configured_order() {
+    let _guard = TEST_MUTEX.lock().unwrap();
+
+    _setup_test();
+
+    let (results, _) = get_results_with_aliases(
+        vec![
+            SimplifiedFile {
+                path: PathBuf::from("./src/index.ts"),
+                content: String::from(
+                    "import { feature } from '@src/components/feature';",
+                ),
+            },
+            SimplifiedFile {
+                path: PathBuf::from("./src/components/feature.ts"),
+                content: String::from("export const feature = 1;"),
+            },
+            SimplifiedFile {
+                path: PathBuf::from("./special/feature.ts"),
+                content: String::from("export const wrong = 1;"),
+            },
+        ],
+        "@src/index.ts",
+        IndexMap::from_iter(vec![
+            (String::from("@src"), String::from("./src")),
+            (String::from("@src/components"), String::from("./special")),
+        ]),
+    );
+
+    let index = results.get("./src/index.ts").unwrap();
+
+    assert!(
+        index.deps.contains("./src/components/feature.ts"),
+        "Expected the first configured alias to win, got {:?}",
+        index.deps
+    );
+    assert!(
+        !index.deps.contains("./special/feature.ts"),
+        "Later aliases should not override an earlier valid match, got {:?}",
+        index.deps
+    );
+}
+
+#[test]
+fn alias_prefix_match_requires_a_boundary() {
+    let _guard = TEST_MUTEX.lock().unwrap();
+
+    _setup_test();
+
+    *ROOT_DIR.lock().unwrap() = "/project".to_string();
+    set_aliases(IndexMap::from_iter(vec![(
+        String::from("@src"),
+        String::from("./src"),
+    )]));
+
+    FILES_CACHE.lock().unwrap().insert(
+        "./src2/fileA.ts".to_string(),
+        File {
+            basename: "fileA".to_string(),
+            name_with_ext: "fileA.ts".to_string(),
+            content: Some("export const a = 1;".to_string()),
+            extension: Some("ts".to_string()),
+            relative_path: "./src2/fileA.ts".to_string(),
+        },
+    );
+
+    let resolved = get_resolved_path(Path::new("@src2/fileA")).unwrap();
+
+    assert_eq!(
+        resolved, None,
+        "Undefined alias @src2 should not be resolved through @src"
+    );
 }
 
 fn create_flatten_root_structure(
@@ -929,8 +1017,10 @@ fn get_resolved_path_consistent_with_non_default_root() {
     _setup_test();
 
     *ROOT_DIR.lock().unwrap() = "/project".to_string();
-    *ALIASES.lock().unwrap() =
-        HashMap::from_iter(vec![(String::from("@src"), String::from("./src"))]);
+    set_aliases(IndexMap::from_iter(vec![(
+        String::from("@src"),
+        String::from("./src"),
+    )]));
 
     let file = File {
         basename: "fileA".to_string(),
@@ -972,8 +1062,10 @@ fn get_resolved_path_extension_consistent_with_non_default_root() {
     _setup_test();
 
     *ROOT_DIR.lock().unwrap() = "/project".to_string();
-    *ALIASES.lock().unwrap() =
-        HashMap::from_iter(vec![(String::from("@src"), String::from("./src"))]);
+    set_aliases(IndexMap::from_iter(vec![(
+        String::from("@src"),
+        String::from("./src"),
+    )]));
 
     let file = File {
         basename: "fileA".to_string(),

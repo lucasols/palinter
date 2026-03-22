@@ -1,6 +1,3 @@
-use lazy_static::lazy_static;
-use regex::Regex;
-
 pub fn wrap_vec_string_items_in(vec: &[String], wrap: &str) -> Vec<String> {
     vec.iter()
         .map(|s| format!("{}{}{}", wrap, s, wrap))
@@ -38,23 +35,144 @@ pub fn get_code_from_line(lines: &[&str], line: usize) -> String {
 }
 
 pub fn remove_comments_from_code(code: &str) -> String {
-    lazy_static! {
-        static ref RE: Regex = Regex::new(r#"//.+|(^|\s)/\*[\s\S]+?\*/"#).unwrap();
+    let chars = code.chars().collect::<Vec<_>>();
+    let mut result = String::with_capacity(code.len());
+    let mut index = 0;
+    let mut last_emitted_char: Option<char> = None;
+
+    enum State {
+        Normal,
+        Quoted { delimiter: char, escaped: bool },
     }
 
-    RE.replace_all(code, |caps: &regex::Captures| {
-        caps.get(0).map_or("".to_string(), |m| {
-            if m.as_str()
-                .starts_with("// palinter-ignore-unused-next-line")
-            {
-                return "// palinter-ignore-unused-next-line".to_string();
-            }
+    let mut state = State::Normal;
 
-            let line_count = m.as_str().matches('\n').count();
-            "\n".repeat(line_count)
-        })
-    })
-    .to_string()
+    while index < chars.len() {
+        let current = chars[index];
+        let previous_source_char =
+            index.checked_sub(1).and_then(|prev| chars.get(prev)).copied();
+
+        match state {
+            State::Normal => match current {
+                '\'' | '"' | '`' => {
+                    result.push(current);
+                    last_emitted_char = Some(current);
+                    state = State::Quoted {
+                        delimiter: current,
+                        escaped: false,
+                    };
+                    index += 1;
+                }
+                '/' if previous_source_char != Some('\\')
+                    && chars.get(index + 1) == Some(&'/') =>
+                {
+                    let comment_start = index + 2;
+                    let mut comment_end = comment_start;
+
+                    while comment_end < chars.len()
+                        && chars[comment_end] != '\n'
+                        && chars[comment_end] != '\r'
+                    {
+                        comment_end += 1;
+                    }
+
+                    let comment_text =
+                        chars[comment_start..comment_end].iter().collect::<String>();
+
+                    if comment_text
+                        .trim_start()
+                        .starts_with("palinter-ignore-unused-next-line")
+                    {
+                        result.push('/');
+                        result.push('/');
+                        result.push_str(&comment_text);
+                        last_emitted_char = comment_text.chars().last().or(Some('/'));
+                    }
+
+                    index = comment_end;
+                }
+                '/' if previous_source_char != Some('\\')
+                    && chars.get(index + 1) == Some(&'*') =>
+                {
+                    let mut comment_end = index + 2;
+                    let mut saw_newline = false;
+
+                    while comment_end < chars.len() {
+                        if chars[comment_end] == '\n' || chars[comment_end] == '\r' {
+                            result.push(chars[comment_end]);
+                            saw_newline = true;
+                            last_emitted_char = Some(chars[comment_end]);
+                        }
+
+                        if chars[comment_end] == '*'
+                            && chars.get(comment_end + 1) == Some(&'/')
+                        {
+                            comment_end += 2;
+                            break;
+                        }
+
+                        comment_end += 1;
+                    }
+
+                    let next_char = chars.get(comment_end).copied();
+
+                    if !saw_newline
+                        && last_emitted_char
+                            .zip(next_char)
+                            .map(|(prev, next)| {
+                                is_comment_separator_needed(prev, next)
+                            })
+                            .unwrap_or(false)
+                    {
+                        result.push(' ');
+                        last_emitted_char = Some(' ');
+                    }
+
+                    index = comment_end;
+                }
+                _ => {
+                    result.push(current);
+                    last_emitted_char = Some(current);
+                    index += 1;
+                }
+            },
+            State::Quoted { delimiter, escaped } => {
+                result.push(current);
+                last_emitted_char = Some(current);
+
+                state = if escaped {
+                    State::Quoted {
+                        delimiter,
+                        escaped: false,
+                    }
+                } else if current == '\\' {
+                    State::Quoted {
+                        delimiter,
+                        escaped: true,
+                    }
+                } else if current == delimiter {
+                    State::Normal
+                } else {
+                    State::Quoted {
+                        delimiter,
+                        escaped: false,
+                    }
+                };
+
+                index += 1;
+            }
+        }
+    }
+
+    result
+}
+
+fn is_comment_separator_needed(previous: char, next: char) -> bool {
+    is_word_char(previous) && is_word_char(next)
+}
+
+fn is_word_char(char: char) -> bool {
+    char.is_alphanumeric() || char == '_' || char == '$'
 }
 
 pub fn clone_extend_vec<T: Clone>(vec: &[T], extend_with: &[T]) -> Vec<T> {
@@ -145,6 +263,34 @@ const compactFieldComponents = import.meta.glob(
     '/src/tableFields/fields/*/Compact*Field.tsx',
     { eager: true },
 );
+"#
+        );
+    }
+
+    #[test]
+    fn keep_double_slash_inside_strings() {
+        let code = r#"
+const url = "https://example.com/api"; const module = import('@src/fileA');
+"#;
+
+        assert_eq!(
+            remove_comments_from_code(code),
+            r#"
+const url = "https://example.com/api"; const module = import('@src/fileA');
+"#
+        );
+    }
+
+    #[test]
+    fn keep_double_slash_inside_regex_literals() {
+        let code = r#"
+const re = /https?:\/\/example\.com/; const module = import('@src/fileA');
+"#;
+
+        assert_eq!(
+            remove_comments_from_code(code),
+            r#"
+const re = /https?:\/\/example\.com/; const module = import('@src/fileA');
 "#
         );
     }

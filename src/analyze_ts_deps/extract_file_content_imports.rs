@@ -359,6 +359,38 @@ mod tests {
     }
 
     #[test]
+    fn keep_dynamic_import_after_url_string_on_same_line() {
+        let file_content =
+            r#"const url = "https://example.com/api"; const mod = import('@src/foo');"#;
+        let imports = extract_imports_from_file_content(file_content).unwrap();
+
+        assert_eq!(
+            imports,
+            vec![Import {
+                import_path: PathBuf::from("@src/foo"),
+                line: 1,
+                values: ImportType::Dynamic,
+            }],
+        );
+    }
+
+    #[test]
+    fn keep_dynamic_import_after_regex_literal_on_same_line() {
+        let file_content =
+            r#"const re = /https?:\/\/example\.com/; const mod = import('@src/foo');"#;
+        let imports = extract_imports_from_file_content(file_content).unwrap();
+
+        assert_eq!(
+            imports,
+            vec![Import {
+                import_path: PathBuf::from("@src/foo"),
+                line: 1,
+                values: ImportType::Dynamic,
+            }],
+        );
+    }
+
+    #[test]
     fn import_with_alias() {
         let file_content = r#"import { Foo as Bar } from '@src/foo';"#;
         let imports = extract_imports_from_file_content(file_content).unwrap();
