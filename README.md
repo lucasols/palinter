@@ -283,6 +283,33 @@ Asserts that the file extension is the specified
       - png
 ```
 
+## `have_sibling_file`
+
+Asserts that a sibling file matching the specified pattern exists:
+
+```yaml
+- if_file:
+    has_name: '*.test.ts'
+  expect:
+    have_sibling_file: '${1}.ts'
+```
+
+## `not_have_sibling_file`
+
+Asserts that no other sibling file matches the specified pattern. Root-level
+rules are inherited recursively, so they can prevent case-insensitive
+TypeScript module-name collisions throughout the project:
+
+```yaml
+./:
+  rules:
+    - if_file:
+        has_name: 'regex:^(?P<module_name>.+)\.ts$'
+      expect:
+        not_have_sibling_file: 'regex:(?i)^${module_name}\.tsx$'
+      not_touch: true
+```
+
 ## `name_is`
 
 Asserts that the file name matches the specified pattern

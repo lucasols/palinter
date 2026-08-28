@@ -321,6 +321,10 @@
           "type": "string",
           "description": "Name of a sibling file that should exist"
         },
+        "not_have_sibling_file": {
+          "type": "string",
+          "description": "Name of a sibling file that should not exist"
+        },
         "content_matches": {
           "$ref": "#/definitions/contentMatches",
           "description": "Patterns that the file content should match"

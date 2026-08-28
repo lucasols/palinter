@@ -215,6 +215,31 @@ pub fn has_sibling_file(
     ))
 }
 
+pub fn not_has_sibling_file(
+    sibling_file_pattern: &String,
+    file: &File,
+    folder: &Folder,
+    condition_captures: &[Capture],
+) -> Result<(), String> {
+    let (pattern, regex) =
+        normalize_check_pattern(condition_captures, sibling_file_pattern)?;
+
+    for child in &folder.children {
+        if let FolderChild::FileChild(sibling_file) = child {
+            if sibling_file.relative_path != file.relative_path
+                && regex.is_match(&sibling_file.name_with_ext)
+            {
+                return Err(format!(
+                    "should not have a sibling file matching pattern '{}'",
+                    pattern
+                ));
+            }
+        }
+    }
+
+    Ok(())
+}
+
 fn normalize_check_pattern(
     captures: &[Capture],
     check_pattern: &String,
