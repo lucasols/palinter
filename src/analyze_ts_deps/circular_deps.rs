@@ -4,9 +4,9 @@ use colored::Colorize;
 use super::{
     extract_file_content_imports::{Import, ImportType},
     get_file_edges, get_file_imports, get_resolved_path,
-    load_used_project_files_deps_info_from_cfg, set_aliases,
+    load_used_project_files_deps_info_from_cfg,
     modules_graph::get_node_deps,
-    ROOT_DIR,
+    set_aliases, ROOT_DIR,
 };
 
 use std::path::Path;

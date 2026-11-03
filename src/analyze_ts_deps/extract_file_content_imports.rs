@@ -78,6 +78,8 @@ pub fn extract_imports_from_clean_file_content(
             .unwrap();
         }
 
+        let mut is_static_import = false;
+
         if line.starts_with("import") || line.starts_with("export") {
             if let Some(captures) = SIDE_EFFECT_IMPORT_RE.captures(line) {
                 let import_path =
@@ -98,6 +100,8 @@ pub fn extract_imports_from_clean_file_content(
             };
 
             if let Some(captures) = IMPORTS_RE.captures(&content_to_check) {
+                is_static_import = true;
+
                 let full_match_lines =
                     captures.get(0).unwrap().as_str().lines().count();
 
@@ -201,7 +205,11 @@ pub fn extract_imports_from_clean_file_content(
 
                 current_line += full_match_lines - 1;
             }
-        } else {
+        }
+
+        // lines starting with `import(` or `export const x = import(...)` are
+        // not static imports, so they are checked for dynamic imports too
+        if !is_static_import {
             lazy_static! {
                 static ref DYNAMIC_IMPORT: Regex =
                     Regex::new(r#"import\(\s*['"](.+?)['"]\s*\)"#).unwrap();
@@ -360,8 +368,7 @@ mod tests {
 
     #[test]
     fn keep_dynamic_import_after_url_string_on_same_line() {
-        let file_content =
-            r#"const url = "https://example.com/api"; const mod = import('@src/foo');"#;
+        let file_content = r#"const url = "https://example.com/api"; const mod = import('@src/foo');"#;
         let imports = extract_imports_from_file_content(file_content).unwrap();
 
         assert_eq!(
@@ -376,8 +383,7 @@ mod tests {
 
     #[test]
     fn keep_dynamic_import_after_regex_literal_on_same_line() {
-        let file_content =
-            r#"const re = /https?:\/\/example\.com/; const mod = import('@src/foo');"#;
+        let file_content = r#"const re = /https?:\/\/example\.com/; const mod = import('@src/foo');"#;
         let imports = extract_imports_from_file_content(file_content).unwrap();
 
         assert_eq!(
@@ -607,6 +613,33 @@ mod tests {
                 line: 2,
                 values: ImportType::Dynamic,
             }],
+        );
+    }
+
+    #[test]
+    fn dynamic_import_at_line_start() {
+        let file_content = r#"
+            const Page = lazy(() =>
+              import('@src/page').then(({ Page }) => ({ default: Page })),
+            );
+            export const loadFoo = () => import('@src/foo');
+        "#;
+        let imports = extract_imports_from_file_content(file_content).unwrap();
+
+        assert_eq!(
+            imports,
+            vec![
+                Import {
+                    import_path: PathBuf::from("@src/page"),
+                    line: 3,
+                    values: ImportType::Dynamic,
+                },
+                Import {
+                    import_path: PathBuf::from("@src/foo"),
+                    line: 5,
+                    values: ImportType::Dynamic,
+                },
+            ],
         );
     }
 

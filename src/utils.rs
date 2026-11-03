@@ -49,8 +49,10 @@ pub fn remove_comments_from_code(code: &str) -> String {
 
     while index < chars.len() {
         let current = chars[index];
-        let previous_source_char =
-            index.checked_sub(1).and_then(|prev| chars.get(prev)).copied();
+        let previous_source_char = index
+            .checked_sub(1)
+            .and_then(|prev| chars.get(prev))
+            .copied();
 
         match state {
             State::Normal => match current {
@@ -86,7 +88,8 @@ pub fn remove_comments_from_code(code: &str) -> String {
                         result.push('/');
                         result.push('/');
                         result.push_str(&comment_text);
-                        last_emitted_char = comment_text.chars().last().or(Some('/'));
+                        last_emitted_char =
+                            comment_text.chars().last().or(Some('/'));
                     }
 
                     index = comment_end;
