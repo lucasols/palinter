@@ -16,8 +16,8 @@ use super::{
     add_aliases,
     extract_file_content_exports::Export,
     extract_file_content_imports::{Import, ImportType},
-    get_file_deps_result, get_file_imports, get_resolved_path_from, REVERSE_IMPORTS,
-    USED_FILES,
+    get_file_deps_result, get_file_imports, get_resolved_path_from, is_dev_file,
+    ImportUsage, REVERSE_IMPORTS, USED_FILES,
 };
 
 lazy_static! {
@@ -60,6 +60,77 @@ fn build_glob_set(
     Ok(glob_set)
 }
 
+fn format_importers(importers: &[ImportUsage]) -> String {
+    let mut paths = importers
+        .iter()
+        .map(|importer| add_aliases(&importer.importer_path))
+        .collect::<Vec<_>>();
+
+    paths.sort();
+    paths.dedup();
+
+    join_and_truncate_string_vec(&paths, ", ", 3)
+}
+
+fn format_exports(exports: &[Export], file: &File, line_offset: usize) -> String {
+    exports
+        .iter()
+        .map(|export| {
+            format!(
+                "{} in {}:{}",
+                export.name.blue().bold(),
+                file.relative_path.bright_magenta().bold(),
+                format!("{}", export.line - line_offset)
+                    .bright_magenta()
+                    .bold()
+            )
+        })
+        .collect::<Vec<String>>()
+        .join(" ・ ")
+}
+
+/// Removes the exports used by `importers` from `unused_exports` and returns
+/// the ignored exports that are used by them
+fn remove_used_exports(
+    importers: &[ImportUsage],
+    unused_exports: &mut Vec<Export>,
+    ignored_exports: &[Export],
+) -> Vec<Export> {
+    let mut used_ignored_exports: Vec<Export> = Vec::new();
+
+    for importer in importers {
+        if unused_exports.is_empty() {
+            break;
+        }
+
+        for related_import in &importer.imports {
+            match &related_import.values {
+                ImportType::All | ImportType::Dynamic => {
+                    unused_exports.clear();
+                    used_ignored_exports.extend(ignored_exports.iter().cloned());
+                }
+                ImportType::Named(values) | ImportType::Type(values) => {
+                    unused_exports.retain(|export| {
+                        !values.iter().any(|value| value == &export.name)
+                    });
+
+                    used_ignored_exports.extend(
+                        ignored_exports
+                            .iter()
+                            .filter(|export| {
+                                values.iter().any(|value| value == &export.name)
+                            })
+                            .cloned(),
+                    );
+                }
+                ImportType::SideEffect | ImportType::Glob => {}
+            }
+        }
+    }
+
+    used_ignored_exports
+}
+
 pub fn check_ts_not_have_unused_exports(file: &File) -> Result<(), String> {
     let deps_info = USED_FILES.lock().unwrap().get(&file.relative_path).cloned();
     let related_importers = REVERSE_IMPORTS
@@ -67,7 +138,33 @@ pub fn check_ts_not_have_unused_exports(file: &File) -> Result<(), String> {
         .unwrap()
         .get(&file.relative_path)
         .cloned()
-        .unwrap_or_default();
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|importer| importer.importer_path != file.relative_path)
+        .collect::<Vec<_>>();
+
+    let file_is_dev = is_dev_file(&file.relative_path);
+
+    // imports from dev files don't count as usage of non-dev files
+    let (usage_importers, dev_importers): (Vec<ImportUsage>, Vec<ImportUsage>) =
+        related_importers.into_iter().partition(|importer| {
+            file_is_dev || !is_dev_file(&importer.importer_path)
+        });
+
+    if file_is_dev {
+        let non_dev_importers = usage_importers
+            .iter()
+            .filter(|importer| !is_dev_file(&importer.importer_path))
+            .cloned()
+            .collect::<Vec<_>>();
+
+        if !non_dev_importers.is_empty() {
+            return Err(format!(
+                "Dev file can't be imported by non-dev files: {}",
+                format_importers(&non_dev_importers)
+            ));
+        }
+    }
 
     if let Some(deps_info) = deps_info {
         let mut unused_exports = deps_info
@@ -82,44 +179,22 @@ pub fn check_ts_not_have_unused_exports(file: &File) -> Result<(), String> {
             .filter(|export| export.ignored)
             .cloned()
             .collect::<Vec<_>>();
-        let mut used_ignored_exports: Vec<Export> = Vec::new();
 
         let all_ignored_exports_count = ignored_exports.len();
 
-        for importer in related_importers {
-            if unused_exports.is_empty() {
-                break;
-            }
+        let used_ignored_exports = remove_used_exports(
+            &usage_importers,
+            &mut unused_exports,
+            &ignored_exports,
+        );
 
-            if importer.importer_path == file.relative_path {
-                continue;
-            }
+        let mut not_used_by_dev_files = unused_exports.clone();
+        remove_used_exports(&dev_importers, &mut not_used_by_dev_files, &[]);
 
-            for related_import in &importer.imports {
-                match &related_import.values {
-                    ImportType::All | ImportType::Dynamic => {
-                        unused_exports = vec![];
-                        used_ignored_exports.extend(ignored_exports.clone());
-                    }
-                    ImportType::Named(values) | ImportType::Type(values) => {
-                        unused_exports.retain(|export| {
-                            !values.iter().any(|value| value == &export.name)
-                        });
-
-                        let related_ignored_exports = ignored_exports
-                            .iter()
-                            .filter(|export| {
-                                values.iter().any(|value| value == &export.name)
-                            })
-                            .cloned()
-                            .collect::<Vec<_>>();
-
-                        used_ignored_exports.extend(related_ignored_exports);
-                    }
-                    ImportType::SideEffect | ImportType::Glob => {}
-                }
-            }
-        }
+        let (unused_exports, only_used_by_dev_files): (Vec<Export>, Vec<Export>) =
+            unused_exports
+                .into_iter()
+                .partition(|export| not_used_by_dev_files.contains(export));
 
         let count_of_ignore_next_line_comments = if let Some(content) = &file.content
         {
@@ -137,33 +212,28 @@ pub fn check_ts_not_have_unused_exports(file: &File) -> Result<(), String> {
         if !used_ignored_exports.is_empty() {
             return Err(format!(
                 "Unused ignore comments '// palinter-ignore-unused-next-line', remove them: {}",
-                used_ignored_exports
-                    .iter()
-                    .map(|export| format!(
-                        "{} in {}:{}",
-                        export.name.blue().bold(),
-                        file.relative_path.bright_magenta().bold(),
-                        format!("{}", export.line - 1).bright_magenta().bold()
-                    ))
-                    .collect::<Vec<String>>()
-                    .join(" ・ ")
+                format_exports(&used_ignored_exports, file, 1)
             ));
         }
 
+        let mut errors = vec![];
+
         if !unused_exports.is_empty() {
-            Err(format!(
+            errors.push(format!(
                 "File has unused exports: {}",
-                unused_exports
-                    .iter()
-                    .map(|export| format!(
-                        "{} in {}:{}",
-                        export.name.blue().bold(),
-                        file.relative_path.bright_magenta().bold(),
-                        format!("{}", export.line).bright_magenta().bold()
-                    ))
-                    .collect::<Vec<String>>()
-                    .join(" ・ ")
-            ))
+                format_exports(&unused_exports, file, 0)
+            ));
+        }
+
+        if !only_used_by_dev_files.is_empty() {
+            errors.push(format!(
+                "File has exports only used by dev files: {}",
+                format_exports(&only_used_by_dev_files, file, 0)
+            ));
+        }
+
+        if !errors.is_empty() {
+            Err(errors.join(", "))
         } else if file_has_ignore_comment(file, "not-have-unused-exports") {
             Err(
                 "Unused ignore comment '// palinter-ignore-not-have-unused-exports', remove it"
@@ -174,6 +244,11 @@ pub fn check_ts_not_have_unused_exports(file: &File) -> Result<(), String> {
         }
     } else if file_has_ignore_comment(file, "not-have-unused-exports") {
         Ok(())
+    } else if !dev_importers.is_empty() {
+        Err(format!(
+            "File is only used by dev files: {}",
+            format_importers(&dev_importers)
+        ))
     } else {
         Err("File is not being used in the project".to_string())
     }

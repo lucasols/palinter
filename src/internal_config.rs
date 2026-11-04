@@ -183,6 +183,8 @@ pub struct FolderConfig {
 pub struct TsConfig {
     pub aliases: IndexMap<String, String>,
     pub unused_exports_entry_points: Vec<String>,
+    pub dev_entry_points: Vec<String>,
+    pub dev_files: Vec<String>,
 }
 
 pub type ErrorMsgVars = Option<BTreeMap<String, String>>;
@@ -1449,6 +1451,8 @@ pub fn get_config(parsed_config: &ParsedConfig) -> Result<Config, String> {
         ts_config: parsed_config.ts.as_ref().map(|ts| TsConfig {
             aliases: ts.aliases.clone(),
             unused_exports_entry_points: ts.unused_exports_entry_points.clone(),
+            dev_entry_points: ts.dev_entry_points.clone(),
+            dev_files: ts.dev_files.clone(),
         }),
     })
 }

@@ -47,6 +47,16 @@
           "type": "array",
           "description": "Entry points for unused exports analysis",
           "items": { "type": "string" }
+        },
+        "dev_entry_points": {
+          "type": "array",
+          "description": "Dev-only entry points (paths or globs) for unused exports analysis, e.g. stories renderers and tests. They are treated as dev files: files reachable only from them are not used by production code",
+          "items": { "type": "string" }
+        },
+        "dev_files": {
+          "type": "array",
+          "description": "Globs of dev-only files (stories, mocks, test utils). Imports from dev files do not count as usage of non-dev files, and dev files can't be imported by non-dev files",
+          "items": { "type": "string" }
         }
       },
       "required": ["aliases", "unused_exports_entry_points"],

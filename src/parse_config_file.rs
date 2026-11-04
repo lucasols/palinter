@@ -201,6 +201,10 @@ pub enum ParsedFolderConfig {
 pub struct ParsedTsConfig {
     pub aliases: IndexMap<String, String>,
     pub unused_exports_entry_points: Vec<String>,
+    #[serde(default)]
+    pub dev_entry_points: Vec<String>,
+    #[serde(default)]
+    pub dev_files: Vec<String>,
 }
 
 pub type ParsedBlocks = Option<BTreeMap<String, SingleOrMultiple<ParsedRule>>>;

@@ -32,9 +32,13 @@ fn get_results_with_aliases(
     let flatten_root_structure = create_flatten_root_structure(files);
 
     get_used_project_files_deps_info(
-        [PathBuf::from(entry_point)].to_vec(),
+        &TsConfig {
+            aliases,
+            unused_exports_entry_points: vec![entry_point.to_string()],
+            dev_entry_points: vec![],
+            dev_files: vec![],
+        },
         flatten_root_structure.clone(),
-        aliases,
     )
     .unwrap();
 

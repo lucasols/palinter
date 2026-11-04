@@ -406,3 +406,41 @@ You can use context variables from conditions and parent rules in the patterns:
     content_matches: export const ${1}
     # ${1} will be replaced by the value of the first capture group in the has_name pattern
 ```
+
+# TypeScript unused exports
+
+The `ts.not_have_unused_exports` assertion checks which files and exports are reachable from `ts.unused_exports_entry_points`:
+
+```yaml
+ts:
+  aliases:
+    '@src/': ./src/
+  unused_exports_entry_points:
+    - ./src/main.tsx
+```
+
+## Dev files (stories, tests, mocks)
+
+By default, everything reachable from an entry point counts as used. So if stories or tests are entry points, production code imported only by them is never reported. Use `dev_entry_points` and `dev_files` to keep dev code from marking production code as used:
+
+```yaml
+ts:
+  aliases:
+    '@src/': ./src/
+  unused_exports_entry_points:
+    - ./src/main.tsx
+  # entry points of dev code, they are dev files too
+  dev_entry_points:
+    - ./stories/StoriesRoot.tsx
+    - ./src/**/*.test.{ts,tsx}
+  # dev-only support files (globs)
+  dev_files:
+    - ./stories/**
+    - ./src/**/*.stories.tsx
+    - ./src/**/*StoriesUtils.ts
+    - ./src/mocks/**
+```
+
+- Imports from dev files don't count as usage of non-dev files. A non-dev file imported only by dev files is reported with `File is only used by dev files: ...`. An export used only by dev files is reported with `File has exports only used by dev files: ...`. Use `// palinter-ignore-unused-next-line` to allow a specific export.
+- Dev files are considered used when they are imported by other used dev files. Unused dev files and dev file exports are still reported.
+- Non-dev files can't import dev files: `Dev file can't be imported by non-dev files: ...`.
