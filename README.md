@@ -441,6 +441,14 @@ ts:
     - ./src/mocks/**
 ```
 
-- Imports from dev files don't count as usage of non-dev files. A non-dev file imported only by dev files is reported with `File is only used by dev files: ...`. An export used only by dev files is reported with `File has exports only used by dev files: ...`. Use `// palinter-ignore-unused-next-line` to allow a specific export.
+- Imports from dev files don't count as usage of non-dev files. A non-dev file imported only by dev files is reported with `File is only used by dev files: ...`.
+- An export used only by dev files is reported with `File has exports only used by dev files: ...`, unless the symbol is also referenced in its own file (production code uses it, it's only exported so tests or stories can use it too). Use `// palinter-ignore-unused-next-line` to allow a specific export.
 - Dev files are considered used when they are imported by other used dev files. Unused dev files and dev file exports are still reported.
-- Non-dev files can't import dev files: `Dev file can't be imported by non-dev files: ...`.
+- Non-dev files can't import dev files: `Dev file can't be imported by non-dev files: ...`. To allow a deliberate import, like a dynamic import behind a dev flag, add an ignore comment above it:
+
+```ts
+if (__DEV__) {
+  // palinter-ignore-dev-file-import-next-line
+  const devTools = await import('@src/utils/devTestUtils');
+}
+```

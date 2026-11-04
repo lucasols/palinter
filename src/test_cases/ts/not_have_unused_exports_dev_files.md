@@ -209,3 +209,119 @@ expected_errors:
     File ./src/mocks/apiMock.ts:
      • Dev file can't be imported by non-dev files: @src/Button.tsx
 ```
+
+```yaml
+# exports referenced in their own file can be used by dev files
+
+structure:
+  /src:
+    index.ts: |
+      import { Button } from '@src/Button';
+      console.log(Button);
+    storiesRoot.tsx: |
+      const stories = import.meta.glob('/src/**/*.stories.tsx');
+    Button.tsx: |
+      export type ButtonConfig = { size: number };
+      export function getSize(config: ButtonConfig) {
+        return config.size;
+      }
+      const internal = 1;
+      export const Button = [getSize, internal];
+      export { internal };
+      export const devOnly = 2;
+      const obj = { devOnly: 1 };
+      console.log(obj.devOnly);
+      const helper = 3;
+      export { helper };
+    Button.stories.tsx: |
+      import { Button, getSize, internal, devOnly, helper, type ButtonConfig } from '@src/Button';
+      export const Default = [Button, getSize, internal, devOnly, helper];
+
+expected_errors:
+  - |
+    File ./src/Button.tsx:
+     • File has exports only used by dev files: devOnly in ./src/Button.tsx:8 ・ helper in ./src/Button.tsx:12
+```
+
+```yaml
+# production files can import dev files with an ignore comment
+
+structure:
+  /src:
+    index.ts: |
+      import { Button } from '@src/Button';
+      if (__DEV__) {
+        // palinter-ignore-dev-file-import-next-line
+        const devTools = await import('@src/mocks/apiMock');
+        console.log(devTools);
+      }
+      console.log(Button);
+    storiesRoot.tsx: |
+      const stories = import.meta.glob('/src/**/*.stories.tsx');
+    Button.tsx: |
+      export const Button = 1;
+    Button.stories.tsx: |
+      import { Button } from '@src/Button';
+      export const Default = Button;
+    /mocks:
+      apiMock.ts: |
+        export const apiMock = 1;
+
+expected_errors: false
+```
+
+```yaml
+# unused dev file import ignore comments are reported
+
+structure:
+  /src:
+    index.ts: |
+      // palinter-ignore-dev-file-import-next-line
+      import { Button } from '@src/Button';
+      console.log(Button);
+    storiesRoot.tsx: |
+      const stories = import.meta.glob('/src/**/*.stories.tsx');
+    Button.tsx: |
+      export const Button = 1;
+    Button.stories.tsx: |
+      import { Button } from '@src/Button';
+      export const Default = Button;
+
+expected_errors:
+  - |
+    File ./src/index.ts:
+     • Unused ignore comment '// palinter-ignore-dev-file-import-next-line' in line 1, remove it
+```
+
+```yaml
+# long importers lists are truncated
+
+structure:
+  /src:
+    index.ts: |
+      console.log(1);
+    storiesRoot.tsx: |
+      const stories = import.meta.glob('/src/**/*.stories.tsx');
+    Button.tsx: |
+      export const Button = 1;
+    a.stories.tsx: |
+      import { Button } from '@src/Button';
+      export const Default = Button;
+    b.stories.tsx: |
+      import { Button } from '@src/Button';
+      export const Default = Button;
+    c.stories.tsx: |
+      import { Button } from '@src/Button';
+      export const Default = Button;
+    d.stories.tsx: |
+      import { Button } from '@src/Button';
+      export const Default = Button;
+    e.stories.tsx: |
+      import { Button } from '@src/Button';
+      export const Default = Button;
+
+expected_errors:
+  - |
+    File ./src/Button.tsx:
+     • File is only used by dev files: @src/a.stories.tsx, @src/b.stories.tsx, @src/c.stories.tsx (+2 more)
+```
