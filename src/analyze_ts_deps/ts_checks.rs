@@ -16,8 +16,9 @@ use super::{
     add_aliases,
     extract_file_content_exports::Export,
     extract_file_content_imports::{Import, ImportType},
-    get_file_deps_result, get_file_imports, get_resolved_path_from, is_dev_file,
-    ImportUsage, REVERSE_IMPORTS, USED_FILES,
+    get_clean_file_content, get_file_deps_result, get_file_imports,
+    get_resolved_path_from, is_dev_file, load_file_from_cache, ImportUsage,
+    REVERSE_IMPORTS, USED_FILES,
 };
 
 lazy_static! {
@@ -89,6 +90,117 @@ fn format_exports(exports: &[Export], file: &File, line_offset: usize) -> String
         .join(" ・ ")
 }
 
+fn is_identifier_char(char: char) -> bool {
+    char.is_alphanumeric() || char == '_' || char == '$'
+}
+
+/// Counts the references of an identifier in the code, ignoring property
+/// accesses like `obj.name` and object keys like `{ name: value }`
+fn count_identifier_references(code: &str, name: &str) -> usize {
+    if name.is_empty() {
+        return 0;
+    }
+
+    code.match_indices(name)
+        .filter(|(index, _)| {
+            let before = &code[..*index];
+            let after = &code[index + name.len()..];
+
+            let mut before_chars = before.chars().rev();
+            let char_before = before_chars.next();
+
+            if char_before.is_some_and(is_identifier_char)
+                || after.chars().next().is_some_and(is_identifier_char)
+            {
+                return false;
+            }
+
+            let is_property_access =
+                char_before == Some('.') && before_chars.next() != Some('.');
+
+            let prev_non_space = before.trim_end().chars().next_back();
+            let next_non_space = after.trim_start().chars().next();
+
+            let is_object_key = matches!(prev_non_space, Some('{' | ','))
+                && next_non_space == Some(':');
+
+            !is_property_access && !is_object_key
+        })
+        .count()
+}
+
+/// Checks if the exported symbol is also referenced in its own file, besides
+/// its declaration and export statement
+fn export_is_referenced_in_file(export: &Export, clean_content: &str) -> bool {
+    if export.name == "default" {
+        return false;
+    }
+
+    let is_export_list = clean_content
+        .lines()
+        .nth(export.line.saturating_sub(1))
+        .is_some_and(|line| line.trim_start().starts_with("export {"));
+
+    // `export { name }` has the local declaration and the export statement
+    let declaration_references = if is_export_list { 2 } else { 1 };
+
+    count_identifier_references(clean_content, &export.name) > declaration_references
+}
+
+const DEV_FILE_IMPORT_IGNORE_SUFFIX: &str = "dev-file-import-next-line";
+
+fn importer_has_only_ignored_dev_file_imports(importer: &ImportUsage) -> bool {
+    let Ok(importer_file) =
+        load_file_from_cache(&PathBuf::from(&importer.importer_path))
+    else {
+        return false;
+    };
+
+    importer.imports.iter().all(|import| {
+        import_has_ignore_comment_above(
+            &importer_file,
+            import.line,
+            DEV_FILE_IMPORT_IGNORE_SUFFIX,
+        )
+    })
+}
+
+fn check_unused_dev_file_import_ignore_comments(file: &File) -> Result<(), String> {
+    let comment_lines =
+        find_ignore_comment_lines(file, DEV_FILE_IMPORT_IGNORE_SUFFIX);
+
+    if comment_lines.is_empty() {
+        return Ok(());
+    }
+
+    let file_is_dev = is_dev_file(&file.relative_path);
+    let file_imports = get_file_imports(&file.relative_path)?;
+
+    let unused_comment_lines = comment_lines
+        .into_iter()
+        .filter(|comment_line| {
+            file_is_dev
+                || !file_imports.iter().any(|(import_path, imports)| {
+                    is_dev_file(import_path)
+                        && imports
+                            .iter()
+                            .any(|import| import.line == comment_line + 1)
+                })
+        })
+        .map(|line| line.to_string())
+        .collect::<Vec<_>>();
+
+    if unused_comment_lines.is_empty() {
+        Ok(())
+    } else {
+        Err(format!(
+            "Unused ignore comment '// palinter-ignore-{}' in line {}, remove it",
+            DEV_FILE_IMPORT_IGNORE_SUFFIX,
+            unused_comment_lines.join(", ")
+        ))
+    }
+}
+
 /// Removes the exports used by `importers` from `unused_exports` and returns
 /// the ignored exports that are used by them
 fn remove_used_exports(
@@ -154,7 +266,10 @@ pub fn check_ts_not_have_unused_exports(file: &File) -> Result<(), String> {
     if file_is_dev {
         let non_dev_importers = usage_importers
             .iter()
-            .filter(|importer| !is_dev_file(&importer.importer_path))
+            .filter(|importer| {
+                !is_dev_file(&importer.importer_path)
+                    && !importer_has_only_ignored_dev_file_imports(importer)
+            })
             .cloned()
             .collect::<Vec<_>>();
 
@@ -165,6 +280,8 @@ pub fn check_ts_not_have_unused_exports(file: &File) -> Result<(), String> {
             ));
         }
     }
+
+    check_unused_dev_file_import_ignore_comments(file)?;
 
     if let Some(deps_info) = deps_info {
         let mut unused_exports = deps_info
@@ -195,6 +312,22 @@ pub fn check_ts_not_have_unused_exports(file: &File) -> Result<(), String> {
             unused_exports
                 .into_iter()
                 .partition(|export| not_used_by_dev_files.contains(export));
+
+        // exports referenced in their own file are used by production code,
+        // they are only exported to be used by dev files too
+        let only_used_by_dev_files = if only_used_by_dev_files.is_empty() {
+            only_used_by_dev_files
+        } else {
+            let clean_content =
+                get_clean_file_content(&file.relative_path)?.unwrap_or_default();
+
+            only_used_by_dev_files
+                .into_iter()
+                .filter(|export| {
+                    !export_is_referenced_in_file(export, &clean_content)
+                })
+                .collect()
+        };
 
         let count_of_ignore_next_line_comments = if let Some(content) = &file.content
         {
