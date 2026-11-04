@@ -5,6 +5,7 @@
   "main": "dist/main.js",
   "scripts": {
     "build": "tsc",
+    "pre-publish": "pnpm build",
     "start": "node dist/main.js"
   },
   "bin": "dist/main.js",
