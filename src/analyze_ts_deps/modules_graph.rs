@@ -134,13 +134,15 @@ where
     let edges = get_node_edges(node_name)?;
 
     if !disable_cache {
-        if let Some(cached) = DEPS_CACHE.lock().unwrap().get(node_name).cloned() {
-            main_node_deps.extend(cached.deps.clone());
+        let cached = DEPS_CACHE.lock().unwrap().get(node_name).cloned();
+
+        if let Some(cached) = cached {
+            main_node_deps.extend(cached.deps.iter().cloned());
 
             path.shift_remove(node_name);
 
-            return if cached.circular_deps.is_some() {
-                for circular_path in cached.circular_deps.clone().unwrap() {
+            return if let Some(cached_circular_deps) = cached.circular_deps {
+                for circular_path in cached_circular_deps {
                     if !circular_deps.iter().any(|i| i == &circular_path) {
                         circular_deps.push(circular_path);
                     }
@@ -148,7 +150,7 @@ where
 
                 Ok(None)
             } else {
-                Ok(Some(cached.deps.clone()))
+                Ok(Some(cached.deps))
             };
         }
     }
