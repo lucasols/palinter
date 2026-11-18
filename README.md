@@ -283,6 +283,33 @@ Asserts that the file extension is the specified
       - png
 ```
 
+## `have_sibling_file`
+
+Asserts that a sibling file matching the specified pattern exists:
+
+```yaml
+- if_file:
+    has_name: '*.test.ts'
+  expect:
+    have_sibling_file: '${1}.ts'
+```
+
+## `not_have_sibling_file`
+
+Asserts that no other sibling file matches the specified pattern. Root-level
+rules are inherited recursively, so they can prevent case-insensitive
+TypeScript module-name collisions throughout the project:
+
+```yaml
+./:
+  rules:
+    - if_file:
+        has_name: 'regex:^(?P<module_name>.+)\.ts$'
+      expect:
+        not_have_sibling_file: 'regex:(?i)^${module_name}\.tsx$'
+      not_touch: true
+```
+
 ## `name_is`
 
 Asserts that the file name matches the specified pattern
@@ -378,4 +405,50 @@ You can use context variables from conditions and parent rules in the patterns:
   expect:
     content_matches: export const ${1}
     # ${1} will be replaced by the value of the first capture group in the has_name pattern
+```
+
+# TypeScript unused exports
+
+The `ts.not_have_unused_exports` assertion checks which files and exports are reachable from `ts.unused_exports_entry_points`:
+
+```yaml
+ts:
+  aliases:
+    '@src/': ./src/
+  unused_exports_entry_points:
+    - ./src/main.tsx
+```
+
+## Dev files (stories, tests, mocks)
+
+By default, everything reachable from an entry point counts as used. So if stories or tests are entry points, production code imported only by them is never reported. Use `dev_entry_points` and `dev_files` to keep dev code from marking production code as used:
+
+```yaml
+ts:
+  aliases:
+    '@src/': ./src/
+  unused_exports_entry_points:
+    - ./src/main.tsx
+  # entry points of dev code, they are dev files too
+  dev_entry_points:
+    - ./stories/StoriesRoot.tsx
+    - ./src/**/*.test.{ts,tsx}
+  # dev-only support files (globs)
+  dev_files:
+    - ./stories/**
+    - ./src/**/*.stories.tsx
+    - ./src/**/*StoriesUtils.ts
+    - ./src/mocks/**
+```
+
+- Imports from dev files don't count as usage of non-dev files. A non-dev file imported only by dev files is reported with `File is only used by dev files: ...`.
+- An export used only by dev files is reported with `File has exports only used by dev files: ...`, unless the symbol is also referenced in its own file (production code uses it, it's only exported so tests or stories can use it too). Use `// palinter-ignore-unused-next-line` to allow a specific export.
+- Dev files are considered used when they are imported by other used dev files. Unused dev files and dev file exports are still reported.
+- Non-dev files can't import dev files: `Dev file can't be imported by non-dev files: ...`. To allow a deliberate import, like a dynamic import behind a dev flag, add an ignore comment above it:
+
+```ts
+if (__DEV__) {
+  // palinter-ignore-dev-file-import-next-line
+  const devTools = await import('@src/utils/devTestUtils');
+}
 ```

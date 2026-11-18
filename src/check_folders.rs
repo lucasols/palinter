@@ -25,7 +25,7 @@ use self::checks::{
     check_negated_root_files_has_pattern, check_path_pattern,
     check_root_files_find_pattern, check_root_files_has_pattern,
     expand_to_capture_case_variation, extension_is, has_sibling_file, name_case_is,
-    path_pattern_match, Capture,
+    not_has_sibling_file, path_pattern_match, Capture,
 };
 
 #[derive(Debug, Default)]
@@ -204,6 +204,19 @@ fn check_file_expect(
                 pass_some_expect = true;
                 check_result(
                     has_sibling_file(sibling_file_pattern, folder, &captures),
+                    &expect.error_msg,
+                );
+            }
+
+            if let Some(sibling_file_pattern) = &expect.not_have_sibling_file {
+                pass_some_expect = true;
+                check_result(
+                    not_has_sibling_file(
+                        sibling_file_pattern,
+                        file,
+                        folder,
+                        &captures,
+                    ),
                     &expect.error_msg,
                 );
             }

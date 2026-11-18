@@ -9,7 +9,7 @@ use indexmap::{IndexMap, IndexSet};
 use lazy_static::lazy_static;
 
 use crate::{
-    internal_config::Config,
+    internal_config::{Config, TsConfig},
     load_folder_structure::{get_flattened_files_structure, File, Folder},
     utils::{clone_extend_vec, remove_comments_from_code},
 };
@@ -76,6 +76,7 @@ lazy_static! {
         Mutex::new(HashMap::new());
     static ref FILE_DEPS_RESULT_CACHE: Mutex<HashMap<String, DepsResult>> =
         Mutex::new(HashMap::new());
+    static ref DEV_FILES: Mutex<HashSet<String>> = Mutex::new(HashSet::new());
 }
 
 pub fn _setup_test() {
@@ -92,6 +93,13 @@ pub fn _setup_test() {
     USED_FILES.lock().unwrap().clear();
     REVERSE_IMPORTS.lock().unwrap().clear();
     FILE_DEPS_RESULT_CACHE.lock().unwrap().clear();
+    DEV_FILES.lock().unwrap().clear();
+}
+
+/// Dev files are files matched by `ts.dev_files` or `ts.dev_entry_points`.
+/// Their imports don't count as usage of non-dev files.
+pub fn is_dev_file(resolved_path: &str) -> bool {
+    DEV_FILES.lock().unwrap().contains(resolved_path)
 }
 
 pub fn set_aliases(aliases: IndexMap<String, String>) {
@@ -523,6 +531,7 @@ fn get_clean_file_content(resolved_path: &str) -> Result<Option<String>, String>
 
 fn visit_file(
     resolved_path: &Path,
+    dev_files: &HashSet<String>,
     result: &mut HashMap<String, FileDepsInfo>,
 ) -> Result<(), String> {
     let resolved_path_string = path_to_string(resolved_path);
@@ -533,11 +542,17 @@ fn visit_file(
 
     let edges = get_file_edges(&resolved_path_string, false)?;
 
+    let is_dev = dev_files.contains(&resolved_path_string);
+
     for edge in edges {
-        let edge_path = PathBuf::from(edge.clone());
+        // non-dev files reachable only from dev files are not used by the
+        // project, so the traversal does not continue from dev files into them
+        if is_dev && !dev_files.contains(&edge) {
+            continue;
+        }
 
         if !result.contains_key(&edge) {
-            visit_file(&edge_path, result)?;
+            visit_file(&PathBuf::from(edge.clone()), dev_files, result)?;
         }
     }
 
@@ -724,61 +739,113 @@ pub fn load_file_from_path(path: &PathBuf) -> Result<File, String> {
     Ok(file)
 }
 
-fn get_used_project_files_deps_info(
-    entry_points: Vec<PathBuf>,
-    flattened_root_structure: HashMap<String, File>,
-    aliases: IndexMap<String, String>,
-) -> Result<(), String> {
-    let mut result: HashMap<String, FileDepsInfo> = HashMap::new();
+fn build_paths_glob_matcher(
+    patterns: &[String],
+    context: &str,
+) -> Result<globset::GlobSet, String> {
+    let mut builder = globset::GlobSetBuilder::new();
 
-    let (mut non_glob_entry_points, glob_entry_points): (
-        Vec<PathBuf>,
-        Vec<PathBuf>,
-    ) = entry_points
-        .into_iter()
-        .partition(|entry| !path_to_string(entry).contains('*'));
+    for pattern in patterns {
+        let expanded = replace_aliases(pattern);
 
-    for entry in glob_entry_points {
-        let glob_pattern = path_to_string(&entry);
-        let glob = globset::Glob::new(&glob_pattern)
-            .map_err(|err| {
-                format!(
-                    "TS: Invalid unused_exports_entry_points glob '{}': {}",
-                    glob_pattern, err
-                )
-            })?
-            .compile_matcher();
+        builder.add(globset::Glob::new(&expanded).map_err(|err| {
+            format!("TS: Invalid {} glob '{}': {}", context, pattern, err)
+        })?);
+    }
 
-        for file in flattened_root_structure.values() {
-            if glob.is_match(file.relative_path.as_str()) {
-                non_glob_entry_points
-                    .push(PathBuf::from(file.relative_path.clone()));
+    builder
+        .build()
+        .map_err(|err| format!("TS: Error building {} globs: {}", context, err))
+}
+
+fn resolve_entry_points(
+    entry_points: &[String],
+    project_files_paths: &[String],
+    context: &str,
+) -> Result<Vec<PathBuf>, String> {
+    let (non_glob_entry_points, glob_entry_points): (Vec<&String>, Vec<&String>) =
+        entry_points.iter().partition(|entry| !entry.contains('*'));
+
+    let mut seen_entry_points = HashSet::new();
+    let mut resolved_entry_points = Vec::new();
+
+    for entry in non_glob_entry_points {
+        if !seen_entry_points.insert(entry.clone()) {
+            continue;
+        }
+
+        if let Some(resolved_path) = get_resolved_path(Path::new(entry))? {
+            resolved_entry_points.push(resolved_path);
+        } else {
+            return Err(format!("TS: Can't resolve {} path: {:?}", context, entry));
+        }
+    }
+
+    if !glob_entry_points.is_empty() {
+        let glob_entry_points =
+            glob_entry_points.into_iter().cloned().collect::<Vec<_>>();
+        let glob = build_paths_glob_matcher(&glob_entry_points, context)?;
+
+        for path in project_files_paths {
+            if glob.is_match(path.as_str()) && seen_entry_points.insert(path.clone())
+            {
+                resolved_entry_points.push(PathBuf::from(path));
             }
         }
     }
 
+    Ok(resolved_entry_points)
+}
+
+fn get_used_project_files_deps_info(
+    ts_config: &TsConfig,
+    flattened_root_structure: HashMap<String, File>,
+) -> Result<(), String> {
+    let mut result: HashMap<String, FileDepsInfo> = HashMap::new();
+
+    let mut project_files_paths = flattened_root_structure
+        .values()
+        .map(|file| file.relative_path.clone())
+        .collect::<Vec<_>>();
+
+    project_files_paths.sort();
+
     FILES_CACHE.lock().unwrap().extend(flattened_root_structure);
 
-    set_aliases(aliases);
+    set_aliases(ts_config.aliases.clone());
 
-    let mut seen_entry_points = HashSet::new();
+    let entry_points = resolve_entry_points(
+        &ts_config.unused_exports_entry_points,
+        &project_files_paths,
+        "unused_exports_entry_points",
+    )?;
 
-    for entry in non_glob_entry_points
-        .into_iter()
-        .filter(|entry| seen_entry_points.insert(path_to_string(entry)))
-    {
-        if let Some(resolved_path) = get_resolved_path(&entry)? {
-            visit_file(&resolved_path, &mut result)?;
-        } else {
-            return Err(format!(
-                "TS: Can't resolve unused_exports_entry_points path: {:?}",
-                entry
-            ));
+    let dev_entry_points = resolve_entry_points(
+        &ts_config.dev_entry_points,
+        &project_files_paths,
+        "dev_entry_points",
+    )?;
+
+    let dev_files_glob =
+        build_paths_glob_matcher(&ts_config.dev_files, "dev_files")?;
+
+    let mut dev_files = project_files_paths
+        .iter()
+        .filter(|path| dev_files_glob.is_match(path.as_str()))
+        .cloned()
+        .collect::<HashSet<_>>();
+
+    dev_files.extend(dev_entry_points.iter().map(|entry| path_to_string(entry)));
+
+    for entry in entry_points.iter().chain(dev_entry_points.iter()) {
+        if !result.contains_key(&path_to_string(entry)) {
+            visit_file(entry, &dev_files, &mut result)?;
         }
     }
 
     *REVERSE_IMPORTS.lock().unwrap() = build_reverse_imports(&result);
     *USED_FILES.lock().unwrap() = result;
+    *DEV_FILES.lock().unwrap() = dev_files;
 
     Ok(())
 }
@@ -808,42 +875,32 @@ pub fn load_used_project_files_deps_info_from_cfg(
     root_structure: &Folder,
     root_path: &Path,
 ) -> Result<(), String> {
-    let unused_exports_entry_points = config
-        .ts_config
-        .as_ref()
-        .map(|c| {
-            c.unused_exports_entry_points
-                .iter()
-                .map(PathBuf::from)
-                .collect::<Vec<PathBuf>>()
-        })
-        .unwrap_or_default();
-
     *ROOT_DIR.lock().unwrap() = path_to_string(root_path);
 
     let flattened_root_structure = get_flattened_files_structure(root_structure);
-    let aliases = config
-        .ts_config
-        .as_ref()
-        .map(|c| c.aliases.clone())
-        .unwrap_or_default();
 
-    if unused_exports_entry_points.is_empty() {
+    let ts_config = config.ts_config.as_ref().filter(|ts_config| {
+        !ts_config.unused_exports_entry_points.is_empty()
+            || !ts_config.dev_entry_points.is_empty()
+    });
+
+    let Some(ts_config) = ts_config else {
         FILES_CACHE.lock().unwrap().extend(flattened_root_structure);
-        set_aliases(aliases);
+        set_aliases(
+            config
+                .ts_config
+                .as_ref()
+                .map(|c| c.aliases.clone())
+                .unwrap_or_default(),
+        );
         REVERSE_IMPORTS.lock().unwrap().clear();
         USED_FILES.lock().unwrap().clear();
+        DEV_FILES.lock().unwrap().clear();
 
         return Ok(());
-    }
+    };
 
-    get_used_project_files_deps_info(
-        unused_exports_entry_points,
-        flattened_root_structure,
-        aliases,
-    )?;
-
-    Ok(())
+    get_used_project_files_deps_info(ts_config, flattened_root_structure)
 }
 
 #[cfg(test)]

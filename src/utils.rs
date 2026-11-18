@@ -49,8 +49,10 @@ pub fn remove_comments_from_code(code: &str) -> String {
 
     while index < chars.len() {
         let current = chars[index];
-        let previous_source_char =
-            index.checked_sub(1).and_then(|prev| chars.get(prev)).copied();
+        let previous_source_char = index
+            .checked_sub(1)
+            .and_then(|prev| chars.get(prev))
+            .copied();
 
         match state {
             State::Normal => match current {
@@ -86,7 +88,8 @@ pub fn remove_comments_from_code(code: &str) -> String {
                         result.push('/');
                         result.push('/');
                         result.push_str(&comment_text);
-                        last_emitted_char = comment_text.chars().last().or(Some('/'));
+                        last_emitted_char =
+                            comment_text.chars().last().or(Some('/'));
                     }
 
                     index = comment_end;
@@ -186,14 +189,14 @@ pub fn join_and_truncate_string_vec(
     join_by: &str,
     max_len: usize,
 ) -> String {
-    let mut joined = vec.to_vec();
-
-    joined.truncate(max_len);
-
-    if joined.len() > max_len {
-        format!("{}...", joined.join(join_by))
+    if vec.len() > max_len {
+        format!(
+            "{} (+{} more)",
+            vec[..max_len].join(join_by),
+            vec.len() - max_len
+        )
     } else {
-        joined.join(join_by)
+        vec.join(join_by)
     }
 }
 

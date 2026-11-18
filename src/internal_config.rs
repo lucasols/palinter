@@ -82,6 +82,7 @@ pub struct FileExpect {
     pub name_case_is: Option<NameCase>,
     pub extension_is: Option<Vec<String>>,
     pub have_sibling_file: Option<String>,
+    pub not_have_sibling_file: Option<String>,
     pub content_matches: Option<Vec<ContentMatches>>,
     pub content_matches_some: Option<Vec<ContentMatches>>,
     pub content_not_matches: Option<Vec<String>>,
@@ -182,6 +183,8 @@ pub struct FolderConfig {
 pub struct TsConfig {
     pub aliases: IndexMap<String, String>,
     pub unused_exports_entry_points: Vec<String>,
+    pub dev_entry_points: Vec<String>,
+    pub dev_files: Vec<String>,
 }
 
 pub type ErrorMsgVars = Option<BTreeMap<String, String>>;
@@ -948,6 +951,7 @@ fn get_file_expect(
             .map(|name_case| normalize_name_case(name_case, config_path))
             .transpose()?,
         have_sibling_file: parsed_expected.have_sibling_file,
+        not_have_sibling_file: parsed_expected.not_have_sibling_file,
         content_matches: normalize_content_matches(
             parsed_expected.content_matches,
             config_path,
@@ -1447,6 +1451,8 @@ pub fn get_config(parsed_config: &ParsedConfig) -> Result<Config, String> {
         ts_config: parsed_config.ts.as_ref().map(|ts| TsConfig {
             aliases: ts.aliases.clone(),
             unused_exports_entry_points: ts.unused_exports_entry_points.clone(),
+            dev_entry_points: ts.dev_entry_points.clone(),
+            dev_files: ts.dev_files.clone(),
         }),
     })
 }
@@ -1514,6 +1520,7 @@ mod tests {
                                         ),
                                         extension_is: None,
                                         have_sibling_file: None,
+                                        not_have_sibling_file: None,
                                         content_matches: None,
                                         content_matches_some: None,
                                         content_not_matches: None,
@@ -1626,6 +1633,7 @@ mod tests {
                                                 ),
                                                 extension_is: None,
                                                 have_sibling_file: None,
+                                                not_have_sibling_file: None,
                                                 content_matches: None,
                                                 content_matches_some: None,
                                                 content_not_matches: None,

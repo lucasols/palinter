@@ -50,6 +50,7 @@ pub struct ParsedFileExpect {
     pub name_case_is: Option<String>,
     pub extension_is: Option<SingleOrMultiple<String>>,
     pub have_sibling_file: Option<String>,
+    pub not_have_sibling_file: Option<String>,
     pub content_matches: Option<ParsedFileContentMatches>,
     pub content_matches_any: Option<ParsedFileContentMatches>,
     pub content_not_matches: Option<SingleOrMultiple<String>>,
@@ -200,6 +201,10 @@ pub enum ParsedFolderConfig {
 pub struct ParsedTsConfig {
     pub aliases: IndexMap<String, String>,
     pub unused_exports_entry_points: Vec<String>,
+    #[serde(default)]
+    pub dev_entry_points: Vec<String>,
+    #[serde(default)]
+    pub dev_files: Vec<String>,
 }
 
 pub type ParsedBlocks = Option<BTreeMap<String, SingleOrMultiple<ParsedRule>>>;

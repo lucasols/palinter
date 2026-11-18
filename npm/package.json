@@ -1,10 +1,11 @@
 {
   "name": "palinter",
-  "version": "0.54.0",
+  "version": "0.57.0",
   "description": "A Project Architecture Linter written in rust",
   "main": "dist/main.js",
   "scripts": {
     "build": "tsc",
+    "pre-publish": "pnpm build",
     "start": "node dist/main.js"
   },
   "bin": "dist/main.js",
