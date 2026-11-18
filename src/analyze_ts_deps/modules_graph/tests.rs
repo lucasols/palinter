@@ -3,6 +3,8 @@ use crate::{analyze_ts_deps::_setup_test, test_utils::TEST_MUTEX};
 use super::*;
 use indexmap::IndexMap;
 use insta::assert_debug_snapshot;
+use rayon::prelude::*;
+use std::{hint::black_box, sync::Arc, time::Instant};
 
 fn vc(v: Vec<&str>) -> Vec<String> {
     v.iter().map(|s| s.to_string()).collect()
@@ -261,6 +263,62 @@ fn circular_1() {
         },
     }
     "###
+    );
+}
+
+#[test]
+#[ignore = "benchmark"]
+fn bench_parallel_get_node_deps() {
+    let _guard = TEST_MUTEX.lock().unwrap();
+    _setup_test();
+
+    let node_count = 600;
+    let roots = (0..200)
+        .map(|index| format!("node{}", index))
+        .collect::<Vec<_>>();
+    let graph = Arc::new(
+        (0..node_count)
+            .map(|index| {
+                let mut edges = Vec::new();
+
+                if index + 1 < node_count {
+                    edges.push(format!("node{}", index + 1));
+                }
+
+                if index + 7 < node_count {
+                    edges.push(format!("node{}", index + 7));
+                }
+
+                (format!("node{}", index), edges)
+            })
+            .collect::<std::collections::HashMap<_, _>>(),
+    );
+    let started_at = Instant::now();
+
+    (0..40).into_par_iter().for_each(|_| {
+        for root in &roots {
+            let graph = Arc::clone(&graph);
+
+            black_box(
+                get_node_deps(
+                    root,
+                    &mut |node_name| {
+                        Ok(graph.get(node_name).cloned().unwrap_or_default())
+                    },
+                    None,
+                    false,
+                    false,
+                )
+                .unwrap(),
+            );
+        }
+    });
+
+    println!(
+        "bench_parallel_get_node_deps: {} roots x {} passes in {:?}",
+        roots.len(),
+        40,
+        started_at.elapsed()
     );
 }
 
